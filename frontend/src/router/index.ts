@@ -25,7 +25,7 @@ const routes = [
         ],
       },
       // Task 14: 系统管理 - 用户管理
-      { path: 'system/users', component: Placeholder },
+      { path: 'system/users', name: 'UserManage', component: () => import('../views/system/UserManage.vue') },
     ],
   },
   {

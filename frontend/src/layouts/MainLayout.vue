@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/user'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// 根据当前路由自动展开对应子菜单
+const defaultOpeneds = computed(() => {
+  if (route.path.startsWith('/basic-info')) return ['/basic-info']
+  if (route.path.startsWith('/system')) return ['/system']
+  return []
+})
 
 function onLogout() {
   userStore.logout()
@@ -16,9 +24,19 @@ function onLogout() {
   <el-container class="main-layout">
     <el-aside width="220px">
       <div class="logo">辛巴印刷品定制</div>
-      <el-menu :default-active="route.path" router>
-        <el-menu-item index="/basic_info">基础信息</el-menu-item>
-        <el-menu-item index="/system/users">用户管理</el-menu-item>
+      <el-menu :default-active="route.path" :default-openeds="defaultOpeneds" router>
+        <el-sub-menu index="/basic-info">
+          <template #title>基础信息</template>
+          <el-menu-item index="/basic-info/category">类目</el-menu-item>
+          <el-menu-item index="/basic-info/product">产品库</el-menu-item>
+          <el-menu-item index="/basic-info/factory">工厂库</el-menu-item>
+          <el-menu-item index="/basic-info/logistics">物流服务商</el-menu-item>
+          <el-menu-item index="/basic-info/customer">客户</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="/system">
+          <template #title>系统管理</template>
+          <el-menu-item index="/system/users">用户管理</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>
