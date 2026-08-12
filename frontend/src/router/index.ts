@@ -31,11 +31,13 @@ const routes = [
   {
     path: '/m',
     component: MobileLayout,
-    redirect: '/m/home',
     children: [
-      // 移动端子路由占位，具体页面后续任务实现
-      { path: 'home', component: Placeholder },
-      { path: 'quote', component: Placeholder },
+      // Task 15: 移动端只读浏览（Vant）
+      { path: '', name: 'MobileHome', component: () => import('../views/m/MobileHome.vue') },
+      { path: 'products', name: 'MProductList', component: () => import('../views/m/MProductList.vue') },
+      { path: 'factories', name: 'MFactoryList', component: () => import('../views/m/MFactoryList.vue') },
+      { path: 'customers', name: 'MCustomerList', component: () => import('../views/m/MCustomerList.vue') },
+      // 我的：占位，后续任务实现
       { path: 'me', component: Placeholder },
     ],
   },

@@ -4,8 +4,11 @@
       <router-view />
     </div>
     <van-tabbar route>
-      <van-tabbar-item replace to="/m/home" icon="home-o">首页</van-tabbar-item>
-      <van-tabbar-item replace to="/m/quote" icon="orders-o">报价</van-tabbar-item>
+      <!-- 用 name 匹配避免父路由 /m 使首页 tab 在子页面误高亮 -->
+      <van-tabbar-item replace :to="{ name: 'MobileHome' }" icon="home-o">首页</van-tabbar-item>
+      <van-tabbar-item replace :to="{ name: 'MProductList' }" icon="goods-collect-o">产品</van-tabbar-item>
+      <van-tabbar-item replace :to="{ name: 'MFactoryList' }" icon="shop-o">工厂</van-tabbar-item>
+      <van-tabbar-item replace :to="{ name: 'MCustomerList' }" icon="contact-o">客户</van-tabbar-item>
       <van-tabbar-item replace to="/m/me" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
   </div>
