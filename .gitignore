@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+*.sqlite3
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# 媒体/上传/备份
+media/
+backups/
+*.bak
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+
+# 构建产物
+*.log

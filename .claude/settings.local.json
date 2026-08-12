@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://api.github.com/repos/KKKKhazix/khazix-skills/contents/neat-freak\")",
+      "Bash(curl -s \"https://api.github.com/repos/KKKKhazix/khazix-skills/git/trees/main?recursive=1\")",
+      "Bash(ls -la \"$HOME/.claude/skills\" 2>&1; echo \"---\"; ls -la \"D:/Pad Windows Data/Claude项目/xb项目/.claude/skills\" 2>&1)",
+      "Bash(git --version)",
+      "Bash(mkdir -p 'C:\\\\Users\\\\徐徐/.claude/skills')",
+      "Bash(rm -rf 'C:\\\\Users\\\\徐徐/.claude/skills/neat-freak')",
+      "Bash(cp -r /c/Users/徐徐/AppData/Local/Temp/khazix-clone/neat-freak 'C:\\\\Users\\\\徐徐/.claude/skills/neat-freak')",
+      "Bash(echo '--- installed at: C:\\\\Users\\\\徐徐/.claude/skills/neat-freak ---')",
+      "Read(//c/Users/徐徐/.claude/skills/**)",
+      "Bash(rm -rf \"/c/Users/徐徐/AppData/Local/Temp/khazix-clone\" && echo \"cleaned\")"
+    ]
+  }
+}
