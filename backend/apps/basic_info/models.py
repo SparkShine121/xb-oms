@@ -40,3 +40,16 @@ class Factory(models.Model):
 
     def __str__(self):
         return self.name
+
+class LogisticsProvider(models.Model):
+    TYPE_CHOICES = [('domestic', '国内'), ('international', '国际')]
+    name = models.CharField(max_length=128)
+    type = models.CharField(max_length=16, choices=TYPE_CHOICES)
+    contact = models.CharField(max_length=64, blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    remark = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.name}({self.type})'
