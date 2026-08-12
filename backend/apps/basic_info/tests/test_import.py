@@ -49,3 +49,34 @@ def test_import_template_download(admin_client):
     r = admin_client.get('/api/basic-info/products/import-template/')
     assert r.status_code == 200
     assert r['Content-Type'].find('spreadsheet') >= 0 or r['Content-Type'].find('excel') >= 0
+
+def make_factory_xlsx(rows):
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(['name', 'alias', 'contact', 'phone', 'settle_currency'])
+    for r in rows:
+        ws.append(r)
+    buf = BytesIO(); wb.save(buf); buf.seek(0)
+    return buf
+
+def test_import_factories_upsert(admin_client, db):
+    from apps.basic_info.models import Factory
+    buf = make_factory_xlsx([
+        ['华鑫', '外部YT', '张三', '13800000000', 'CNY'],
+        ['宏远', '外部HY', '', '', 'CNY'],
+    ])
+    r = admin_client.post('/api/basic-info/factories/import/', {'file': buf}, format='multipart')
+    assert r.data['data']['success_count'] == 2 and r.data['data']['fail_count'] == 0
+    assert Factory.objects.count() == 2
+
+def test_import_factories_repeat_upserts(admin_client, db):
+    from apps.basic_info.models import Factory
+    buf = make_factory_xlsx([['华鑫', '外部YT', '', '', 'CNY']])
+    admin_client.post('/api/basic-info/factories/import/', {'file': buf}, format='multipart')
+    buf2 = make_factory_xlsx([['华鑫', '外部YT2', '李四', '', 'CNY']])
+    admin_client.post('/api/basic-info/factories/import/', {'file': buf2}, format='multipart')
+    assert Factory.objects.get(name='华鑫').alias == '外部YT2'
+
+def test_import_factories_missing_name_fails(admin_client):
+    buf = make_factory_xlsx([['', '别名', '', '', 'CNY']])
+    r = admin_client.post('/api/basic-info/factories/import/', {'file': buf}, format='multipart')
+    assert r.data['data']['fail_count'] == 1
