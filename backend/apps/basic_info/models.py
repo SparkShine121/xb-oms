@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Category(models.Model):
     name = models.CharField(max_length=64)
@@ -53,3 +54,16 @@ class LogisticsProvider(models.Model):
 
     def __str__(self):
         return f'{self.name}({self.type})'
+
+class Customer(models.Model):
+    name = models.CharField(max_length=128)
+    contact_person = models.CharField(max_length=64, blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    email = models.CharField(max_length=128, blank=True)
+    salesman = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='customers')
+    remark = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

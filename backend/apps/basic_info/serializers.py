@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, Factory, LogisticsProvider
+from .models import Category, Product, Factory, LogisticsProvider, Customer
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,3 +29,9 @@ class LogisticsProviderSerializer(serializers.ModelSerializer):
     class Meta:
         model = LogisticsProvider
         fields = ['id', 'name', 'type', 'contact', 'phone', 'remark', 'created_at', 'updated_at']
+
+class CustomerSerializer(serializers.ModelSerializer):
+    salesman_name = serializers.CharField(source='salesman.username', read_only=True, default='')
+    class Meta:
+        model = Customer
+        fields = ['id', 'name', 'contact_person', 'phone', 'email', 'salesman', 'salesman_name', 'remark', 'created_at', 'updated_at']
