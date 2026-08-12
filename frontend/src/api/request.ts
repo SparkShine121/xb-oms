@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 
 const request = axios.create({ baseURL: '/api', timeout: 15000 })
@@ -13,6 +14,7 @@ request.interceptors.response.use(
   res => res.data,
   err => {
     if (err.response?.status === 401) { useUserStore().logout(); location.href = '/login' }
+    else if (err.response) ElMessage.error(err.response.data?.message || '请求失败')
     return Promise.reject(err)
   }
 )
