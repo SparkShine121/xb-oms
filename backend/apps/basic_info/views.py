@@ -27,13 +27,17 @@ class ProductViewSet(BaseModelViewSet):
     filterset_fields = ['category']
     search_fields = ['product_no', 'model', 'name']
     ordering_fields = ['id', 'updated_at']
+    ordering = ['id']
 
     @action(detail=False, methods=['post'], url_path='import')
     def import_data(self, request):
         f = request.FILES.get('file')
         if not f:
             return error_response(1001, '未上传文件', status=400)
-        result = import_products(f)
+        try:
+            result = import_products(f)
+        except Exception as e:
+            return error_response(1001, f'文件解析失败：{e}', status=400)
         return success_response(result)
 
     @action(detail=False, methods=['get'], url_path='import-template')
@@ -49,13 +53,18 @@ class FactoryViewSet(BaseModelViewSet):
     permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
     search_fields = ['name', 'alias', 'contact']
     ordering_fields = ['id', 'updated_at']
+    ordering = ['id']
 
     @action(detail=False, methods=['post'], url_path='import')
     def import_data(self, request):
         f = request.FILES.get('file')
         if not f:
             return error_response(1001, '未上传文件', status=400)
-        return success_response(import_factories(f))
+        try:
+            result = import_factories(f)
+        except Exception as e:
+            return error_response(1001, f'文件解析失败：{e}', status=400)
+        return success_response(result)
 
     @action(detail=False, methods=['get'], url_path='import-template')
     def import_template(self, request):
@@ -71,6 +80,7 @@ class LogisticsProviderViewSet(BaseModelViewSet):
     filterset_fields = ['type']
     search_fields = ['name', 'contact']
     ordering_fields = ['id', 'updated_at']
+    ordering = ['id']
 
 class CustomerViewSet(BaseModelViewSet):
     queryset = Customer.objects.all()
@@ -79,3 +89,4 @@ class CustomerViewSet(BaseModelViewSet):
     filterset_fields = ['salesman']
     search_fields = ['name', 'contact_person', 'phone']
     ordering_fields = ['id', 'updated_at']
+    ordering = ['id']

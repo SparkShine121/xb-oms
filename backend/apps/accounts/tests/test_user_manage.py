@@ -21,3 +21,20 @@ def test_non_admin_cannot_access(db):
     c = APIClient(); c.force_authenticate(u)
     r = c.get('/api/auth/users/')
     assert r.status_code == 403
+
+def test_admin_updates_user_password(admin_client, db):
+    target = User.objects.create_user('target1', password='old123456')
+    r = admin_client.patch(f'/api/auth/users/{target.id}/', {
+        'password': 'new123456'
+    }, format='json')
+    assert r.status_code == 200
+    assert User.objects.get(id=target.id).check_password('new123456')
+
+def test_admin_updates_user_groups(admin_client, db):
+    target = User.objects.create_user('target2', password='pw123456')
+    r = admin_client.patch(f'/api/auth/users/{target.id}/', {
+        'groups': ['salesman', 'tracker']
+    }, format='json')
+    assert r.status_code == 200
+    groups = set(User.objects.get(id=target.id).groups.values_list('name', flat=True))
+    assert groups == {'salesman', 'tracker'}

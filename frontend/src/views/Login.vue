@@ -11,6 +11,7 @@ const form = reactive({ username: '', password: '' })
 const loading = ref(false)
 
 async function onSubmit() {
+  if (loading.value) return
   if (!form.username || !form.password) {
     ElMessage.warning('请输入用户名和密码')
     return
@@ -50,7 +51,6 @@ async function onSubmit() {
             size="large"
             show-password
             autocomplete="current-password"
-            @keyup.enter="onSubmit"
           />
         </el-form-item>
         <el-form-item>
