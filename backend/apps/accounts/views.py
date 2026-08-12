@@ -1,11 +1,11 @@
 from rest_framework.views import APIView
-from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from common.response import success_response, error_response
 from common.permissions import RolePermission
+from common.views import BaseModelViewSet
 from .serializers import LoginSerializer, UserSerializer, UserManageSerializer
 
 class LoginView(APIView):
@@ -36,8 +36,7 @@ class LogoutView(APIView):
             pass
         return success_response(None, '已登出')
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(BaseModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserManageSerializer
-    permission_classes = [IsAuthenticated, RolePermission]
-    allowed_roles = []  # 仅 admin（RolePermission 对 admin 直接放行）
+    permission_classes = [IsAuthenticated, RolePermission]  # RolePermission 默认 allowed_roles=[]，非 admin 全拒
