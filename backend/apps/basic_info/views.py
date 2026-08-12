@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from common.permissions import AdminWriteOthersReadOnly
 from common.response import success_response
 from common.views import BaseModelViewSet
-from .models import Category
-from .serializers import CategorySerializer, CategoryTreeSerializer
+from .models import Category, Product
+from .serializers import CategorySerializer, CategoryTreeSerializer, ProductSerializer
 
 class CategoryViewSet(BaseModelViewSet):
     queryset = Category.objects.all()
@@ -17,3 +17,11 @@ class CategoryViewSet(BaseModelViewSet):
     def tree(self, request):
         roots = Category.objects.filter(parent__isnull=True)
         return success_response(CategoryTreeSerializer(roots, many=True).data)
+
+class ProductViewSet(BaseModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
+    filterset_fields = ['category']
+    search_fields = ['product_no', 'model', 'name']
+    ordering_fields = ['id', 'updated_at']

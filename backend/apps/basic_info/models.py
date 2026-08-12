@@ -12,3 +12,18 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+class Product(models.Model):
+    product_no = models.CharField(max_length=64, unique=True)
+    model = models.CharField(max_length=64, blank=True)
+    name = models.CharField(max_length=128)
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name='products')
+    spec = models.TextField(blank=True)
+    default_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)      # USD
+    default_cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # CNY
+    remark = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.product_no} {self.name}'
