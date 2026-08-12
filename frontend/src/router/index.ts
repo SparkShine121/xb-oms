@@ -11,8 +11,19 @@ const routes = [
     component: MainLayout,
     redirect: '/basic_info',
     children: [
-      // Task 13: 基础信息模块页面（客户/商品/材料/供应商等），届时替换 Placeholder
-      { path: 'basic_info', component: Placeholder },
+      // Task 13: 基础信息模块页面
+      { path: 'basic_info', redirect: '/basic-info/category' },
+      {
+        path: 'basic-info',
+        redirect: '/basic-info/category',
+        children: [
+          { path: 'category', name: 'CategoryManage', component: () => import('../views/basic_info/CategoryManage.vue') },
+          { path: 'product', name: 'ProductManage', component: () => import('../views/basic_info/ProductManage.vue') },
+          { path: 'factory', name: 'FactoryManage', component: () => import('../views/basic_info/FactoryManage.vue') },
+          { path: 'logistics', name: 'LogisticsManage', component: () => import('../views/basic_info/LogisticsManage.vue') },
+          { path: 'customer', name: 'CustomerManage', component: () => import('../views/basic_info/CustomerManage.vue') },
+        ],
+      },
       // Task 14: 系统管理 - 用户管理
       { path: 'system/users', component: Placeholder },
     ],
