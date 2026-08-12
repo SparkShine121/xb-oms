@@ -1,8 +1,10 @@
+from django.http import HttpResponse
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from common.permissions import AdminWriteOthersReadOnly
-from common.response import success_response
+from common.response import success_response, error_response
 from common.views import BaseModelViewSet
+from .importers import import_products, build_product_template
 from .models import Category, Product, Factory, LogisticsProvider, Customer
 from .serializers import CategorySerializer, CategoryTreeSerializer, ProductSerializer, FactorySerializer, LogisticsProviderSerializer, CustomerSerializer
 
@@ -25,6 +27,21 @@ class ProductViewSet(BaseModelViewSet):
     filterset_fields = ['category']
     search_fields = ['product_no', 'model', 'name']
     ordering_fields = ['id', 'updated_at']
+
+    @action(detail=False, methods=['post'], url_path='import')
+    def import_data(self, request):
+        f = request.FILES.get('file')
+        if not f:
+            return error_response(1001, '未上传文件', status=400)
+        result = import_products(f)
+        return success_response(result)
+
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        buf = build_product_template()
+        resp = HttpResponse(buf, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = 'attachment; filename=product_import_template.xlsx'
+        return resp
 
 class FactoryViewSet(BaseModelViewSet):
     queryset = Factory.objects.all()
