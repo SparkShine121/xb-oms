@@ -110,11 +110,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    # TODO(Task 2): common 模块实现后启用 —— DRF 的 check 会即时导入这两个类，
-    # 在 common.pagination / common.exceptions 创建前需保持注释，否则 manage.py check 报错。
-    # 默认分页器：common.pagination.StandardResultsSetPagination
-    # "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardResultsSetPagination",
-    # "PAGE_SIZE": 10,
+    # 默认分页器：common.pagination.StandardResultsSetPagination（page_size=20）
+    "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardResultsSetPagination",
     # 统一异常处理器：common.exceptions.custom_exception_handler
-    # "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
+    "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
 }
