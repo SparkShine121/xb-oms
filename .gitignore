@@ -22,6 +22,10 @@ dist-ssr/
 .idea/
 *.swp
 
+# Claude Code 本地设置
+.claude/settings.local.json
+.claude/settings.json
+
 # OS
 Thumbs.db
 .DS_Store
