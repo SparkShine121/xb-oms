@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from common.permissions import AdminWriteOthersReadOnly
 from common.response import success_response
 from common.views import BaseModelViewSet
-from .models import Category, Product
-from .serializers import CategorySerializer, CategoryTreeSerializer, ProductSerializer
+from .models import Category, Product, Factory
+from .serializers import CategorySerializer, CategoryTreeSerializer, ProductSerializer, FactorySerializer
 
 class CategoryViewSet(BaseModelViewSet):
     queryset = Category.objects.all()
@@ -24,4 +24,11 @@ class ProductViewSet(BaseModelViewSet):
     permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
     filterset_fields = ['category']
     search_fields = ['product_no', 'model', 'name']
+    ordering_fields = ['id', 'updated_at']
+
+class FactoryViewSet(BaseModelViewSet):
+    queryset = Factory.objects.all()
+    serializer_class = FactorySerializer
+    permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
+    search_fields = ['name', 'alias', 'contact']
     ordering_fields = ['id', 'updated_at']

@@ -27,3 +27,16 @@ class Product(models.Model):
 
     def __str__(self):
         return f'{self.product_no} {self.name}'
+
+class Factory(models.Model):
+    name = models.CharField(max_length=128, unique=True)
+    alias = models.CharField(max_length=128, blank=True)
+    contact = models.CharField(max_length=64, blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    settle_currency = models.CharField(max_length=8, default='CNY')
+    remark = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product
+from .models import Category, Product, Factory
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,3 +19,8 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'parent', 'sort_order', 'children']
     def get_children(self, obj):
         return CategoryTreeSerializer(obj.children.all(), many=True).data
+
+class FactorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Factory
+        fields = ['id', 'name', 'alias', 'contact', 'phone', 'settle_currency', 'remark', 'created_at', 'updated_at']
