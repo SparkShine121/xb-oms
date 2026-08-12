@@ -4,6 +4,7 @@ dev.py / prod.py 通过 `from .base import *` 继承，并各自覆盖环境相�
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -27,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # 第三方
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     # 业务应用
     "apps.accounts",
     "apps.basic_info",
@@ -103,6 +105,12 @@ STATIC_URL = "static/"
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# JWT（djangorestframework-simplejwt）
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}
 
 # DRF（djangorestframework）
 REST_FRAMEWORK = {
