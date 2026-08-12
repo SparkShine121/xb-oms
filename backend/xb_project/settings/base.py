@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     # 第三方
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     # 业务应用
     "apps.accounts",
     "apps.basic_info",
@@ -120,6 +121,12 @@ REST_FRAMEWORK = {
     ),
     # 默认分页器：common.pagination.StandardResultsSetPagination（page_size=20）
     "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardResultsSetPagination",
+    # 过滤后端：django-filter 精确筛选（filterset_fields）+ 搜索（search_fields）+ 排序
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ),
     # 统一异常处理器：common.exceptions.custom_exception_handler
     "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
 }

@@ -26,3 +26,19 @@ def test_non_admin_cannot_write(db):
     c = APIClient(); c.force_authenticate(u)
     r = c.post('/api/basic-info/categories/', {'name': 'X'}, format='json')
     assert r.status_code == 403
+
+def test_filter_by_parent(admin_client):
+    parent = admin_client.post('/api/basic-info/categories/', {'name': '包装类'}, format='json').data['data']
+    admin_client.post('/api/basic-info/categories/', {'name': '手提袋', 'parent': parent['id']}, format='json')
+    r = admin_client.get(f'/api/basic-info/categories/?parent={parent["id"]}')
+    assert r.status_code == 200
+    results = r.data['data']['results']
+    assert len(results) == 1 and results[0]['name'] == '手提袋'
+
+def test_search_by_name(admin_client):
+    admin_client.post('/api/basic-info/categories/', {'name': '包装类'}, format='json')
+    admin_client.post('/api/basic-info/categories/', {'name': '印刷类'}, format='json')
+    r = admin_client.get('/api/basic-info/categories/?search=包装')
+    assert r.status_code == 200
+    results = r.data['data']['results']
+    assert len(results) == 1 and results[0]['name'] == '包装类'
