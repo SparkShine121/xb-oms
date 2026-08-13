@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     # 业务应用
     "apps.accounts",
     "apps.basic_info",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [

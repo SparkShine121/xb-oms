@@ -61,6 +61,7 @@ class Customer(models.Model):
     phone = models.CharField(max_length=32, blank=True)
     email = models.CharField(max_length=128, blank=True)
     salesman = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='customers')
+    tracker = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='tracked_customers')
     remark = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
