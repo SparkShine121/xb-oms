@@ -45,10 +45,10 @@ const routes = [
       { path: 'customers', name: 'MCustomerList', component: () => import('../views/m/MCustomerList.vue') },
       // 我的：占位，后续任务实现
       { path: 'me', component: Placeholder },
-      // 订单管理（移动端）：本任务先指向 Placeholder，OT10-11 实现实际页面
-      { path: 'orders', name: 'MOrderList', component: Placeholder },
+      // 订单管理（移动端）：OT10 列表 + 详情；new/edit 保留 Placeholder（OT11）
+      { path: 'orders', name: 'MOrderList', component: () => import('../views/m/orders/MOrderList.vue') },
       { path: 'orders/new', name: 'MOrderNew', component: Placeholder },
-      { path: 'orders/:id', name: 'MOrderDetail', component: Placeholder },
+      { path: 'orders/:id', name: 'MOrderDetail', component: () => import('../views/m/orders/MOrderDetail.vue') },
       { path: 'orders/:id/edit', name: 'MOrderEdit', component: Placeholder },
     ],
   },
