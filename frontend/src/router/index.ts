@@ -26,11 +26,11 @@ const routes = [
       },
       // Task 14: 系统管理 - 用户管理
       { path: 'system/users', name: 'UserManage', component: () => import('../views/system/UserManage.vue') },
-      // 订单管理：本任务先指向 Placeholder，OT8-11 实现实际页面
+      // 订单管理：OT8 PC 列表 + 详情；new/edit 保留 Placeholder（OT9）
       { path: 'orders', redirect: '/orders/list' },
-      { path: 'orders/list', name: 'OrderList', component: Placeholder },
+      { path: 'orders/list', name: 'OrderList', component: () => import('../views/orders/OrderList.vue') },
       { path: 'orders/new', name: 'OrderNew', component: Placeholder },
-      { path: 'orders/:id', name: 'OrderDetail', component: Placeholder },
+      { path: 'orders/:id', name: 'OrderDetail', component: () => import('../views/orders/OrderDetail.vue') },
       { path: 'orders/:id/edit', name: 'OrderEdit', component: Placeholder },
     ],
   },
