@@ -45,11 +45,11 @@ const routes = [
       { path: 'customers', name: 'MCustomerList', component: () => import('../views/m/MCustomerList.vue') },
       // 我的：占位，后续任务实现
       { path: 'me', component: Placeholder },
-      // 订单管理（移动端）：OT10 列表 + 详情；new/edit 保留 Placeholder（OT11）
+      // 订单管理（移动端）：OT10 列表 + 详情；OT11 表单（new/edit）
       { path: 'orders', name: 'MOrderList', component: () => import('../views/m/orders/MOrderList.vue') },
-      { path: 'orders/new', name: 'MOrderNew', component: Placeholder },
+      { path: 'orders/new', name: 'MOrderNew', component: () => import('../views/m/orders/MOrderForm.vue') },
       { path: 'orders/:id', name: 'MOrderDetail', component: () => import('../views/m/orders/MOrderDetail.vue') },
-      { path: 'orders/:id/edit', name: 'MOrderEdit', component: Placeholder },
+      { path: 'orders/:id/edit', name: 'MOrderEdit', component: () => import('../views/m/orders/MOrderForm.vue'), props: true },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
