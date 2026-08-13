@@ -114,9 +114,11 @@ async function doDispatch() {
 }
 
 // ---- 批量导入 / 模板下载 ----
+const uploadRef = ref()
 const importFile = ref<File | null>(null)
 const importResult = ref<any>(null)
 const resultVisible = ref(false)
+const importing = ref(false)
 
 function onFileChange(uploadFile: any) {
   importFile.value = uploadFile.raw ?? null
@@ -124,11 +126,17 @@ function onFileChange(uploadFile: any) {
 
 async function doImport() {
   if (!importFile.value) return ElMessage.warning('请先选择 Excel 文件')
-  const resp: any = await importOrders(importFile.value)
-  importResult.value = resp.data
-  resultVisible.value = true
-  importFile.value = null
-  load()
+  importing.value = true
+  try {
+    const resp: any = await importOrders(importFile.value)
+    importResult.value = resp.data
+    resultVisible.value = true
+    importFile.value = null
+    uploadRef.value?.clearFiles()
+    load()
+  } finally {
+    importing.value = false
+  }
 }
 
 async function downloadTemplate() {
@@ -178,6 +186,7 @@ onMounted(() => { loadUsers(); load() })
         <div class="toolbar-right">
           <template v-if="canImport">
             <el-upload
+              ref="uploadRef"
               :auto-upload="false"
               :limit="1"
               accept=".xlsx,.xls"
@@ -187,7 +196,7 @@ onMounted(() => { loadUsers(); load() })
             >
               <el-button>选择 Excel</el-button>
             </el-upload>
-            <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
+            <el-button type="primary" plain :disabled="!importFile" :loading="importing" @click="doImport">批量导入</el-button>
           </template>
           <el-button @click="downloadTemplate">下载模板</el-button>
           <el-button v-if="canCreate" type="primary" @click="router.push('/orders/new')">新增订单</el-button>

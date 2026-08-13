@@ -26,12 +26,12 @@ const routes = [
       },
       // Task 14: 系统管理 - 用户管理
       { path: 'system/users', name: 'UserManage', component: () => import('../views/system/UserManage.vue') },
-      // 订单管理：OT8 PC 列表 + 详情；new/edit 保留 Placeholder（OT9）
+      // 订单管理：OT8 PC 列表 + 详情；OT9 PC 表单（new/edit）
       { path: 'orders', redirect: '/orders/list' },
       { path: 'orders/list', name: 'OrderList', component: () => import('../views/orders/OrderList.vue') },
-      { path: 'orders/new', name: 'OrderNew', component: Placeholder },
+      { path: 'orders/new', name: 'OrderNew', component: () => import('../views/orders/OrderForm.vue') },
       { path: 'orders/:id', name: 'OrderDetail', component: () => import('../views/orders/OrderDetail.vue') },
-      { path: 'orders/:id/edit', name: 'OrderEdit', component: Placeholder },
+      { path: 'orders/:id/edit', name: 'OrderEdit', component: () => import('../views/orders/OrderForm.vue'), props: true },
     ],
   },
   {
