@@ -22,3 +22,16 @@ def test_import_action_bad_file(admin_client, db):
 def test_import_template_download(admin_client, db):
     r = admin_client.get('/api/orders/orders/import-template/')
     assert r.status_code == 200
+
+def test_exchange_rate_crud_admin(admin_client, db):
+    r = admin_client.post('/api/orders/exchange-rates/', {'currency_pair':'USD/CNY','rate':'7.20','effective_date':'2026-08-01'}, format='json')
+    assert r.status_code == 201
+    r2 = admin_client.get('/api/orders/exchange-rates/')
+    assert r2.status_code == 200
+
+def test_exchange_rate_non_admin_forbidden(db):
+    from django.contrib.auth.models import User, Group
+    u = User.objects.create_user('sales1', password='pw123456'); u.groups.add(Group.objects.get(name='salesman'))
+    c = APIClient(); c.force_authenticate(u)
+    r = c.post('/api/orders/exchange-rates/', {'currency_pair':'USD/CNY','rate':'7.20','effective_date':'2026-08-01'}, format='json')
+    assert r.status_code == 403
