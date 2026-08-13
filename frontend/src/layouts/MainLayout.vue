@@ -11,6 +11,7 @@ const userStore = useUserStore()
 const defaultOpeneds = computed(() => {
   if (route.path.startsWith('/basic-info')) return ['/basic-info']
   if (route.path.startsWith('/system')) return ['/system']
+  if (route.path.startsWith('/orders')) return ['/orders']
   return []
 })
 
@@ -36,6 +37,10 @@ function onLogout() {
         <el-sub-menu index="/system">
           <template #title>系统管理</template>
           <el-menu-item index="/system/users">用户管理</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="/orders">
+          <template #title>订单管理</template>
+          <el-menu-item index="/orders/list">订单列表</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

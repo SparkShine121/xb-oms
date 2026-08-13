@@ -9,6 +9,7 @@
       <van-tabbar-item replace :to="{ name: 'MProductList' }" icon="goods-collect-o">产品</van-tabbar-item>
       <van-tabbar-item replace :to="{ name: 'MFactoryList' }" icon="shop-o">工厂</van-tabbar-item>
       <van-tabbar-item replace :to="{ name: 'MCustomerList' }" icon="contact-o">客户</van-tabbar-item>
+      <van-tabbar-item replace :to="{ name: 'MOrderList' }" icon="bill-o">订单</van-tabbar-item>
       <van-tabbar-item replace to="/m/me" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
   </div>
