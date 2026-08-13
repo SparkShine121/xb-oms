@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, calc_order_profit
+from .models import Order, OrderItem, ExchangeRate, calc_order_profit
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -44,3 +44,9 @@ class OrderSerializer(serializers.ModelSerializer):
                 OrderItem.objects.create(order=instance, **it)
         calc_order_profit(instance)
         return instance
+
+
+class ExchangeRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExchangeRate
+        fields = ['id', 'currency_pair', 'rate', 'effective_date', 'created_at', 'updated_at']
