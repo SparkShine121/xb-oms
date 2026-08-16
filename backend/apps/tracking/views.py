@@ -2,7 +2,9 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.db import transaction
 from django.core.files.uploadedfile import UploadedFile
+from PIL import Image
 from common.response import success_response, error_response
 from apps.orders.models import Order
 from apps.orders.serializers import OrderSerializer
@@ -49,6 +51,12 @@ class TrackingViewSet(ViewSet):
                 return None, f'照片 {p.name} 超过 5MB'
             if p.content_type not in ALLOWED_TYPES:
                 return None, f'照片 {p.name} 格式不支持（仅 jpg/png）'
+            try:
+                img = Image.open(p)
+                img.verify()
+                p.seek(0)
+            except Exception:
+                return None, f'照片 {p.name} 不是有效图片'
         return photos, None
 
     @action(detail=True, methods=['post'])
@@ -65,11 +73,12 @@ class TrackingViewSet(ViewSet):
         photos, err = self._validate_photos(request)
         if err:
             return error_response(1001, err, status=400)
-        log = TrackingLog.objects.create(order=order, node=node, note=request.data.get('note', ''), operator=request.user, is_reject=False)
-        for p in (photos or []):
-            TrackingPhoto.objects.create(tracking_log=log, image=p)
-        order.tracking_status = node
-        order.save(update_fields=['tracking_status'])
+        with transaction.atomic():
+            log = TrackingLog.objects.create(order=order, node=node, note=request.data.get('note', ''), operator=request.user, is_reject=False)
+            for p in (photos or []):
+                TrackingPhoto.objects.create(tracking_log=log, image=p)
+            order.tracking_status = node
+            order.save(update_fields=['tracking_status'])
         return success_response({'log': TrackingLogSerializer(log, context={'request': request}).data, 'tracking_status': node})
 
     @action(detail=True, methods=['post'])
@@ -86,11 +95,12 @@ class TrackingViewSet(ViewSet):
         photos, err = self._validate_photos(request)
         if err:
             return error_response(1001, err, status=400)
-        log = TrackingLog.objects.create(order=order, node=node, note=request.data.get('note', ''), operator=request.user, is_reject=True)
-        for p in (photos or []):
-            TrackingPhoto.objects.create(tracking_log=log, image=p)
-        order.tracking_status = node
-        order.save(update_fields=['tracking_status'])
+        with transaction.atomic():
+            log = TrackingLog.objects.create(order=order, node=node, note=request.data.get('note', ''), operator=request.user, is_reject=True)
+            for p in (photos or []):
+                TrackingPhoto.objects.create(tracking_log=log, image=p)
+            order.tracking_status = node
+            order.save(update_fields=['tracking_status'])
         return success_response({'log': TrackingLogSerializer(log, context={'request': request}).data, 'tracking_status': node})
 
     @action(detail=True, methods=['get'])

@@ -47,10 +47,42 @@ def test_my_workbench(db):
 
 def test_advance_with_photos(db, admin_client):
     from django.core.files.uploadedfile import SimpleUploadedFile
+    import io
+    from PIL import Image
     c, _ = admin_client
     o = Order.objects.create(order_no='O1', tracking_status='接单')
-    photo = SimpleUploadedFile('test.jpg', b'\xff\xd8\xff\xe0', content_type='image/jpeg')
+    buf = io.BytesIO()
+    Image.new('RGB', (2, 2), 'white').save(buf, format='JPEG')  # 真实小图，Pillow verify 会接受
+    photo = SimpleUploadedFile('test.jpg', buf.getvalue(), content_type='image/jpeg')
     r = c.post(f'/api/tracking/orders/{o.id}/advance/', {'note': '带照片', 'photos': [photo]}, format='multipart')
     assert r.status_code == 200
     log = TrackingLog.objects.filter(order=o).first()
     assert log.photos.count() == 1
+
+def test_advance_photo_invalid(db, admin_client):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    c, _ = admin_client
+    o = Order.objects.create(order_no='O1', tracking_status='接单')
+    # 伪造 content_type=image/jpeg 的非图片文件（如 xss.html），必须被 Pillow verify 拒绝
+    fake = SimpleUploadedFile('xss.html', b'<script>x</script>', content_type='image/jpeg')
+    r = c.post(f'/api/tracking/orders/{o.id}/advance/', {'photos': [fake]}, format='multipart')
+    assert r.status_code == 400
+    assert TrackingLog.objects.filter(order=o).count() == 0
+
+def test_advance_photo_too_large(db, admin_client):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    c, _ = admin_client
+    o = Order.objects.create(order_no='O1', tracking_status='接单')
+    big = SimpleUploadedFile('big.jpg', b'\x00' * (5 * 1024 * 1024 + 1), content_type='image/jpeg')
+    r = c.post(f'/api/tracking/orders/{o.id}/advance/', {'photos': [big]}, format='multipart')
+    assert r.status_code == 400
+    assert TrackingLog.objects.filter(order=o).count() == 0
+
+def test_advance_too_many_photos(db, admin_client):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    c, _ = admin_client
+    o = Order.objects.create(order_no='O1', tracking_status='接单')
+    photos = [SimpleUploadedFile(f'p{i}.jpg', b'\xff\xd8\xff\xe0', content_type='image/jpeg') for i in range(10)]
+    r = c.post(f'/api/tracking/orders/{o.id}/advance/', {'photos': photos}, format='multipart')
+    assert r.status_code == 400
+    assert TrackingLog.objects.filter(order=o).count() == 0
