@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.basic_info",
     "apps.orders",
+    "apps.tracking",
 ]
 
 MIDDLEWARE = [
@@ -131,3 +132,7 @@ REST_FRAMEWORK = {
     # 统一异常处理器：common.exceptions.custom_exception_handler
     "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
 }
+
+# Media files（上传文件：跟单照片等）
+MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
