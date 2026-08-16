@@ -52,8 +52,8 @@ const routes = [
       { path: 'orders/new', name: 'MOrderNew', component: () => import('../views/m/orders/MOrderForm.vue') },
       { path: 'orders/:id', name: 'MOrderDetail', component: () => import('../views/m/orders/MOrderDetail.vue') },
       { path: 'orders/:id/edit', name: 'MOrderEdit', component: () => import('../views/m/orders/MOrderForm.vue'), props: true },
-      // 跟单（移动端）：本任务先 Placeholder，TT6 实现
-      { path: 'tracking', name: 'MTrackingWorkbench', component: Placeholder },
+      // 跟单（移动端）：TT6 实现 MTrackingWorkbench
+      { path: 'tracking', name: 'MTrackingWorkbench', component: () => import('../views/m/tracking/MTrackingWorkbench.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
