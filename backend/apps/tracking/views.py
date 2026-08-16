@@ -105,6 +105,9 @@ class TrackingViewSet(ViewSet):
     @action(detail=False, methods=['get'])
     def my(self, request):
         qs = Order.objects.filter(tracker=request.user, is_cancelled=False).order_by('-updated_at')
+        tracking_status = request.query_params.get('tracking_status')
+        if tracking_status:
+            qs = qs.filter(tracking_status=tracking_status)
         from rest_framework.response import Response
         # 简单分页
         page = int(request.query_params.get('page', 1))
