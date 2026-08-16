@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrder } from '../../api/orders'
+import { getTimeline } from '../../api/tracking'
 import { useUserStore } from '../../stores/user'
 
 const route = useRoute()
@@ -43,7 +44,23 @@ async function load() {
   }
 }
 
-onMounted(load)
+// ---- 跟单时间线 ----
+const timelineLogs = ref<any[]>([])
+const timelineLoading = ref(false)
+
+async function loadTimeline() {
+  const id = Number(route.params.id)
+  if (!id) return
+  timelineLoading.value = true
+  try {
+    const resp: any = await getTimeline(id)
+    timelineLogs.value = resp.data
+  } finally {
+    timelineLoading.value = false
+  }
+}
+
+onMounted(() => { load(); loadTimeline() })
 </script>
 
 <template>
@@ -123,6 +140,40 @@ onMounted(load)
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-card v-if="order" shadow="never" style="margin-top: 16px">
+      <template #header>跟单时间线</template>
+      <div v-loading="timelineLoading" class="timeline-body">
+        <el-empty v-if="!timelineLoading && !timelineLogs.length" description="暂无跟单记录" />
+        <el-timeline v-else>
+          <el-timeline-item
+            v-for="log in timelineLogs"
+            :key="log.id"
+            :timestamp="log.created_at"
+            :type="log.is_reject ? 'danger' : 'primary'"
+          >
+            <div class="tl-head">
+              <el-tag :type="log.is_reject ? 'danger' : statusTagType(log.node)" size="small">{{ log.node }}</el-tag>
+              <el-tag v-if="log.is_reject" type="danger" size="small" effect="plain">驳回</el-tag>
+              <span class="tl-operator">{{ log.operator_name }}</span>
+            </div>
+            <p v-if="log.note" class="tl-note">{{ log.note }}</p>
+            <div v-if="log.photos?.length" class="tl-photos">
+              <el-image
+                v-for="(p, i) in log.photos"
+                :key="p.id"
+                :src="p.image_url"
+                :preview-src-list="log.photos.map((x: any) => x.image_url)"
+                :initial-index="i"
+                fit="cover"
+                class="tl-photo"
+                preview-teleported
+              />
+            </div>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -143,5 +194,33 @@ onMounted(load)
 }
 .profit-negative {
   color: var(--el-color-danger);
+}
+.timeline-body {
+  min-height: 80px;
+}
+.tl-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tl-operator {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+.tl-note {
+  margin: 8px 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+.tl-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tl-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>
