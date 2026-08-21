@@ -37,7 +37,7 @@ const routes = [
       // 工厂结算：FT5 列表+详情，FT6 对账单
       { path: 'factory-payment', name: 'FactoryPayment', component: () => import('../views/factory_payment/FactoryPaymentList.vue') },
       { path: 'factory-payment/:id', name: 'FactoryPaymentDetail', component: () => import('../views/factory_payment/FactoryPaymentDetail.vue') },
-      { path: 'factory-payment/statement', name: 'FactoryPaymentStatement', component: Placeholder },
+      { path: 'factory-payment/statement', name: 'FactoryPaymentStatement', component: () => import('../views/factory_payment/FactoryStatement.vue') },
     ],
   },
   {
