@@ -47,3 +47,11 @@ class FactoryPaymentRecord(models.Model):
         total = fp.records.aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
         fp.paid_amount = total
         fp.save()
+
+    def delete(self, *args, **kwargs):
+        fp = self.factory_payment
+        super().delete(*args, **kwargs)
+        # 删除记录后回退父单已付金额（求和需在删除之后，delete 仅限 admin）
+        total = fp.records.aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+        fp.paid_amount = total
+        fp.save()

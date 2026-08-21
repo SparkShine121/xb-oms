@@ -6,7 +6,10 @@ class FactoryPaymentPermission(BasePermission):
             return False
         groups = set(request.user.groups.values_list('name', flat=True))
         if 'admin' in groups or 'finance' in groups:
+            # 删除仅限 admin（设计规定）
+            if view.action == 'destroy' and 'admin' not in groups:
+                return False
             return True
-        if view.action in ('create', 'update', 'partial_update', 'destroy'):
+        if view.action in ('create', 'update', 'partial_update', 'destroy', 'generate_by_order'):
             return False
         return True

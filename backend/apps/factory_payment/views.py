@@ -47,15 +47,16 @@ class FactoryPaymentViewSet(BaseModelViewSet):
             return error_response(1004, '订单不存在', status=404)
         items = order.items.filter(factory__isnull=False)
         created, skipped = 0, 0
-        for item in items:
-            if hasattr(item, 'factory_payment'):
-                skipped += 1
-                continue
-            FactoryPayment.objects.create(
-                order_item=item, factory=item.factory,
-                amount_cny=item.qty * item.cost_price
-            )
-            created += 1
+        with transaction.atomic():
+            for item in items:
+                if hasattr(item, 'factory_payment'):
+                    skipped += 1
+                    continue
+                FactoryPayment.objects.create(
+                    order_item=item, factory=item.factory,
+                    amount_cny=item.qty * item.cost_price
+                )
+                created += 1
         return success_response({'created_count': created, 'skipped_count': skipped})
 
     @action(detail=False, methods=['get'], url_path='statement')
@@ -80,7 +81,19 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return FactoryPaymentRecord.objects.select_related('factory_payment__order_item__order')
+        u = self.request.user
+        groups = set(u.groups.values_list('name', flat=True))
+        qs = FactoryPaymentRecord.objects.select_related(
+            'factory_payment__order_item__order', 'factory_payment__factory'
+        )
+        if 'admin' in groups or 'finance' in groups:
+            return qs
+        cond = Q()
+        if 'salesman' in groups:
+            cond |= Q(factory_payment__order_item__order__customer__salesman=u)
+        if 'tracker' in groups:
+            cond |= Q(factory_payment__order_item__order__tracker=u)
+        return qs.filter(cond).distinct() if cond else qs.none()
 
     def perform_create(self, serializer):
         with transaction.atomic():
