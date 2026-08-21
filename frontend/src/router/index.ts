@@ -34,8 +34,9 @@ const routes = [
       { path: 'orders/:id/edit', name: 'OrderEdit', component: () => import('../views/orders/OrderForm.vue'), props: true },
       // 跟单管理：TT5 实现 TrackingWorkbench
       { path: 'tracking', name: 'TrackingWorkbench', component: () => import('../views/tracking/TrackingWorkbench.vue') },
-      // 工厂结算：FT4 占位，Task 5/6 替换
-      { path: 'factory-payment', name: 'FactoryPayment', component: Placeholder },
+      // 工厂结算：FT5 列表+详情，FT6 对账单
+      { path: 'factory-payment', name: 'FactoryPayment', component: () => import('../views/factory_payment/FactoryPaymentList.vue') },
+      { path: 'factory-payment/:id', name: 'FactoryPaymentDetail', component: () => import('../views/factory_payment/FactoryPaymentDetail.vue') },
       { path: 'factory-payment/statement', name: 'FactoryPaymentStatement', component: Placeholder },
     ],
   },
