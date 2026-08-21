@@ -58,9 +58,10 @@ const routes = [
       { path: 'orders/:id/edit', name: 'MOrderEdit', component: () => import('../views/m/orders/MOrderForm.vue'), props: true },
       // 跟单（移动端）：TT6 实现 MTrackingWorkbench
       { path: 'tracking', name: 'MTrackingWorkbench', component: () => import('../views/m/tracking/MTrackingWorkbench.vue') },
-      // 工厂结算（移动端）：FT4 占位，Task 7 替换
-      { path: 'factory-payment', name: 'MFactoryPayment', component: Placeholder },
-      { path: 'factory-payment/statement', name: 'MFactoryPaymentStatement', component: Placeholder },
+      // 工厂结算（移动端）：FT4 占位，Task 7 替换为完整功能
+      { path: 'factory-payment', name: 'MFactoryPayment', component: () => import('../views/m/factory_payment/MFactoryPaymentList.vue') },
+      { path: 'factory-payment/:id', name: 'MFactoryPaymentDetail', component: () => import('../views/m/factory_payment/MFactoryPaymentDetail.vue') },
+      { path: 'factory-payment/statement', name: 'MFactoryPaymentStatement', component: () => import('../views/m/factory_payment/MFactoryStatement.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
