@@ -38,7 +38,7 @@ async function onSubmit() {
 <template>
   <div class="login-page">
     <el-card class="login-card">
-      <h2 class="login-title">辛巴印刷品定制管理系统</h2>
+      <h2 class="login-title">xbb印刷品定制管理系统</h2>
       <el-form :model="form" label-width="0" @submit.prevent="onSubmit">
         <el-form-item>
           <el-input v-model="form.username" placeholder="用户名" size="large" autocomplete="username" />

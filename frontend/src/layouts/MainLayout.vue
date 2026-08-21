@@ -25,7 +25,7 @@ function onLogout() {
 <template>
   <el-container class="main-layout">
     <el-aside width="220px">
-      <div class="logo">辛巴印刷品定制</div>
+      <div class="logo">xbb印刷品定制</div>
       <el-menu :default-active="route.path" :default-openeds="defaultOpeneds" router>
         <el-sub-menu index="/basic-info">
           <template #title>基础信息</template>

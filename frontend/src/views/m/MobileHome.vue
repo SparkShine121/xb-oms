@@ -29,7 +29,7 @@ onMounted(loadCounts)
 
 <template>
   <div class="mobile-home">
-    <van-nav-bar title="辛巴印刷品定制" />
+    <van-nav-bar title="xbb印刷品定制" />
     <div class="banner">
       <p class="banner-title">基础信息库</p>
       <p class="banner-sub">产品 / 工厂 / 客户 只读浏览</p>
