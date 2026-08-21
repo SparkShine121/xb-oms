@@ -13,6 +13,7 @@ const defaultOpeneds = computed(() => {
   if (route.path.startsWith('/system')) return ['/system']
   if (route.path.startsWith('/orders')) return ['/orders']
   if (route.path.startsWith('/tracking')) return ['/tracking']
+  if (route.path.startsWith('/factory-payment')) return ['/factory-payment']
   return []
 })
 
@@ -46,6 +47,11 @@ function onLogout() {
         <el-sub-menu index="/tracking">
           <template #title>跟单管理</template>
           <el-menu-item index="/tracking">跟单工作台</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="/factory-payment">
+          <template #title>工厂结算</template>
+          <el-menu-item index="/factory-payment">结算单</el-menu-item>
+          <el-menu-item index="/factory-payment/statement">对账单</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

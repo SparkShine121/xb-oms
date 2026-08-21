@@ -34,6 +34,9 @@ const routes = [
       { path: 'orders/:id/edit', name: 'OrderEdit', component: () => import('../views/orders/OrderForm.vue'), props: true },
       // 跟单管理：TT5 实现 TrackingWorkbench
       { path: 'tracking', name: 'TrackingWorkbench', component: () => import('../views/tracking/TrackingWorkbench.vue') },
+      // 工厂结算：FT4 占位，Task 5/6 替换
+      { path: 'factory-payment', name: 'FactoryPayment', component: Placeholder },
+      { path: 'factory-payment/statement', name: 'FactoryPaymentStatement', component: Placeholder },
     ],
   },
   {
@@ -54,6 +57,9 @@ const routes = [
       { path: 'orders/:id/edit', name: 'MOrderEdit', component: () => import('../views/m/orders/MOrderForm.vue'), props: true },
       // 跟单（移动端）：TT6 实现 MTrackingWorkbench
       { path: 'tracking', name: 'MTrackingWorkbench', component: () => import('../views/m/tracking/MTrackingWorkbench.vue') },
+      // 工厂结算（移动端）：FT4 占位，Task 7 替换
+      { path: 'factory-payment', name: 'MFactoryPayment', component: Placeholder },
+      { path: 'factory-payment/statement', name: 'MFactoryPaymentStatement', component: Placeholder },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
