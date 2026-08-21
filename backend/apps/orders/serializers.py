@@ -7,7 +7,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['id', 'seq', 'product', 'factory', 'model', 'product_no', 'spec',
                   'qty', 'unit_price', 'subtotal', 'cost_price', 'profit_usd',
-                  'profit_rate', 'factory_payment_id']
+                  'profit_rate']
 
 
 class OrderSerializer(serializers.ModelSerializer):
