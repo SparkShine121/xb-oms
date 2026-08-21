@@ -22,14 +22,22 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         u = self.request.user
         groups = set(u.groups.values_list('name', flat=True))
         qs = FactoryPayment.objects.select_related('order_item__order', 'factory')
-        if 'admin' in groups or 'finance' in groups:
-            return qs
-        cond = Q()
-        if 'salesman' in groups:
-            cond |= Q(order_item__order__customer__salesman=u)
-        if 'tracker' in groups:
-            cond |= Q(order_item__order__tracker=u)
-        return qs.filter(cond).distinct() if cond else qs.none()
+        if 'admin' not in groups and 'finance' not in groups:
+            cond = Q()
+            if 'salesman' in groups:
+                cond |= Q(order_item__order__customer__salesman=u)
+            if 'tracker' in groups:
+                cond |= Q(order_item__order__tracker=u)
+            qs = qs.filter(cond).distinct() if cond else qs.none()
+
+        # 日期范围过滤（列表 + statement 共用；filterset_fields 不支持范围，手动过滤）
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date:
+            qs = qs.filter(created_at__date__gte=start_date)
+        if end_date:
+            qs = qs.filter(created_at__date__lte=end_date)
+        return qs
 
     @action(detail=False, methods=['post'], url_path=r'orders/(?P<order_id>\d+)/generate')
     def generate_by_order(self, request, order_id=None):
