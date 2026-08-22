@@ -38,6 +38,10 @@ const routes = [
       { path: 'factory-payment', name: 'FactoryPayment', component: () => import('../views/factory_payment/FactoryPaymentList.vue') },
       { path: 'factory-payment/:id', name: 'FactoryPaymentDetail', component: () => import('../views/factory_payment/FactoryPaymentDetail.vue') },
       { path: 'factory-payment/statement', name: 'FactoryPaymentStatement', component: () => import('../views/factory_payment/FactoryStatement.vue') },
+      // 物流管理：LT4 占位，Task 5-6 替换为完整功能
+      { path: 'logistics', name: 'LogisticsShipmentList', component: Placeholder },
+      { path: 'logistics/new', name: 'LogisticsShipmentNew', component: Placeholder },
+      { path: 'logistics/:id/edit', name: 'LogisticsShipmentEdit', component: Placeholder },
     ],
   },
   {
@@ -62,6 +66,8 @@ const routes = [
       { path: 'factory-payment', name: 'MFactoryPayment', component: () => import('../views/m/factory_payment/MFactoryPaymentList.vue') },
       { path: 'factory-payment/:id', name: 'MFactoryPaymentDetail', component: () => import('../views/m/factory_payment/MFactoryPaymentDetail.vue') },
       { path: 'factory-payment/statement', name: 'MFactoryPaymentStatement', component: () => import('../views/m/factory_payment/MFactoryStatement.vue') },
+      // 物流管理（移动端）：LT4 占位，Task 7 替换为完整功能
+      { path: 'logistics', name: 'MLogisticsShipmentList', component: Placeholder },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
