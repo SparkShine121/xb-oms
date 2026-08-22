@@ -63,3 +63,64 @@ def test_finance_readonly(db, setup):
     assert r.status_code == 200
     r2 = c.post('/api/logistics/shipments/', {'order': setup['order'].id, 'tracking_no': 'X'}, format='json')
     assert r2.status_code == 403
+
+
+# ---- 数据范围（get_queryset 角色过滤）防护测试 ----
+
+def _make_user(name, group_name):
+    u = User.objects.create_user(name, password='pw123456')
+    u.groups.add(Group.objects.get(name=group_name))
+    return u
+
+def test_salesman_scoped_list(db, setup):
+    """salesman 只能看到自己客户的物流单，看不到其他 salesman 客户的。"""
+    s1 = _make_user('sc_a', 'salesman')
+    s2 = _make_user('sc_b', 'salesman')
+    ca = Customer.objects.create(name='客户甲', salesman=s1)
+    cb = Customer.objects.create(name='客户乙', salesman=s2)
+    oa = Order.objects.create(order_no='OSA', tracking_status='排产', customer=ca)
+    ob = Order.objects.create(order_no='OSB', tracking_status='排产', customer=cb)
+    Logistics.objects.create(order=oa, tracking_no='A001')
+    Logistics.objects.create(order=ob, tracking_no='B001')
+
+    c = APIClient(); c.force_authenticate(s1)
+    r = c.get('/api/logistics/shipments/')
+    assert r.status_code == 200
+    order_nos = [i['order_no'] for i in r.data['data']['results']]
+    assert order_nos == ['OSA']  # 只见自己客户的
+
+def test_tracker_scoped_list(db, setup):
+    """tracker 只能看到派给自己的订单的物流单。"""
+    t1 = _make_user('tk_a', 'tracker')
+    t2 = _make_user('tk_b', 'tracker')
+    o1 = Order.objects.create(order_no='OT1', tracking_status='排产',
+                              customer=Customer.objects.create(name='客户丙'), tracker=t1)
+    o2 = Order.objects.create(order_no='OT2', tracking_status='排产',
+                              customer=Customer.objects.create(name='客户丁'), tracker=t2)
+    Logistics.objects.create(order=o1, tracking_no='T001')
+    Logistics.objects.create(order=o2, tracking_no='T002')
+
+    c = APIClient(); c.force_authenticate(t1)
+    r = c.get('/api/logistics/shipments/')
+    assert r.status_code == 200
+    order_nos = [i['order_no'] for i in r.data['data']['results']]
+    assert order_nos == ['OT1']  # 只见派给自己的
+
+
+# ---- 删除仅 admin、tracker 更新 ----
+
+def test_delete_admin_only(db, setup, tracker_client, salesman_client):
+    tc, tr = tracker_client
+    url = f'/api/logistics/shipments/{setup["logistics"].id}/'
+    r = tc.delete(url)
+    assert r.status_code == 403
+    r2 = salesman_client.delete(url)
+    assert r2.status_code == 403
+
+def test_tracker_can_update_own(db, setup, tracker_client):
+    tc, tr = tracker_client
+    setup['order'].tracker = tr; setup['order'].save()
+    r = tc.patch(f'/api/logistics/shipments/{setup["logistics"].id}/',
+                 {'tracking_no': 'PATCHED'}, format='json')
+    assert r.status_code == 200
+    assert r.data['data']['tracking_no'] == 'PATCHED'
