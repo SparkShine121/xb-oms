@@ -38,10 +38,10 @@ const routes = [
       { path: 'factory-payment', name: 'FactoryPayment', component: () => import('../views/factory_payment/FactoryPaymentList.vue') },
       { path: 'factory-payment/:id', name: 'FactoryPaymentDetail', component: () => import('../views/factory_payment/FactoryPaymentDetail.vue') },
       { path: 'factory-payment/statement', name: 'FactoryPaymentStatement', component: () => import('../views/factory_payment/FactoryStatement.vue') },
-      // 物流管理：LT4 占位，Task 5-6 替换为完整功能
-      { path: 'logistics', name: 'LogisticsShipmentList', component: Placeholder },
-      { path: 'logistics/new', name: 'LogisticsShipmentNew', component: Placeholder },
-      { path: 'logistics/:id/edit', name: 'LogisticsShipmentEdit', component: Placeholder },
+      // 物流管理：LT5 列表 + 表单（new/edit）
+      { path: 'logistics', name: 'LogisticsShipmentList', component: () => import('../views/logistics/LogisticsList.vue') },
+      { path: 'logistics/new', name: 'LogisticsShipmentNew', component: () => import('../views/logistics/LogisticsForm.vue') },
+      { path: 'logistics/:id/edit', name: 'LogisticsShipmentEdit', component: () => import('../views/logistics/LogisticsForm.vue'), props: true },
     ],
   },
   {

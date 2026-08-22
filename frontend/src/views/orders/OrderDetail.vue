@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { getOrder } from '../../api/orders'
 import { getTimeline } from '../../api/tracking'
 import { listPayments, generateByOrder } from '../../api/factoryPayment'
+import { listShipments } from '../../api/logistics'
 import { useUserStore } from '../../stores/user'
 
 const route = useRoute()
@@ -13,6 +14,7 @@ const userStore = useUserStore()
 const roles = computed(() => userStore.roles)
 const canEdit = computed(() => roles.value.includes('admin') || roles.value.includes('salesman') || roles.value.includes('tracker'))
 const canSettle = computed(() => roles.value.includes('admin') || roles.value.includes('finance'))
+const canRegisterShipment = computed(() => roles.value.includes('admin') || roles.value.includes('tracker'))
 
 const order = ref<any>(null)
 const loading = ref(false)
@@ -77,6 +79,36 @@ async function generateSettlement() {
   }
 }
 
+// ---- 物流发货 ----
+function payerTagType(p: string) {
+  if (p === 'customer') return 'primary'
+  if (p === 'company') return 'success'
+  return 'warning'
+}
+
+function payerLabel(p: string) {
+  const m: Record<string, string> = { customer: '客户', company: '公司', factory: '工厂' }
+  return m[p] ?? p
+}
+
+const shipments = ref<any[]>([])
+const shipmentsLoading = ref(false)
+
+async function loadShipments() {
+  if (!order.value?.order_no) return
+  shipmentsLoading.value = true
+  try {
+    const resp: any = await listShipments({ search: order.value.order_no, page_size: 100 })
+    shipments.value = resp.data.results
+  } finally {
+    shipmentsLoading.value = false
+  }
+}
+
+function registerShipment() {
+  router.push('/logistics/new?order_id=' + order.value.id)
+}
+
 async function load() {
   const id = Number(route.params.id)
   if (!id) return
@@ -85,6 +117,7 @@ async function load() {
     const resp: any = await getOrder(id)
     order.value = resp.data
     loadPayments()
+    loadShipments()
   } finally {
     loading.value = false
   }
@@ -240,6 +273,35 @@ onMounted(() => { load(); loadTimeline() })
         </el-timeline>
       </div>
     </el-card>
+
+    <el-card v-if="order" shadow="never" style="margin-top: 16px">
+      <template #header>
+        <div class="card-header">
+          <span>物流发货</span>
+          <el-button v-if="canRegisterShipment" type="primary" size="small" @click="registerShipment">登记发货</el-button>
+        </div>
+      </template>
+      <div v-loading="shipmentsLoading" class="shipments-body">
+        <el-empty v-if="!shipmentsLoading && !shipments.length" description="暂无发货记录" />
+        <el-table v-else :data="shipments" border stripe size="small">
+          <el-table-column prop="seq" label="批次" width="70" align="center" />
+          <el-table-column prop="carrier_name" label="国内承运商" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="intl_name" label="国际物流" min-width="120" show-overflow-tooltip />
+          <el-table-column label="物流单号" min-width="150" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.tracking_no || '—' }}</template>
+          </el-table-column>
+          <el-table-column label="费用" width="110" align="right">
+            <template #default="{ row }">{{ fmtMoney(row.cost) }}</template>
+          </el-table-column>
+          <el-table-column prop="cost_currency" label="币种" width="70" align="center" />
+          <el-table-column label="归属" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag :type="payerTagType(row.payer)" size="small">{{ payerLabel(row.payer) }}</el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -263,6 +325,9 @@ onMounted(() => { load(); loadTimeline() })
 }
 .timeline-body {
   min-height: 80px;
+}
+.shipments-body {
+  min-height: 60px;
 }
 .tl-head {
   display: flex;
