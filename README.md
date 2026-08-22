@@ -47,4 +47,5 @@ cd frontend && npx vitest run            # 4 passed
 - 开发用 SQLite（ARM64 无原生 MySQL）；生产部署用 MySQL 8 + Windows 绿色安装包（待部署阶段）。
 - **第 3 模块（跟单管理）已完成**：TrackingLog/TrackingPhoto 模型 + 8 节点状态机（接单→排产→生产中→质检→发货→签收→结算→回款，推进/驳回）+ MEDIA 照片上传（Pillow verify 校验 + 事务包裹）+ TrackingViewSet（advance/reject/timeline/my + 权限）+ PC 跟单工作台 + 移动端跟单工作台（完整功能）+ 订单详情时间线。后端 76 测试 + 前端 6 测试全绿。
 - **第 4 模块（工厂结算）已完成**：FactoryPayment（OneToOne→OrderItem）+ FactoryPaymentRecord（多次付款）+ status 自动算（未结/部分结/已结）+ 一键生成（批量创建结算单）+ 工厂对账单（按工厂+日期汇总）+ 权限修复（generate 仅 admin/finance、delete 仅 admin、Record 数据范围）+ 删除回退 paid_amount + 事务包裹 + 安全测试。PC 3 页（列表/详情/对账）+ 移动端 3 页（完整功能）+ OrderDetail 结算状态区块。后端 90 测试 + 前端 7 测试全绿。
-- 后续模块（待开发）：物流账单、轻财务、数据分析——见规划文档第 4 节。
+- **第 5 模块（物流管理）已完成**：Logistics 模型（FK→Order 多行 + seq 自动递增 + 两段物流关联 LogisticsProvider）+ LogisticsPermission（admin 全权/tracker 写/salesman 只读范围）+ tracker 创建限定派给自己订单 + PC 物流列表/表单 + 移动端列表/表单完整功能 + OrderDetail 物流发货区块。后端 104 测试 + 前端 8 测试全绿。
+- 后续模块（待开发）：轻财务、数据分析——见规划文档第 4 节。
