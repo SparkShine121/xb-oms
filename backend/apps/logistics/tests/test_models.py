@@ -40,3 +40,9 @@ def test_currency_and_payer_defaults(setup):
     assert shipment.cost_currency == 'CNY'
     assert shipment.payer == 'company'
     assert str(shipment.cost) == '0' or shipment.cost == 0
+
+    # payer 可设为 customer / factory
+    shipment.payer = 'customer'
+    shipment.full_clean()
+    shipment.payer = 'factory'
+    shipment.full_clean()
