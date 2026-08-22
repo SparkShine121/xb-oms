@@ -66,8 +66,10 @@ const routes = [
       { path: 'factory-payment', name: 'MFactoryPayment', component: () => import('../views/m/factory_payment/MFactoryPaymentList.vue') },
       { path: 'factory-payment/:id', name: 'MFactoryPaymentDetail', component: () => import('../views/m/factory_payment/MFactoryPaymentDetail.vue') },
       { path: 'factory-payment/statement', name: 'MFactoryPaymentStatement', component: () => import('../views/m/factory_payment/MFactoryStatement.vue') },
-      // 物流管理（移动端）：LT4 占位，Task 7 替换为完整功能
-      { path: 'logistics', name: 'MLogisticsShipmentList', component: Placeholder },
+      // 物流管理（移动端）：LT6 列表 + 表单（new/edit）
+      { path: 'logistics', name: 'MLogisticsShipmentList', component: () => import('../views/m/logistics/MLogisticsList.vue') },
+      { path: 'logistics/new', name: 'MLogisticsShipmentNew', component: () => import('../views/m/logistics/MLogisticsForm.vue') },
+      { path: 'logistics/:id/edit', name: 'MLogisticsShipmentEdit', component: () => import('../views/m/logistics/MLogisticsForm.vue'), props: true },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },
