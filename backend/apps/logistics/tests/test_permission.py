@@ -124,3 +124,13 @@ def test_tracker_can_update_own(db, setup, tracker_client):
                  {'tracking_no': 'PATCHED'}, format='json')
     assert r.status_code == 200
     assert r.data['data']['tracking_no'] == 'PATCHED'
+
+def test_tracker_cannot_create_for_other_order(db):
+    """tracker 给非自己订单创建物流 → 403"""
+    tr = _make_user('tr_x', 'tracker')
+    c = Customer.objects.create(name='C_X')
+    o = Order.objects.create(order_no='O_OTHER', tracking_status='排产', customer=c)  # 无 tracker
+    LogisticsProvider.objects.create(name='测试', type='domestic')
+    client = APIClient(); client.force_authenticate(tr)
+    r = client.post('/api/logistics/shipments/', {'order': o.id, 'tracking_no': 'X'}, format='json')
+    assert r.status_code == 403

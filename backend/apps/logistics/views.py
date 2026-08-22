@@ -1,4 +1,5 @@
 from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
 from apps.logistics.models import Logistics
@@ -34,3 +35,10 @@ class LogisticsViewSet(BaseModelViewSet):
         if 'tracker' in groups:
             cond |= Q(order__tracker=u)
         return qs.filter(cond).distinct() if cond else qs.none()
+
+    def perform_create(self, serializer):
+        order = serializer.validated_data['order']
+        groups = set(self.request.user.groups.values_list('name', flat=True))
+        if 'admin' not in groups and 'tracker' in groups and order.tracker_id != self.request.user.id:
+            raise PermissionDenied('跟单员只能为派给自己的订单登记物流')
+        serializer.save()
