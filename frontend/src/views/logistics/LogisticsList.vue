@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listShipments, deleteShipment } from '../../api/logistics'
+import { useUserStore } from '../../stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
+const roles = computed(() => userStore.roles)
+// 后端 LogisticsPermission：update 仅 tracker/admin，destroy 仅 admin
+const canEdit = computed(() => roles.value.includes('admin') || roles.value.includes('tracker'))
+const isAdmin = computed(() => roles.value.includes('admin'))
 
 const PAYER_OPTIONS = [
   { value: 'customer', label: '客户' },
   { value: 'company', label: '公司' },
   { value: 'factory', label: '工厂' },
 ]
+
+const CURRENCY_OPTIONS = ['CNY', 'USD']
 
 function payerTagType(p: string) {
   if (p === 'customer') return 'primary'
@@ -35,6 +43,7 @@ const loading = ref(false)
 
 const search = ref('')
 const payerFilter = ref<string | null>(null)
+const currencyFilter = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -44,6 +53,7 @@ async function load() {
       page_size: pageSize.value,
       search: search.value || undefined,
       payer: payerFilter.value ?? undefined,
+      cost_currency: currencyFilter.value ?? undefined,
     })
     rows.value = resp.data.results
     total.value = resp.data.count
@@ -86,6 +96,9 @@ onMounted(load)
         <el-select v-model="payerFilter" clearable placeholder="费用归属" style="width: 130px" @change="query">
           <el-option v-for="o in PAYER_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
         </el-select>
+        <el-select v-model="currencyFilter" clearable placeholder="币种" style="width: 110px" @change="query">
+          <el-option v-for="c in CURRENCY_OPTIONS" :key="c" :label="c" :value="c" />
+        </el-select>
         <el-button type="primary" @click="query">查询</el-button>
       </div>
 
@@ -112,8 +125,8 @@ onMounted(load)
         </el-table-column>
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
-            <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
+            <el-button v-if="canEdit" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
+            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
