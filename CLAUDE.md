@@ -54,6 +54,10 @@ Django monorepo，按业务域分 app：
 - **`apps/orders/`**：订单（Order/OrderItem/ExchangeRate）+ 订单 Excel 导入（importers.py，阿里小满模板）+ 毛利计算（`calc_order_profit`）+ OrderPermission（数据范围：salesman 自己客户/tracker 派给自己）
 - **`apps/tracking/`**：跟单（TrackingLog/TrackingPhoto）+ 8 节点状态机（`state_machine.py`：接单→排产→生产中→质检→发货→签收→结算→回款）+ TrackingViewSet（advance/reject/timeline/my）+ TrackingPermission + MEDIA 照片上传（Pillow verify 校验 + transaction.atomic）
 - **`apps/factory_payment/`**：工厂结算（FactoryPayment OneToOne→OrderItem + FactoryPaymentRecord 多次付款）+ status 自动算（未结/部分结/已结）+ 一键生成（批量创建结算单）+ 工厂对账单 + FactoryPaymentPermission
+- **`apps/logistics/`**：物流管理（Logistics FK→Order 多行 + seq 自动递增 + 两段物流关联 LogisticsProvider）+ LogisticsPermission
+- **`apps/finance/`**：轻财务（PaymentIn 回款模型 + 收支流水四源聚合 API + openpyxl 导出 Excel）
+- **`apps/analytics/`**：数据分析（4 个聚合 API：销售结算表/工厂账单汇总/跟单信息汇总/管理人员报表，ECharts 前端渲染）
+- **`apps/system_mgmt/`**：系统管理（ApprovalRequest 审批流 + OperationLog 操作日志 middleware JWT 解析 + BackupRecord 备份恢复审批后自动+滚动保留1000份）
 - **`apps/accounts/`**：JWT 认证（login/me/logout）+ 用户管理 + `create_groups` 命令
 - **`common/`**：通用库——`BaseModelViewSet`（统一 `{code,message,data}` CRUD 包装）、`response.py`（success_response/error_response）、`permissions.py`（RolePermission/AdminWriteOthersReadOnly）、`exceptions.py`（统一异常处理）、`pagination.py`
 

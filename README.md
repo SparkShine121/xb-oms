@@ -48,4 +48,7 @@ cd frontend && npx vitest run            # 4 passed
 - **第 3 模块（跟单管理）已完成**：TrackingLog/TrackingPhoto 模型 + 8 节点状态机（接单→排产→生产中→质检→发货→签收→结算→回款，推进/驳回）+ MEDIA 照片上传（Pillow verify 校验 + 事务包裹）+ TrackingViewSet（advance/reject/timeline/my + 权限）+ PC 跟单工作台 + 移动端跟单工作台（完整功能）+ 订单详情时间线。后端 76 测试 + 前端 6 测试全绿。
 - **第 4 模块（工厂结算）已完成**：FactoryPayment（OneToOne→OrderItem）+ FactoryPaymentRecord（多次付款）+ status 自动算（未结/部分结/已结）+ 一键生成（批量创建结算单）+ 工厂对账单（按工厂+日期汇总）+ 权限修复（generate 仅 admin/finance、delete 仅 admin、Record 数据范围）+ 删除回退 paid_amount + 事务包裹 + 安全测试。PC 3 页（列表/详情/对账）+ 移动端 3 页（完整功能）+ OrderDetail 结算状态区块。后端 90 测试 + 前端 7 测试全绿。
 - **第 5 模块（物流管理）已完成**：Logistics 模型（FK→Order 多行 + seq 自动递增 + 两段物流关联 LogisticsProvider）+ LogisticsPermission（admin 全权/tracker 写/salesman 只读范围）+ tracker 创建限定派给自己订单 + PC 物流列表/表单 + 移动端列表/表单完整功能 + OrderDetail 物流发货区块。后端 104 测试 + 前端 8 测试全绿。
-- 后续模块（待开发）：轻财务、数据分析——见规划文档第 4 节。
+- **第 6 模块（轻财务）已完成**：PaymentIn 回款模型 + 收支流水聚合 API（四源统一：回款/工厂付款/物流费/服务费）+ openpyxl 导出 Excel + 无角色账号 qs.none() 兜底 + OrderDetail 精确 order ID 过滤。PC 收支流水页/回款登记 + 移动端列表。
+- **第 7 模块（数据分析）已完成**：4 个聚合 API（销售结算表/工厂账单汇总/跟单信息汇总/管理人员报表）+ ECharts Dashboard 4 tab（折线图/饼图/柱状图）+ AnalyticsPermission（admin/finance only）+ tracking-summary 年份过滤修复 + sales 客户维度补充。
+- **第 8 模块（系统管理）已完成**：ApprovalRequest 审批流（工厂结算/付款登记/订单变更/物流发货，admin 两态审批）+ is_approved 字段集成到 4 业务模型 + 批量导入/一键生成挂审 + 驳回重提路径 + OperationLog middleware JWT 解析修复 + BackupRecord 备份恢复（审批后自动+手动按钮+滚动保留1000份）。前端待审批/操作日志/备份管理三页。
+- **全部 9 个模块开发完成。** 后端 163 测试全绿 + 前端 vitest 全绿 + build 成功。
