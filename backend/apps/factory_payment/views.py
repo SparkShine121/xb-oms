@@ -6,6 +6,7 @@ from django.db.models import Q, Sum
 from common.views import BaseModelViewSet
 from common.response import success_response, error_response
 from apps.orders.models import Order, OrderItem
+from apps.system_mgmt.models import ApprovalRequest
 from .models import FactoryPayment, FactoryPaymentRecord
 from .serializers import FactoryPaymentSerializer, FactoryPaymentRecordSerializer
 from .permissions import FactoryPaymentPermission
@@ -38,6 +39,17 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         if end_date:
             qs = qs.filter(created_at__date__lte=end_date)
         return qs
+
+    def perform_create(self, serializer):
+        # 审批流：非 admin 新建 → 挂起待审批；admin 新建 → 直接生效
+        instance = serializer.save(is_approved=False)
+        if self.request.user.groups.filter(name='admin').exists():
+            instance.is_approved = True
+            instance.save(update_fields=['is_approved'])
+        else:
+            ApprovalRequest.objects.create(
+                approval_type='settlement', target_id=instance.id,
+                target_model='FactoryPayment', submitted_by=self.request.user)
 
     @action(detail=False, methods=['post'], url_path=r'orders/(?P<order_id>\d+)/generate')
     def generate_by_order(self, request, order_id=None):
@@ -98,4 +110,12 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
     def perform_create(self, serializer):
         with transaction.atomic():
             # Record.save() 已自动聚合：records 求和 → 父单 paid_amount → 父单 save() 重算 status
-            serializer.save()
+            # 审批流：非 admin 新建付款记录 → 挂起待审批；admin 新建 → 直接生效
+            instance = serializer.save(is_approved=False)
+            if self.request.user.groups.filter(name='admin').exists():
+                instance.is_approved = True
+                instance.save(update_fields=['is_approved'])
+            else:
+                ApprovalRequest.objects.create(
+                    approval_type='payment', target_id=instance.id,
+                    target_model='FactoryPaymentRecord', submitted_by=self.request.user)

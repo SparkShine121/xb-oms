@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.logistics.models import Logistics
 from apps.logistics.serializers import LogisticsSerializer
+from apps.system_mgmt.models import ApprovalRequest
 from common.views import BaseModelViewSet
 
 from .permissions import LogisticsPermission
@@ -41,4 +42,12 @@ class LogisticsViewSet(BaseModelViewSet):
         groups = set(self.request.user.groups.values_list('name', flat=True))
         if 'admin' not in groups and 'tracker' in groups and order.tracker_id != self.request.user.id:
             raise PermissionDenied('跟单员只能为派给自己的订单登记物流')
-        serializer.save()
+        # 审批流：非 admin 新建 → 挂起待审批；admin 新建 → 直接生效
+        instance = serializer.save(is_approved=False)
+        if 'admin' in groups:
+            instance.is_approved = True
+            instance.save(update_fields=['is_approved'])
+        else:
+            ApprovalRequest.objects.create(
+                approval_type='logistics', target_id=instance.id,
+                target_model='Logistics', submitted_by=self.request.user)

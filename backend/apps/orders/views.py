@@ -5,6 +5,7 @@ from django.db.models import Q
 from common.views import BaseModelViewSet
 from common.response import success_response, error_response
 from common.permissions import RolePermission
+from apps.system_mgmt.models import ApprovalRequest
 from .models import Order, ExchangeRate
 from .serializers import OrderSerializer, ExchangeRateSerializer
 from .permissions import OrderPermission
@@ -31,6 +32,17 @@ class OrderViewSet(BaseModelViewSet):
         if 'tracker' in groups:
             cond |= Q(tracker=u)
         return qs.filter(cond).distinct() if cond else qs.none()
+
+    def perform_create(self, serializer):
+        # 审批流：非 admin 新建订单（order_change）→ 挂起待审批；admin 新建 → 直接生效
+        instance = serializer.save(is_approved=False)
+        if self.request.user.groups.filter(name='admin').exists():
+            instance.is_approved = True
+            instance.save(update_fields=['is_approved'])
+        else:
+            ApprovalRequest.objects.create(
+                approval_type='order_change', target_id=instance.id,
+                target_model='Order', submitted_by=self.request.user)
 
     @action(detail=False, methods=['post'], url_path='import')
     def import_data(self, request):
