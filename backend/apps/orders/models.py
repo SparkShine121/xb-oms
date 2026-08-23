@@ -44,6 +44,7 @@ class Order(models.Model):
     remark = models.TextField(blank=True)
     is_cancelled = models.BooleanField(default=False)
     order_profit_usd = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    is_approved = models.BooleanField(default=True)  # 审批流：新建时 False，admin 通过后 True
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

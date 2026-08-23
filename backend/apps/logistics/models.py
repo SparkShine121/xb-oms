@@ -25,6 +25,7 @@ class Logistics(models.Model):
     cost_currency = models.CharField(max_length=8, choices=CURRENCY_CHOICES, default='CNY')
     payer = models.CharField(max_length=16, choices=PAYER_CHOICES, default='company')
     note = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=True)  # 审批流：新建时 False，admin 通过后 True
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

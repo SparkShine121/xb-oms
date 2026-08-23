@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.logistics",
     "apps.finance",
     "apps.analytics",
+    "apps.system_mgmt",
 ]
 
 MIDDLEWARE = [
@@ -49,6 +50,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.system_mgmt.middleware.OperationLogMiddleware",
 ]
 
 ROOT_URLCONF = "xb_project.urls"

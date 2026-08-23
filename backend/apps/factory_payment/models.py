@@ -15,6 +15,7 @@ class FactoryPayment(models.Model):
     paid_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     status = models.CharField(max_length=16, default='未结')
     note = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=True)  # 审批流：新建时 False，admin 通过后 True
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -37,6 +38,7 @@ class FactoryPaymentRecord(models.Model):
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     payment_date = models.DateField()
     note = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=True)  # 审批流：新建时 False，admin 通过后 True
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
