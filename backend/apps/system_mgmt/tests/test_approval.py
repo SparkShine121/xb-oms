@@ -262,6 +262,67 @@ def test_admin_edit_does_not_create_request(db, setup):
     assert ApprovalRequest.objects.count() == 0
 
 
+# ---- 批量写入路径审批流（final review 修复）----
+
+def test_import_data_pends_for_salesman(db, setup):
+    """Excel 导入审批流：salesman 导入的新建订单挂起待审批；admin 导入直接生效。"""
+    from io import BytesIO
+    import openpyxl
+
+    def make_xlsx(order_no):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['订单名称', '联系人'])  # 其余列缺省走导入器默认值
+        ws.append([order_no, '客户甲'])
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf
+
+    c = _client(setup['sales'])
+    r = c.post('/api/orders/orders/import/', {'file': make_xlsx('OIMP-1')}, format='multipart')
+    assert r.status_code == 200, r.data
+    assert r.data['data']['created_order_nos'] == ['OIMP-1']
+    od = Order.objects.get(order_no='OIMP-1')
+    assert od.is_approved is False
+    ar = ApprovalRequest.objects.get(target_id=od.id, approval_type='order_change')
+    assert ar.target_model == 'Order'
+    assert ar.status == 'pending'
+    assert ar.submitted_by.username == 'sales_a'
+
+    adm = _client(_make_user('adm_imp', 'admin'))
+    r = adm.post('/api/orders/orders/import/', {'file': make_xlsx('OIMP-2')}, format='multipart')
+    assert r.status_code == 200
+    assert Order.objects.get(order_no='OIMP-2').is_approved is True
+    assert not ApprovalRequest.objects.filter(
+        target_id=Order.objects.get(order_no='OIMP-2').id).exists()
+
+
+def test_generate_by_order_pends_for_non_admin(db, setup):
+    """一键生成结算单审批流：finance 生成 → 挂起；admin 生成 → 直接生效。"""
+    fin = _client(_make_user('fin_gen', 'finance'))
+    r = fin.post(f"/api/factory-payment/payments/orders/{setup['order'].id}/generate/",
+                 format='json')
+    assert r.status_code == 200
+    fp = FactoryPayment.objects.get(order_item=setup['item'])
+    assert fp.is_approved is False
+    ar = ApprovalRequest.objects.get(target_id=fp.id, approval_type='settlement')
+    assert ar.status == 'pending'
+    assert ar.target_model == 'FactoryPayment'
+    assert ar.submitted_by.username == 'fin_gen'
+
+    # 新增一个带工厂的 item，admin 再生成 → 该 item 的结算单直接生效
+    from apps.orders.models import OrderItem
+    f2 = Factory.objects.create(name='华鑫二号')
+    item2 = OrderItem.objects.create(order=setup['order'], seq=2, factory=f2, qty=5,
+                                     unit_price='10', subtotal='50', cost_price='7.20')
+    adm = _client(_make_user('adm_gen', 'admin'))
+    r = adm.post(f"/api/factory-payment/payments/orders/{setup['order'].id}/generate/",
+                 format='json')
+    assert r.status_code == 200
+    assert FactoryPayment.objects.get(order_item=item2).is_approved is True
+
+
 # ---- 备份 ----
 
 @pytest.mark.django_db(transaction=True)

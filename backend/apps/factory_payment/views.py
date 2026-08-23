@@ -64,15 +64,23 @@ class FactoryPaymentViewSet(BaseModelViewSet):
             return error_response(1004, '订单不存在', status=404)
         items = order.items.filter(factory__isnull=False)
         created, skipped = 0, 0
+        # 审批流：非 admin（finance）一键生成 → 结算单挂起待审批；admin 生成直接生效
+        # （FactoryPayment.save() 只重算 status，不影响 is_approved）
+        is_admin = request.user.groups.filter(name='admin').exists()
         with transaction.atomic():
             for item in items:
                 if hasattr(item, 'factory_payment'):
                     skipped += 1
                     continue
-                FactoryPayment.objects.create(
+                fp = FactoryPayment.objects.create(
                     order_item=item, factory=item.factory,
-                    amount_cny=item.qty * item.cost_price
+                    amount_cny=item.qty * item.cost_price,
+                    is_approved=is_admin,
                 )
+                if not is_admin:
+                    ApprovalRequest.objects.create(
+                        approval_type='settlement', target_id=fp.id,
+                        target_model='FactoryPayment', submitted_by=request.user)
                 created += 1
         return success_response({'created_count': created, 'skipped_count': skipped})
 

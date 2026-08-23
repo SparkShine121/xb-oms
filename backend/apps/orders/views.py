@@ -58,6 +58,18 @@ class OrderViewSet(BaseModelViewSet):
             result = import_orders(f)
         except Exception as e:
             return error_response(1001, f'文件解析失败：{e}', status=400)
+        # 审批流：非 admin 导入的新建订单 → 挂起待审批；admin 导入直接生效
+        if not request.user.groups.filter(name='admin').exists():
+            for order_no in result.get('created_order_nos', []):
+                try:
+                    o = Order.objects.get(order_no=order_no)
+                except Order.DoesNotExist:
+                    continue
+                o.is_approved = False
+                o.save(update_fields=['is_approved'])
+                ApprovalRequest.objects.create(
+                    approval_type='order_change', target_id=o.id,
+                    target_model='Order', submitted_by=request.user)
         return success_response(result)
 
     @action(detail=False, methods=['get'], url_path='import-template')

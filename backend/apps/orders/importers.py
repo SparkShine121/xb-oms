@@ -54,6 +54,7 @@ def import_orders(file):
     headers = [c.value for c in ws[1]]
     col = {h: i for i, h in enumerate(headers) if h}
     success, failures = 0, []
+    created_order_nos = []  # 新建（非更新）的订单号，供视图层挂审批
     unmatched = {'customers': [], 'products': [], 'factories': []}
     # 按 order_no 分组（主表字段可能合并单元格，从每行读但按订单号去重）
     orders_data = {}
@@ -119,6 +120,8 @@ def import_orders(file):
                     'tracking_no': d['tracking_no'] or '', 'remark': d['remark'] or '',
                 },
             )
+            if created:
+                created_order_nos.append(order_no)
             # tracker：新订单填 customer.tracker；已存在若空才填
             if not order.tracker and customer and customer.tracker:
                 order.tracker = customer.tracker
@@ -142,7 +145,8 @@ def import_orders(file):
             success += 1
         except Exception as e:
             failures.append({'row': d['row'], 'reason': str(e)})
-    return {'success_count': success, 'fail_count': len(failures), 'failures': failures, 'unmatched': unmatched}
+    return {'success_count': success, 'fail_count': len(failures), 'failures': failures,
+            'unmatched': unmatched, 'created_order_nos': created_order_nos}
 
 
 def build_order_template():
