@@ -42,6 +42,8 @@ const routes = [
       { path: 'logistics', name: 'LogisticsShipmentList', component: () => import('../views/logistics/LogisticsList.vue') },
       { path: 'logistics/new', name: 'LogisticsShipmentNew', component: () => import('../views/logistics/LogisticsForm.vue') },
       { path: 'logistics/:id/edit', name: 'LogisticsShipmentEdit', component: () => import('../views/logistics/LogisticsForm.vue'), props: true },
+      // 数据分析：ECharts Dashboard（仅 PC）
+      { path: 'analytics', name: 'AnalyticsDashboard', component: () => import('../views/analytics/Dashboard.vue') },
       // 轻财务：收支流水 + 回款登记
       { path: 'finance', name: 'FinanceLedger', component: () => import('../views/finance/FinanceList.vue') },
     ],

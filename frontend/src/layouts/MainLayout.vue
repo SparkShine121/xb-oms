@@ -63,6 +63,7 @@ function onLogout() {
           <template #title>轻财务</template>
           <el-menu-item index="/finance">收支流水</el-menu-item>
         </el-sub-menu>
+        <el-menu-item index="/analytics">数据分析</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
