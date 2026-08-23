@@ -26,6 +26,10 @@ const routes = [
       },
       // Task 14: 系统管理 - 用户管理
       { path: 'system/users', name: 'UserManage', component: () => import('../views/system/UserManage.vue') },
+      // 系统管理：审批 / 操作日志 / 备份（仅 PC，admin）
+      { path: 'system/approvals', name: 'ApprovalList', component: () => import('../views/system/ApprovalList.vue') },
+      { path: 'system/logs', name: 'OperationLogList', component: () => import('../views/system/OperationLogList.vue') },
+      { path: 'system/backups', name: 'BackupManage', component: () => import('../views/system/BackupManage.vue') },
       // 订单管理：OT8 PC 列表 + 详情；OT9 PC 表单（new/edit）
       { path: 'orders', redirect: '/orders/list' },
       { path: 'orders/list', name: 'OrderList', component: () => import('../views/orders/OrderList.vue') },

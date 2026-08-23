@@ -40,7 +40,10 @@ function onLogout() {
         </el-sub-menu>
         <el-sub-menu index="/system">
           <template #title>系统管理</template>
+          <el-menu-item index="/system/approvals">待审批</el-menu-item>
           <el-menu-item index="/system/users">用户管理</el-menu-item>
+          <el-menu-item index="/system/logs">操作日志</el-menu-item>
+          <el-menu-item index="/system/backups">备份管理</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/orders">
           <template #title>订单管理</template>
