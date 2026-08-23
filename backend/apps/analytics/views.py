@@ -9,10 +9,10 @@
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from common.response import success_response
+from apps.analytics.permissions import AnalyticsPermission
 from apps.orders.models import Order
 from apps.factory_payment.models import FactoryPayment
 from apps.tracking.models import TrackingLog
@@ -24,11 +24,11 @@ def _f(v):
 
 
 class SalesSummaryView(APIView):
-    """销售结算表：按业务员聚合 + 按月趋势。
+    """销售结算表：按业务员/客户聚合 + 按月趋势。
 
-    筛选：?year=2026  ?salesman=<user_id>
+    筛选：?year=2026  ?salesman=<user_id>  ?customer=<customer_id>
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AnalyticsPermission]
 
     def get(self, request):
         qs = Order.objects.filter(is_cancelled=False)
@@ -38,23 +38,12 @@ class SalesSummaryView(APIView):
         salesman = request.query_params.get('salesman')
         if salesman:
             qs = qs.filter(salesman_id=salesman)
+        customer = request.query_params.get('customer')
+        if customer:
+            qs = qs.filter(customer_id=customer)
 
-        by_salesman = []
-        rows = qs.values('salesman__username').annotate(
-            order_count=Count('id'),
-            total_amount=Sum('amount_usd'),
-            total_profit=Sum('order_profit_usd'),
-        ).order_by('-total_amount')
-        for r in rows:
-            amount = _f(r['total_amount'])
-            profit = _f(r['total_profit'])
-            by_salesman.append({
-                'salesman__username': r['salesman__username'] or '未分配',
-                'order_count': r['order_count'],
-                'total_amount': round(amount, 2),
-                'total_profit': round(profit, 2),
-                'profit_rate': round(profit / amount, 4) if amount else 0,
-            })
+        by_salesman = self._group(qs, 'salesman__username')
+        by_customer = self._group(qs, 'customer__name')
 
         monthly = {}
         for o in qs:
@@ -65,7 +54,32 @@ class SalesSummaryView(APIView):
             d['profit'] += _f(o.order_profit_usd)
         monthly_list = sorted(monthly.values(), key=lambda x: x['month'])
 
-        return success_response({'by_salesman': by_salesman, 'monthly': monthly_list})
+        return success_response({
+            'by_salesman': by_salesman,
+            'by_customer': by_customer,
+            'monthly': monthly_list,
+        })
+
+    @staticmethod
+    def _group(qs, dim):
+        """按维度聚合：订单数/总金额/总毛利/毛利率，按销售额降序。"""
+        rows = qs.values(dim).annotate(
+            order_count=Count('id'),
+            total_amount=Sum('amount_usd'),
+            total_profit=Sum('order_profit_usd'),
+        ).order_by('-total_amount')
+        data = []
+        for r in rows:
+            amount = _f(r['total_amount'])
+            profit = _f(r['total_profit'])
+            data.append({
+                dim: r[dim] or '未分配',
+                'order_count': r['order_count'],
+                'total_amount': round(amount, 2),
+                'total_profit': round(profit, 2),
+                'profit_rate': round(profit / amount, 4) if amount else 0,
+            })
+        return data
 
 
 class FactorySummaryView(APIView):
@@ -73,7 +87,7 @@ class FactorySummaryView(APIView):
 
     筛选：?year=2026  ?factory=<factory_id>
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AnalyticsPermission]
 
     def get(self, request):
         qs = FactoryPayment.objects.all()
@@ -110,13 +124,15 @@ class TrackingSummaryView(APIView):
     停留时长 = 同一订单相邻两条跟单日志的时间差，按前一节点归属求平均。
     筛选：?year=2026（按订单下单日期过滤）
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AnalyticsPermission]
 
     def get(self, request):
-        qs = Order.objects.filter(is_cancelled=False).exclude(tracking_status='')
+        order_filters = {'is_cancelled': False}
         year = request.query_params.get('year')
         if year:
-            qs = qs.filter(order_date__year=year)
+            order_filters['order_date__year'] = year
+
+        qs = Order.objects.exclude(tracking_status='').filter(**order_filters)
 
         node_distribution = [
             {'node': r['tracking_status'], 'count': r['count']}
@@ -124,8 +140,10 @@ class TrackingSummaryView(APIView):
                 count=Count('id')).order_by('-count')
         ]
 
-        # 平均停留时长：遍历各订单的日志时间线，相邻差值归前节点
-        logs = list(TrackingLog.objects.order_by('order_id', 'created_at', 'id'))
+        # 平均停留时长：遍历范围内订单的日志时间线，相邻差值归前节点
+        # （日志按订单年份/取消状态同步过滤，与节点分布口径一致）
+        log_filters = {f'order__{k}': v for k, v in order_filters.items()}
+        logs = list(TrackingLog.objects.filter(**log_filters).order_by('order_id', 'created_at', 'id'))
         dwell = {}  # node -> [总秒数, 次数]
         prev = None
         for log in logs:
@@ -152,7 +170,7 @@ class OverviewView(APIView):
 
     筛选：?year=2026
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AnalyticsPermission]
 
     def get(self, request):
         orders = Order.objects.filter(is_cancelled=False)

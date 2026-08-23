@@ -10,19 +10,31 @@
 import pytest
 from datetime import date, timedelta
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.orders.models import Order, OrderItem
-from apps.basic_info.models import Factory
+from apps.basic_info.models import Customer, Factory
 from apps.factory_payment.models import FactoryPayment
 from apps.tracking.models import TrackingLog
 
 
 @pytest.fixture
 def api(db):
+    """admin 角色客户端：仪表盘全量可见。"""
     u = User.objects.create_user('boss', password='pw123456')
+    u.groups.add(Group.objects.get(name='admin'))
+    c = APIClient()
+    c.force_authenticate(u)
+    return c
+
+
+@pytest.fixture
+def finance_api(db):
+    """finance 角色客户端：同样可看仪表盘全量。"""
+    u = User.objects.create_user('fin', password='pw123456')
+    u.groups.add(Group.objects.get(name='finance'))
     c = APIClient()
     c.force_authenticate(u)
     return c
@@ -49,7 +61,7 @@ def make_order(**kw):
     return Order.objects.create(**defaults)
 
 
-# ---------- 认证 ----------
+# ---------- 认证与权限 ----------
 
 def test_all_endpoints_require_auth(db):
     c = APIClient()
@@ -57,6 +69,25 @@ def test_all_endpoints_require_auth(db):
     assert c.get('/api/analytics/factory-summary/').status_code == 401
     assert c.get('/api/analytics/tracking-summary/').status_code == 401
     assert c.get('/api/analytics/overview/').status_code == 401
+
+
+def test_dashboard_forbidden_for_salesman_and_tracker(db):
+    """仪表盘属管理功能：仅 admin/finance 可见，其余角色 403。"""
+    for role in ('salesman', 'tracker'):
+        u = User.objects.create_user(f'u_{role}', password='pw123456')
+        u.groups.add(Group.objects.get(name=role))
+        c = APIClient()
+        c.force_authenticate(u)
+        assert c.get('/api/analytics/sales/').status_code == 403, role
+        assert c.get('/api/analytics/factory-summary/').status_code == 403, role
+        assert c.get('/api/analytics/tracking-summary/').status_code == 403, role
+        assert c.get('/api/analytics/overview/').status_code == 403, role
+
+
+def test_dashboard_allowed_for_finance(finance_api, db):
+    r = finance_api.get('/api/analytics/overview/')
+    assert r.status_code == 200
+    assert r.data['code'] == 0
 
 
 # ---------- sales 销售结算表 ----------
@@ -104,6 +135,39 @@ def test_sales_summary_monthly_trend(api, db):
     assert months['2026-07']['sales'] == 100
     assert months['2026-07']['count'] == 1
     assert months['2026-08']['profit'] == 60
+
+
+def test_sales_summary_by_customer(api, db):
+    c1 = Customer.objects.create(name='客户甲')
+    c2 = Customer.objects.create(name='客户乙')
+    make_order(order_no='K1', customer=c1, amount_usd='1000', order_profit_usd='200')
+    make_order(order_no='K2', customer=c1, amount_usd='500', order_profit_usd='100')
+    make_order(order_no='K3', customer=c2, amount_usd='300', order_profit_usd='30')
+    make_order(order_no='K4', amount_usd='100', order_profit_usd='10')  # 无客户 → 未分配
+
+    r = api.get('/api/analytics/sales/')
+    assert r.status_code == 200
+    rows = {x['customer__name']: x for x in r.data['data']['by_customer']}
+    assert rows['客户甲']['order_count'] == 2
+    assert rows['客户甲']['total_amount'] == 1500
+    assert rows['客户甲']['total_profit'] == 300
+    assert rows['客户甲']['profit_rate'] == pytest.approx(0.2)
+    assert rows['客户乙']['total_amount'] == 300
+    assert rows['未分配']['total_amount'] == 100
+    # 按销售额降序：客户甲第一
+    assert r.data['data']['by_customer'][0]['customer__name'] == '客户甲'
+
+
+def test_sales_summary_filter_by_customer(api, db):
+    c1 = Customer.objects.create(name='客户甲')
+    c2 = Customer.objects.create(name='客户乙')
+    make_order(order_no='K1', customer=c1)
+    make_order(order_no='K2', customer=c2)
+
+    r = api.get(f'/api/analytics/sales/?customer={c2.id}')
+    rows = r.data['data']['by_customer']
+    assert len(rows) == 1
+    assert rows[0]['customer__name'] == '客户乙'
 
 
 # ---------- factory-summary 工厂账单汇总 ----------
@@ -181,6 +245,38 @@ def test_tracking_summary_avg_dwell_days(api, db):
     r = api.get('/api/analytics/tracking-summary/')
     dwell = {x['node']: x['avg_days'] for x in r.data['data']['avg_dwell_days']}
     assert dwell['接单'] == pytest.approx(1.0)
+
+
+def test_tracking_summary_dwell_respects_year_and_cancelled(api, db):
+    """平均停留时长须随 ?year= 过滤且排除已取消订单（审查修复项 1）。"""
+    now = timezone.now()
+
+    def make_log(order, node, days_ago):
+        lg = TrackingLog.objects.create(order=order, node=node)
+        TrackingLog.objects.filter(id=lg.id).update(created_at=now - timedelta(days=days_ago))
+
+    # 范围内订单：接单停留 1 天
+    in_scope = Order.objects.create(order_no='DW-A', tracking_status='排产', order_date=date(2026, 7, 10))
+    make_log(in_scope, '接单', 3)
+    make_log(in_scope, '排产', 2)
+
+    # 已取消订单：同样 1 天停留，但不应计入
+    cancelled = Order.objects.create(order_no='DW-B', tracking_status='排产',
+                                     order_date=date(2026, 7, 11), is_cancelled=True)
+    make_log(cancelled, '接单', 5)
+    make_log(cancelled, '排产', 4)
+
+    # 范围外年份订单：不应计入
+    other_year = Order.objects.create(order_no='DW-C', tracking_status='生产中', order_date=date(2025, 7, 11))
+    make_log(other_year, '接单', 9)
+    make_log(other_year, '排产', 2)  # 停留 7 天，若误入会拉高均值
+
+    r = api.get('/api/analytics/tracking-summary/?year=2026')
+    dwell = {x['node']: x['avg_days'] for x in r.data['data']['avg_dwell_days']}
+    assert dwell['接单'] == pytest.approx(1.0)
+
+    dist = {x['node']: x['count'] for x in r.data['data']['node_distribution']}
+    assert dist == {'排产': 1}  # 已取消/范围外的当前节点也不计
 
 
 # ---------- overview 年度总览 ----------
