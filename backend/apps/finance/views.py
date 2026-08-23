@@ -78,14 +78,14 @@ class PaymentInViewSet(BaseModelViewSet):
         wb.save(resp)
         return resp
 
-    def _scoped_order_cond(self, u, groups, prefix=''):
-        """按角色构造订单维度的过滤条件，prefix 形如 'order__' 或 'factory_payment__order_item__order__'。"""
+    def _scope_queryset(self, qs, u, groups, prefix=''):
+        """按角色过滤订单维度数据；无任何命中角色的账号返回空集，防止越权全量泄露。"""
         cond = Q()
         if 'salesman' in groups:
             cond |= Q(**{f'{prefix}customer__salesman': u})
         if 'tracker' in groups:
             cond |= Q(**{f'{prefix}tracker': u})
-        return cond
+        return qs.filter(cond).distinct() if cond else qs.none()
 
     def _in_range(self, params, d):
         start, end = params.get('start_date'), params.get('end_date')
@@ -110,7 +110,7 @@ class PaymentInViewSet(BaseModelViewSet):
         if want('income_receipt'):
             qs = PaymentIn.objects.select_related('order', 'order__customer')
             if scoped:
-                qs = qs.filter(self._scoped_order_cond(u, groups, 'order__')).distinct()
+                qs = self._scope_queryset(qs, u, groups, 'order__')
             for p in qs:
                 if self._in_range(params, p.payment_date):
                     rows.append({
@@ -130,9 +130,9 @@ class PaymentInViewSet(BaseModelViewSet):
                 'factory_payment__order_item__order__customer',
             )
             if scoped:
-                qs = qs.filter(
-                    self._scoped_order_cond(u, groups, 'factory_payment__order_item__order__')
-                ).distinct()
+                qs = self._scope_queryset(
+                    qs, u, groups, 'factory_payment__order_item__order__'
+                )
             for r in qs:
                 if self._in_range(params, r.payment_date):
                     rows.append({
@@ -148,7 +148,7 @@ class PaymentInViewSet(BaseModelViewSet):
         if want('expense_logistics'):
             qs = Logistics.objects.select_related('order', 'order__customer')
             if scoped:
-                qs = qs.filter(self._scoped_order_cond(u, groups, 'order__')).distinct()
+                qs = self._scope_queryset(qs, u, groups, 'order__')
             for l in qs:
                 if l.cost <= 0:
                     continue
@@ -167,7 +167,7 @@ class PaymentInViewSet(BaseModelViewSet):
         if want('expense_service_fee'):
             qs = Order.objects.select_related('customer').filter(service_fee_usd__gt=0)
             if scoped:
-                qs = qs.filter(self._scoped_order_cond(u, groups)).distinct()
+                qs = self._scope_queryset(qs, u, groups)
             for o in qs:
                 d = o.order_date or o.created_at.date()
                 if self._in_range(params, d):

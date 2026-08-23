@@ -120,7 +120,8 @@ async function loadPaymentsIn() {
   if (!order.value?.order_no) return
   paymentsInLoading.value = true
   try {
-    const resp: any = await listPaymentsIn({ search: order.value.order_no, page_size: 100 })
+    // 按订单 ID 精确过滤（order_no 模糊搜索有前缀碰撞风险）
+    const resp: any = await listPaymentsIn({ order: order.value.id, page_size: 100 })
     paymentsIn.value = resp.data.results
   } finally {
     paymentsInLoading.value = false

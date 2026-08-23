@@ -96,6 +96,20 @@ def test_ledger_salesman_scoped(db, setup):
     assert not any('OB' in d for d in descs)
 
 
+def test_no_role_user_sees_empty_ledger(db, setup):
+    """有登录但无任何 Group 的账号：ledger/export 均不得泄露全量数据。"""
+    nobody = User.objects.create_user('nobody', password='pw123456')
+    c = APIClient()
+    c.force_authenticate(nobody)
+    r = c.get('/api/finance/payments-in/ledger/')
+    assert r.status_code == 200
+    assert r.data['data'] == []  # 不返回任何流水
+    # 导出同样为空（仍应成功返回 xlsx 文件流）
+    r2 = c.get('/api/finance/payments-in/export/')
+    assert r2.status_code == 200
+    assert r2['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+
 def test_export_returns_xlsx(db, setup):
     r = _admin_client().get('/api/finance/payments-in/export/')
     assert r.status_code == 200
