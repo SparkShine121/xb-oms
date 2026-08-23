@@ -42,6 +42,8 @@ const routes = [
       { path: 'logistics', name: 'LogisticsShipmentList', component: () => import('../views/logistics/LogisticsList.vue') },
       { path: 'logistics/new', name: 'LogisticsShipmentNew', component: () => import('../views/logistics/LogisticsForm.vue') },
       { path: 'logistics/:id/edit', name: 'LogisticsShipmentEdit', component: () => import('../views/logistics/LogisticsForm.vue'), props: true },
+      // 轻财务：收支流水 + 回款登记
+      { path: 'finance', name: 'FinanceLedger', component: () => import('../views/finance/FinanceList.vue') },
     ],
   },
   {
@@ -70,6 +72,8 @@ const routes = [
       { path: 'logistics', name: 'MLogisticsShipmentList', component: () => import('../views/m/logistics/MLogisticsList.vue') },
       { path: 'logistics/new', name: 'MLogisticsShipmentNew', component: () => import('../views/m/logistics/MLogisticsForm.vue') },
       { path: 'logistics/:id/edit', name: 'MLogisticsShipmentEdit', component: () => import('../views/m/logistics/MLogisticsForm.vue'), props: true },
+      // 轻财务（移动端）：收支流水
+      { path: 'finance', name: 'MFinanceList', component: () => import('../views/m/MFinanceList.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/login' },

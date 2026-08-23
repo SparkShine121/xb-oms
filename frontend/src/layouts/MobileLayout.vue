@@ -13,6 +13,7 @@
       <van-tabbar-item replace :to="{ name: 'MTrackingWorkbench' }" icon="todo-list-o">跟单</van-tabbar-item>
       <van-tabbar-item replace :to="{ name: 'MFactoryPayment' }" icon="balance-list-o">工厂结算</van-tabbar-item>
       <van-tabbar-item replace :to="{ name: 'MLogisticsShipmentList' }" icon="logistics">物流</van-tabbar-item>
+      <van-tabbar-item replace :to="{ name: 'MFinanceList' }" icon="gold-coin-o">财务</van-tabbar-item>
       <van-tabbar-item replace to="/m/me" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
   </div>

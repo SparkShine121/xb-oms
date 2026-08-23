@@ -6,6 +6,7 @@ import { getOrder } from '../../api/orders'
 import { getTimeline } from '../../api/tracking'
 import { listPayments, generateByOrder } from '../../api/factoryPayment'
 import { listShipments } from '../../api/logistics'
+import { listPaymentsIn } from '../../api/finance'
 import { useUserStore } from '../../stores/user'
 
 const route = useRoute()
@@ -15,6 +16,8 @@ const roles = computed(() => userStore.roles)
 const canEdit = computed(() => roles.value.includes('admin') || roles.value.includes('salesman') || roles.value.includes('tracker'))
 const canSettle = computed(() => roles.value.includes('admin') || roles.value.includes('finance'))
 const canRegisterShipment = computed(() => roles.value.includes('admin') || roles.value.includes('tracker'))
+// 后端 FinancePermission：回款登记仅 admin/finance
+const canRegisterPayment = computed(() => roles.value.includes('admin') || roles.value.includes('finance'))
 
 const order = ref<any>(null)
 const loading = ref(false)
@@ -109,6 +112,25 @@ function registerShipment() {
   router.push('/logistics/new?order_id=' + order.value.id)
 }
 
+// ---- 回款记录 ----
+const paymentsIn = ref<any[]>([])
+const paymentsInLoading = ref(false)
+
+async function loadPaymentsIn() {
+  if (!order.value?.order_no) return
+  paymentsInLoading.value = true
+  try {
+    const resp: any = await listPaymentsIn({ search: order.value.order_no, page_size: 100 })
+    paymentsIn.value = resp.data.results
+  } finally {
+    paymentsInLoading.value = false
+  }
+}
+
+function registerPayment() {
+  router.push(`/finance?register=1&order_id=${order.value.id}`)
+}
+
 async function load() {
   const id = Number(route.params.id)
   if (!id) return
@@ -118,6 +140,7 @@ async function load() {
     order.value = resp.data
     loadPayments()
     loadShipments()
+    loadPaymentsIn()
   } finally {
     loading.value = false
   }
@@ -241,6 +264,32 @@ onMounted(() => { load(); loadTimeline() })
     </el-card>
 
     <el-card v-if="order" shadow="never" style="margin-top: 16px">
+      <template #header>
+        <div class="card-header">
+          <span>回款记录</span>
+          <el-button v-if="canRegisterPayment" type="primary" size="small" @click="registerPayment">
+            登记回款
+          </el-button>
+        </div>
+      </template>
+      <div v-loading="paymentsInLoading" class="payments-body">
+        <el-empty v-if="!paymentsInLoading && !paymentsIn.length" description="暂无回款记录" />
+        <el-table v-else :data="paymentsIn" border stripe size="small">
+          <el-table-column label="期数" width="70" align="center">
+            <template #default="{ row }">第 {{ row.installment }} 期</template>
+          </el-table-column>
+          <el-table-column prop="payment_date" label="到账日期" width="120" />
+          <el-table-column label="到账金额(USD)" width="130" align="right">
+            <template #default="{ row }">{{ fmtMoney(row.amount_usd) }}</template>
+          </el-table-column>
+          <el-table-column prop="note" label="备注" min-width="160" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.note || '—' }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-card>
+
+    <el-card v-if="order" shadow="never" style="margin-top: 16px">
       <template #header>跟单时间线</template>
       <div v-loading="timelineLoading" class="timeline-body">
         <el-empty v-if="!timelineLoading && !timelineLogs.length" description="暂无跟单记录" />
@@ -327,6 +376,9 @@ onMounted(() => { load(); loadTimeline() })
   min-height: 80px;
 }
 .shipments-body {
+  min-height: 60px;
+}
+.payments-body {
   min-height: 60px;
 }
 .tl-head {
