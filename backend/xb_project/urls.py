@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/tracking/', include('apps.tracking.urls')),
     path('api/logistics/', include('apps.logistics.urls')),
     path('api/factory-payment/', include('apps.factory_payment.urls')),
+    path('api/finance/', include('apps.finance.urls')),
 ]
 
 # 开发环境 media 文件服务（跟单照片等）
