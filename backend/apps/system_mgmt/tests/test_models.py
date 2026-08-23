@@ -123,6 +123,35 @@ def test_operation_middleware_registered():
     assert settings.MIDDLEWARE[-1] == 'apps.system_mgmt.middleware.OperationLogMiddleware'
 
 
+def test_middleware_logs_jwt_bearer_requests(db):
+    """JWT Bearer 请求在中间件层 request.user 为匿名，须从 Authorization 头解析用户。"""
+    from rest_framework.test import APIClient
+
+    _make_user('jwt_u', 'admin')
+    c = APIClient()
+    r = c.post('/api/auth/login/', {'username': 'jwt_u', 'password': 'pw123456'}, format='json')
+    assert r.status_code == 200
+    token = r.data['data']['access']
+    # 登录本身是 POST 但未认证 → 不记日志
+    assert OperationLog.objects.count() == 0
+
+    c2 = APIClient()
+    c2.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+    r = c2.post('/api/basic-info/categories/', {'name': '类目X'}, format='json')
+    assert r.status_code in (200, 201)
+    logs = OperationLog.objects.all()
+    assert logs.count() == 1
+    assert logs.first().user.username == 'jwt_u'
+    assert logs.first().action == 'POST'
+
+    # 无效 token：响应正常返回、不记录
+    c_bad = APIClient()
+    c_bad.credentials(HTTP_AUTHORIZATION='Bearer garbage.token.value')
+    r = c_bad.post('/api/basic-info/categories/', {'name': 'Y'}, format='json')
+    assert r.status_code == 401
+    assert OperationLog.objects.count() == 1
+
+
 # ---- BackupRecord ----
 
 def test_backup_record_crud(db):

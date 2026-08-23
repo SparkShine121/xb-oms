@@ -4,8 +4,9 @@ from .models import FactoryPayment, FactoryPaymentRecord
 class FactoryPaymentRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = FactoryPaymentRecord
-        fields = ['id', 'factory_payment', 'amount', 'payment_date', 'note', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ['id', 'factory_payment', 'amount', 'payment_date', 'note',
+                  'is_approved', 'created_at', 'updated_at']
+        read_only_fields = ['is_approved', 'created_at', 'updated_at']
 
 class FactoryPaymentSerializer(serializers.ModelSerializer):
     records = FactoryPaymentRecordSerializer(many=True, read_only=True)
@@ -16,6 +17,6 @@ class FactoryPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = FactoryPayment
         fields = ['id', 'order_item', 'factory', 'factory_name', 'order_no', 'product_no',
-                  'amount_cny', 'paid_amount', 'status', 'note', 'records',
+                  'amount_cny', 'paid_amount', 'status', 'note', 'records', 'is_approved',
                   'created_at', 'updated_at']
-        read_only_fields = ['paid_amount', 'status', 'created_at', 'updated_at']
+        read_only_fields = ['paid_amount', 'status', 'is_approved', 'created_at', 'updated_at']

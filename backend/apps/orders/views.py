@@ -6,6 +6,7 @@ from common.views import BaseModelViewSet
 from common.response import success_response, error_response
 from common.permissions import RolePermission
 from apps.system_mgmt.models import ApprovalRequest
+from apps.system_mgmt.approval import resubmit_on_update
 from .models import Order, ExchangeRate
 from .serializers import OrderSerializer, ExchangeRateSerializer
 from .permissions import OrderPermission
@@ -43,6 +44,10 @@ class OrderViewSet(BaseModelViewSet):
             ApprovalRequest.objects.create(
                 approval_type='order_change', target_id=instance.id,
                 target_model='Order', submitted_by=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        resubmit_on_update(self.request.user, instance, 'order_change', 'Order')
 
     @action(detail=False, methods=['post'], url_path='import')
     def import_data(self, request):

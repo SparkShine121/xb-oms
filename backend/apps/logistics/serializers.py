@@ -12,6 +12,6 @@ class LogisticsSerializer(serializers.ModelSerializer):
         model = Logistics
         fields = ['id', 'order', 'order_no', 'seq',
                   'domestic_carrier', 'intl_method', 'carrier_name', 'intl_name',
-                  'tracking_no', 'cost', 'cost_currency', 'payer', 'note',
+                  'tracking_no', 'cost', 'cost_currency', 'payer', 'note', 'is_approved',
                   'created_at', 'updated_at']
-        read_only_fields = ['seq', 'created_at', 'updated_at']
+        read_only_fields = ['seq', 'is_approved', 'created_at', 'updated_at']

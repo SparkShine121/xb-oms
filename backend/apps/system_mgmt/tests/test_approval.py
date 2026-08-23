@@ -177,6 +177,91 @@ def test_non_admin_cannot_list_or_review(db, setup):
     assert fin.post(f'/api/system-mgmt/approvals/{ar.id}/reject/').status_code == 403
 
 
+# ---- serializer 暴露 is_approved（审查修复 #2）----
+
+def test_serializer_exposes_is_approved_and_client_cannot_set(db, setup):
+    """is_approved 只读暴露：客户端伪造 true 被忽略，仍按审批流置 False。"""
+    c = _client(_make_user('fin_ser', 'finance'))
+    r = c.post('/api/factory-payment/payments/', {
+        'order_item': setup['item'].id, 'factory': setup['factory'].id,
+        'amount_cny': '72.00', 'is_approved': True,
+    }, format='json')
+    assert r.status_code == 201
+    assert r.data['data']['is_approved'] is False
+
+
+# ---- 驳回后重提（审查修复 #3）----
+
+def test_rejected_factory_payment_can_be_resubmitted(db, setup):
+    fin = _make_user('fin_rs', 'finance')
+    c = _client(fin)
+    r = c.post('/api/factory-payment/payments/', {
+        'order_item': setup['item'].id, 'factory': setup['factory'].id,
+        'amount_cny': '72.00'}, format='json')
+    fp_id = r.data['data']['id']
+    ar = ApprovalRequest.objects.get(target_id=fp_id, approval_type='settlement')
+
+    adm = _client(_make_user('adm_rs', 'admin'))
+    adm.post(f'/api/system-mgmt/approvals/{ar.id}/reject/', {'note': '金额有误'}, format='json')
+
+    # 非 admin 修改被驳回的记录 → 重置待审批 + 生成新申请
+    r = c.patch(f'/api/factory-payment/payments/{fp_id}/', {'amount_cny': '80.00'}, format='json')
+    assert r.status_code == 200
+    assert FactoryPayment.objects.get(pk=fp_id).is_approved is False
+    ar.refresh_from_db()
+    assert ar.status == 'rejected'  # 旧申请保持驳回留痕
+    new_ar = (ApprovalRequest.objects.filter(target_id=fp_id, approval_type='settlement')
+              .order_by('-id').first())
+    assert new_ar.id != ar.id
+    assert new_ar.status == 'pending'
+
+
+def test_rejected_order_can_be_resubmitted(db, setup):
+    s1 = setup['sales']
+    c = _client(s1)
+    # 带 customer（salesman 的数据范围按 customer__salesman 过滤，须落在自己范围内）
+    r = c.post('/api/orders/orders/', {'order_no': 'OB-RESUB', 'customer': setup['customer'].id,
+                                       'items': []}, format='json')
+    od_id = r.data['data']['id']
+    ar = ApprovalRequest.objects.get(target_id=od_id, approval_type='order_change')
+
+    adm = _client(_make_user('adm_orj', 'admin'))
+    adm.post(f'/api/system-mgmt/approvals/{ar.id}/reject/', format='json')
+
+    r = c.patch(f'/api/orders/orders/{od_id}/', {'amount_usd': '60.00'}, format='json')
+    assert r.status_code == 200
+    new_ar = (ApprovalRequest.objects.filter(target_id=od_id, approval_type='order_change')
+              .order_by('-id').first())
+    assert new_ar.id != ar.id and new_ar.status == 'pending'
+
+
+def test_update_pending_does_not_duplicate_request(db, setup):
+    """待审中编辑：不重复创建申请。"""
+    c = _client(_make_user('fin_dup', 'finance'))
+    r = c.post('/api/factory-payment/payments/', {
+        'order_item': setup['item'].id, 'factory': setup['factory'].id,
+        'amount_cny': '72.00'}, format='json')
+    fp_id = r.data['data']['id']
+    count_before = ApprovalRequest.objects.count()
+    r = c.patch(f'/api/factory-payment/payments/{fp_id}/', {'note': '改备注'}, format='json')
+    assert r.status_code == 200
+    assert ApprovalRequest.objects.count() == count_before
+
+
+def test_admin_edit_does_not_create_request(db, setup):
+    """admin 编辑已批准数据不产生新申请。"""
+    adm = _client(_make_user('adm_ed', 'admin'))
+    r = adm.post('/api/factory-payment/payments/', {
+        'order_item': setup['item'].id, 'factory': setup['factory'].id,
+        'amount_cny': '72.00'}, format='json')
+    assert r.status_code == 201
+    fp_id = r.data['data']['id']
+    assert ApprovalRequest.objects.count() == 0
+    r = adm.patch(f'/api/factory-payment/payments/{fp_id}/', {'note': 'x'}, format='json')
+    assert r.status_code == 200
+    assert ApprovalRequest.objects.count() == 0
+
+
 # ---- 备份 ----
 
 @pytest.mark.django_db(transaction=True)

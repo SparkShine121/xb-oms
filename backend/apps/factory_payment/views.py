@@ -7,6 +7,7 @@ from common.views import BaseModelViewSet
 from common.response import success_response, error_response
 from apps.orders.models import Order, OrderItem
 from apps.system_mgmt.models import ApprovalRequest
+from apps.system_mgmt.approval import resubmit_on_update
 from .models import FactoryPayment, FactoryPaymentRecord
 from .serializers import FactoryPaymentSerializer, FactoryPaymentRecordSerializer
 from .permissions import FactoryPaymentPermission
@@ -50,6 +51,10 @@ class FactoryPaymentViewSet(BaseModelViewSet):
             ApprovalRequest.objects.create(
                 approval_type='settlement', target_id=instance.id,
                 target_model='FactoryPayment', submitted_by=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        resubmit_on_update(self.request.user, instance, 'settlement', 'FactoryPayment')
 
     @action(detail=False, methods=['post'], url_path=r'orders/(?P<order_id>\d+)/generate')
     def generate_by_order(self, request, order_id=None):
@@ -119,3 +124,8 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
                 ApprovalRequest.objects.create(
                     approval_type='payment', target_id=instance.id,
                     target_model='FactoryPaymentRecord', submitted_by=self.request.user)
+
+    def perform_update(self, serializer):
+        with transaction.atomic():
+            instance = serializer.save()
+            resubmit_on_update(self.request.user, instance, 'payment', 'FactoryPaymentRecord')

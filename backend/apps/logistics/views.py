@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.logistics.models import Logistics
 from apps.logistics.serializers import LogisticsSerializer
 from apps.system_mgmt.models import ApprovalRequest
+from apps.system_mgmt.approval import resubmit_on_update
 from common.views import BaseModelViewSet
 
 from .permissions import LogisticsPermission
@@ -51,3 +52,7 @@ class LogisticsViewSet(BaseModelViewSet):
             ApprovalRequest.objects.create(
                 approval_type='logistics', target_id=instance.id,
                 target_model='Logistics', submitted_by=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        resubmit_on_update(self.request.user, instance, 'logistics', 'Logistics')

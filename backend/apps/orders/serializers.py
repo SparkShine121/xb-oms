@@ -22,8 +22,9 @@ class OrderSerializer(serializers.ModelSerializer):
                   'customer', 'salesman', 'tracker',
                   'amount_usd', 'freight', 'insurance', 'surcharge', 'service_fee_usd', 'transport_cost',
                   'carrier', 'logistics_method', 'tracking_no', 'remark', 'is_cancelled', 'order_profit_usd',
-                  'customer_name', 'salesman_name', 'tracker_name', 'items', 'created_at', 'updated_at']
-        read_only_fields = ['order_profit_usd']
+                  'is_approved', 'customer_name', 'salesman_name', 'tracker_name', 'items',
+                  'created_at', 'updated_at']
+        read_only_fields = ['order_profit_usd', 'is_approved']
 
     def create(self, validated):
         items = validated.pop('items', [])
