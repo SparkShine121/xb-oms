@@ -26,6 +26,7 @@ dist-ssr/
 # Claude Code 本地设置
 .claude/settings.local.json
 .claude/settings.json
+.mcp.json
 
 # Superpowers SDD 工作空间（临时）
 .superpowers/
