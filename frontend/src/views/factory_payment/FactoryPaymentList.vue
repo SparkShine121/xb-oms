@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listPayments, deletePayment } from '../../api/factoryPayment'
+import { listPayments, deletePayment, bulkDeletePayments } from '../../api/factoryPayment'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 import { listFactories } from '../../api/basicInfo'
 import { useUserStore } from '../../stores/user'
 
@@ -25,6 +26,8 @@ function fmtMoney(v: any) {
 }
 
 const rows = ref<any[]>([])
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeletePayments, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -85,11 +88,13 @@ onMounted(() => { loadFactories(); load() })
         </el-select>
         <el-button type="primary" @click="query">查询</el-button>
         <div class="toolbar-right">
+          <el-button v-if="canManage" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           <el-button @click="router.push('/factory-payment/statement')">对账单</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="order_no" label="订单号" min-width="150" show-overflow-tooltip />
         <el-table-column prop="product_no" label="产品编号" width="120" show-overflow-tooltip />
         <el-table-column prop="factory_name" label="工厂" min-width="140" show-overflow-tooltip />

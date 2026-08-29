@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listLogistics, createLogistics, updateLogistics, deleteLogistics } from '../../api/basicInfo'
+import { listLogistics, createLogistics, updateLogistics, deleteLogistics, bulkDeleteLogistics } from '../../api/basicInfo'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 
 const rows = ref<any[]>([])
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteLogistics, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -80,11 +83,13 @@ onMounted(load)
         </el-select>
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
         <div class="toolbar-right">
+          <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           <el-button type="primary" @click="openCreate">新增物流商</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
         <el-table-column label="类型" width="100">
           <template #default="{ row }">

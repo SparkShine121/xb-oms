@@ -26,3 +26,10 @@ export const listCustomers = (p?: any) => request.get(`${base}/customers/`, { pa
 export const createCustomer = (d: any) => request.post(`${base}/customers/`, d)
 export const updateCustomer = (id: number, d: any) => request.patch(`${base}/customers/${id}/`, d)
 export const deleteCustomer = (id: number) => request.delete(`${base}/customers/${id}/`)
+
+// 批量删除
+export const bulkDeleteCategories = (ids: number[]) => request.post(`${base}/categories/bulk-delete/`, { ids })
+export const bulkDeleteProducts = (ids: number[]) => request.post(`${base}/products/bulk-delete/`, { ids })
+export const bulkDeleteFactories = (ids: number[]) => request.post(`${base}/factories/bulk-delete/`, { ids })
+export const bulkDeleteLogistics = (ids: number[]) => request.post(`${base}/logistics/bulk-delete/`, { ids })
+export const bulkDeleteCustomers = (ids: number[]) => request.post(`${base}/customers/bulk-delete/`, { ids })

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listCustomers, createCustomer, updateCustomer, deleteCustomer } from '../../api/basicInfo'
+import { listCustomers, createCustomer, updateCustomer, deleteCustomer, bulkDeleteCustomers } from '../../api/basicInfo'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 import request from '../../api/request'
 
 const rows = ref<any[]>([])
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteCustomers, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -87,11 +90,13 @@ onMounted(() => { loadSalesmen(); load() })
         </el-select>
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
         <div class="toolbar-right">
+          <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           <el-button type="primary" @click="openCreate">新增客户</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="name" label="客户名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="contact_person" label="联系人" width="110" />
         <el-table-column prop="phone" label="电话" width="130" />

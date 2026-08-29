@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listUsers, createUser, updateUser, deleteUser } from '../../api/auth'
+import { listUsers, createUser, updateUser, deleteUser, bulkDeleteUsers } from '../../api/auth'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 
 interface UserItem {
   id: number
@@ -18,6 +19,8 @@ const ROLE_OPTIONS = [
 ]
 
 const users = ref<UserItem[]>([])
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteUsers, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
@@ -101,9 +104,11 @@ onMounted(load)
   <div class="user-manage">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增用户</el-button>
+      <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
     </div>
     <el-card shadow="never">
-      <el-table :data="users" v-loading="loading" border>
+      <el-table :data="users" v-loading="loading" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="username" label="用户名" min-width="140" />
         <el-table-column prop="email" label="邮箱" min-width="180" />

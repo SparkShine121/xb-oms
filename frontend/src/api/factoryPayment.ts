@@ -11,6 +11,8 @@ export const updatePayment = (id: number, d: any) =>
   request.patch(`${base}/payments/${id}/`, d)
 export const deletePayment = (id: number) =>
   request.delete(`${base}/payments/${id}/`)
+export const bulkDeletePayments = (ids: number[]) =>
+  request.post(`${base}/payments/bulk-delete/`, { ids })
 
 export const listRecords = (p?: any) =>
   request.get(`${base}/records/`, { params: p })

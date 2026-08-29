@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { categoryTree, createCategory, updateCategory, deleteCategory } from '../../api/basicInfo'
+import { categoryTree, createCategory, updateCategory, deleteCategory, bulkDeleteCategories } from '../../api/basicInfo'
 
 interface CategoryNode {
   id: number
@@ -12,6 +12,7 @@ interface CategoryNode {
 }
 
 const treeData = ref<CategoryNode[]>([])
+const treeRef = ref()
 const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
@@ -73,15 +74,25 @@ async function remove(node: CategoryNode) {
 }
 
 onMounted(loadTree)
+
+async function handleBatchDelete() {
+  const ids = (treeRef.value?.getCheckedKeys() as number[]) ?? []
+  if (!ids.length) return ElMessage.warning('请先勾选要删除的类目')
+  await ElMessageBox.confirm(`确定删除选中的 ${ids.length} 个类目？其下所有子类目将一并删除。`, '批量删除', { type: 'warning' })
+  await bulkDeleteCategories(ids)
+  ElMessage.success('已删除')
+  loadTree()
+}
 </script>
 
 <template>
   <div class="category-manage">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate(null)">新增根类目</el-button>
+      <el-button type="danger" plain @click="handleBatchDelete">批量删除</el-button>
     </div>
     <el-card shadow="never">
-      <el-tree :data="treeData" node-key="id" :props="{ children: 'children', label: 'name' }" default-expand-all>
+      <el-tree ref="treeRef" :data="treeData" node-key="id" :props="{ children: 'children', label: 'name' }" default-expand-all show-checkbox>
         <template #default="{ data }">
           <div class="tree-node">
             <span class="tree-label">{{ data.name }}</span>

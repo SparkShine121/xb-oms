@@ -2,11 +2,14 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  listFactories, createFactory, updateFactory, deleteFactory,
+  listFactories, createFactory, updateFactory, deleteFactory, bulkDeleteFactories,
   importFactories, downloadFactoryTemplate,
 } from '../../api/basicInfo'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 
 const rows = ref<any[]>([])
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteFactories, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -67,6 +70,7 @@ async function remove(row: any) {
 const importFile = ref<File | null>(null)
 const importResult = ref<any>(null)
 const resultVisible = ref(false)
+const uploadRef = ref()
 
 function onFileChange(uploadFile: any) {
   importFile.value = uploadFile.raw ?? null
@@ -78,6 +82,7 @@ async function doImport() {
   importResult.value = resp.data
   resultVisible.value = true
   importFile.value = null
+  uploadRef.value?.clearFiles()
   load()
 }
 
@@ -101,16 +106,18 @@ onMounted(load)
         <el-input v-model="search" placeholder="搜索名称 / 别名 / 联系人" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
         <div class="toolbar-right">
-          <el-upload :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
+          <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
             <el-button>选择 Excel</el-button>
           </el-upload>
           <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
           <el-button @click="downloadTemplate">下载模板</el-button>
+          <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           <el-button type="primary" @click="openCreate">新增工厂</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="name" label="工厂名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="alias" label="别名" min-width="120" show-overflow-tooltip />
         <el-table-column prop="contact" label="联系人" width="110" />
@@ -194,6 +201,21 @@ onMounted(load)
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+.toolbar .el-upload,
+.toolbar-right .el-upload {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  margin: 0;
+}
+.toolbar .el-upload .el-button,
+.toolbar-right .el-upload .el-button {
+  margin: 0;
+}
+.toolbar-right > div {
+  display: flex;
+  align-items: center;
 }
 .pager {
   margin-top: 12px;

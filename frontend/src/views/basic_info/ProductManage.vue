@@ -2,11 +2,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  categoryTree, listProducts, createProduct, updateProduct, deleteProduct,
+  categoryTree, listProducts, createProduct, updateProduct, deleteProduct, bulkDeleteProducts,
   importProducts, downloadProductTemplate,
 } from '../../api/basicInfo'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 
 interface CategoryNode { id: number; name: string; children?: CategoryNode[] }
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteProducts, load)
 
 const rows = ref<any[]>([])
 const total = ref(0)
@@ -107,6 +110,7 @@ async function remove(row: any) {
 const importFile = ref<File | null>(null)
 const importResult = ref<any>(null)
 const resultVisible = ref(false)
+const uploadRef = ref()
 
 function onFileChange(uploadFile: any) {
   importFile.value = uploadFile.raw ?? null
@@ -118,6 +122,7 @@ async function doImport() {
   importResult.value = resp.data
   resultVisible.value = true
   importFile.value = null
+  uploadRef.value?.clearFiles()
   load()
 }
 
@@ -144,16 +149,18 @@ onMounted(() => { loadCategories(); load() })
         </el-select>
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
         <div class="toolbar-right">
-          <el-upload :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
+          <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
             <el-button>选择 Excel</el-button>
           </el-upload>
           <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
           <el-button @click="downloadTemplate">下载模板</el-button>
+          <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           <el-button type="primary" @click="openCreate">新增产品</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="product_no" label="产品编号" width="120" />
         <el-table-column prop="model" label="型号" width="120" />
         <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
@@ -247,6 +254,21 @@ onMounted(() => { loadCategories(); load() })
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+.toolbar .el-upload,
+.toolbar-right .el-upload {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  margin: 0;
+}
+.toolbar .el-upload .el-button,
+.toolbar-right .el-upload .el-button {
+  margin: 0;
+}
+.toolbar-right > div {
+  display: flex;
+  align-items: center;
 }
 .pager {
   margin-top: 12px;

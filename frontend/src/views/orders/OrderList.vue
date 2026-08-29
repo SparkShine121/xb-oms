@@ -3,8 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  listOrders, deleteOrder, importOrders, downloadOrderTemplate, setTracker,
+  listOrders, deleteOrder, importOrders, downloadOrderTemplate, setTracker, bulkDeleteOrders,
 } from '../../api/orders'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 import { listUsers } from '../../api/auth'
 import { useUserStore } from '../../stores/user'
 
@@ -47,6 +48,8 @@ const statusFilter = ref<string | null>(null)
 const salesmanFilter = ref<number | null>(null)
 const trackerFilter = ref<number | null>(null)
 const cancelledFilter = ref<string | null>(null)
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteOrders, load)
 
 const salesmen = ref<any[]>([])
 const allUsers = ref<any[]>([])
@@ -199,11 +202,13 @@ onMounted(() => { loadUsers(); load() })
             <el-button type="primary" plain :disabled="!importFile" :loading="importing" @click="doImport">批量导入</el-button>
           </template>
           <el-button @click="downloadTemplate">下载模板</el-button>
+          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           <el-button v-if="canCreate" type="primary" @click="router.push('/orders/new')">新增订单</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column label="订单号" min-width="140">
           <template #default="{ row }">
             <router-link :to="`/orders/${row.id}`" class="order-link">{{ row.order_no }}</router-link>

@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listShipments, deleteShipment } from '../../api/logistics'
+import { listShipments, deleteShipment, bulkDeleteShipments } from '../../api/logistics'
+import { useBulkDelete } from '../../composables/useBulkDelete'
 import { useUserStore } from '../../stores/user'
 
 const router = useRouter()
@@ -36,6 +37,8 @@ function fmtMoney(v: any) {
 }
 
 const rows = ref<any[]>([])
+
+const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteShipments, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -100,9 +103,11 @@ onMounted(load)
           <el-option v-for="c in CURRENCY_OPTIONS" :key="c" :label="c" :value="c" />
         </el-select>
         <el-button type="primary" @click="query">查询</el-button>
+        <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
+      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column label="订单号" min-width="140">
           <template #default="{ row }">
             <router-link :to="`/orders/${row.order}`" class="order-link">{{ row.order_no }}</router-link>
