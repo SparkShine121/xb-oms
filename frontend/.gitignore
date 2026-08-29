@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Vite 自动生成类型文件
+auto-imports.d.ts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -28,6 +28,9 @@ dist-ssr/
 .claude/settings.json
 .mcp.json
 
+# Claude Code 第三方设计 skill（ui-ux-pro-max 等，运行期工具，不入库）
+.claude/skills/
+
 # Superpowers SDD 工作空间（临时）
 .superpowers/
 
