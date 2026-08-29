@@ -27,7 +27,7 @@ function onLogout() {
 
 <template>
   <el-container class="main-layout">
-    <el-aside width="220px">
+    <el-aside width="220px" class="layout-aside">
       <div class="logo">xbb印刷品定制</div>
       <el-menu :default-active="route.path" :default-openeds="defaultOpeneds" router>
         <el-sub-menu index="/basic-info">
@@ -71,13 +71,13 @@ function onLogout() {
     </el-aside>
     <el-container>
       <el-header class="layout-header">
-        <div />
+        <div class="header-crumb">管理系统</div>
         <div class="header-user">
-          <el-tag v-if="userStore.username" size="small">{{ userStore.username }}</el-tag>
+          <el-tag v-if="userStore.username" size="small" effect="light">{{ userStore.username }}</el-tag>
           <el-button link type="primary" @click="onLogout">退出登录</el-button>
         </div>
       </el-header>
-      <el-main>
+      <el-main class="layout-main">
         <router-view />
       </el-main>
     </el-container>
@@ -87,26 +87,49 @@ function onLogout() {
 <style scoped>
 .main-layout {
   min-height: 100vh;
+  background: var(--bg-page);
+}
+.layout-aside {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
 }
 .logo {
   height: 60px;
-  line-height: 60px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   font-size: 16px;
-  font-weight: 600;
-  background: #1f3b73;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, var(--brand-800), var(--brand-600));
+}
+.layout-aside .el-menu {
+  flex: 1;
+  padding: 8px 0;
 }
 .layout-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e4e7ed;
-  background: #fff;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 20px;
+}
+.header-crumb {
+  color: var(--text-700);
+  font-weight: 600;
 }
 .header-user {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.layout-main {
+  padding: 20px;
+  background: var(--bg-page);
 }
 </style>

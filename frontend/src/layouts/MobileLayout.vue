@@ -22,9 +22,9 @@
 <style scoped>
 .mobile-layout {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: var(--bg-page);
 }
 .mobile-content {
-  padding-bottom: 50px;
+  padding-bottom: calc(var(--van-tabbar-height, 50px) + env(safe-area-inset-bottom, 0px) + 8px);
 }
 </style>

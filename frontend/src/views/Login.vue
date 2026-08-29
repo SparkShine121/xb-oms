@@ -28,7 +28,8 @@ async function onSubmit() {
     }
     router.push('/')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '登录失败')
+    const msg = typeof e.response?.data?.message === 'string' ? e.response?.data?.message : '登录失败'
+    ElMessage({ message: msg, type: 'error', customClass: 'login-toast' })
   } finally {
     loading.value = false
   }
@@ -69,18 +70,36 @@ async function onSubmit() {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1f3b73 0%, #3a5ba0 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
 }
 .login-card {
   width: 380px;
-  padding: 12px 8px;
+  padding: 28px 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: var(--shadow-pop);
 }
 .login-title {
   text-align: center;
-  margin: 8px 0 24px;
-  color: #1f3b73;
+  margin: 4px 0 28px;
+  color: var(--brand-800);
+  font-size: 20px;
+  font-weight: 700;
 }
 .login-btn {
   width: 100%;
+}
+</style>
+
+<style>
+/* 登录失败的 toast 居中显示在页面中间 */
+.login-toast.el-message {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
 }
 </style>
