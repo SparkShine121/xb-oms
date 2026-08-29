@@ -1,8 +1,8 @@
-// node 环境（非 jsdom）下提供 localStorage 轻量实现，
+// node 环境（非 jsdom）下提供 localStorage / sessionStorage 轻量实现，
 // 供不依赖 DOM 的纯逻辑测试（如 user store）使用。
-if (typeof globalThis.localStorage === 'undefined') {
+function makeStorage(): Storage {
   const store = new Map<string, string>()
-  globalThis.localStorage = {
+  return {
     getItem: (k: string) => store.get(k) ?? null,
     setItem: (k: string, v: string) => { store.set(k, String(v)) },
     removeItem: (k: string) => { store.delete(k) },
@@ -11,3 +11,5 @@ if (typeof globalThis.localStorage === 'undefined') {
     get length() { return store.size },
   } as Storage
 }
+if (typeof globalThis.localStorage === 'undefined') globalThis.localStorage = makeStorage()
+if (typeof globalThis.sessionStorage === 'undefined') globalThis.sessionStorage = makeStorage()

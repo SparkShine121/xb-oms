@@ -3,13 +3,13 @@
 import { setActivePinia, createPinia } from 'pinia'
 import { useUserStore } from '../stores/user'
 
-beforeEach(() => { setActivePinia(createPinia()); localStorage.clear() })
+beforeEach(() => { setActivePinia(createPinia()); sessionStorage.clear() })
 
 test('setToken stores token', () => {
   const s = useUserStore()
   s.setToken('abc')
   expect(s.token).toBe('abc')
-  expect(localStorage.getItem('token')).toBe('abc')
+  expect(sessionStorage.getItem('token')).toBe('abc')
 })
 
 test('logout clears token and roles', () => {
