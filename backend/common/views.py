@@ -1,5 +1,6 @@
 from rest_framework import viewsets
-from common.response import success_response
+from rest_framework.decorators import action
+from common.response import success_response, error_response
 
 
 class BaseModelViewSet(viewsets.ModelViewSet):
@@ -29,3 +30,16 @@ class BaseModelViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
         return success_response(None, message='已删除')
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request, *args, **kwargs):
+        ids = request.data.get('ids') or []
+        if not isinstance(ids, list) or not ids:
+            return error_response(1001, '未指定要删除的记录', status=400)
+        qs = self.get_queryset().filter(pk__in=ids)
+        deleted = 0
+        for obj in qs:
+            self.check_object_permissions(request, obj)
+            obj.delete()
+            deleted += 1
+        return success_response({'deleted': deleted}, message='已删除')
