@@ -20,7 +20,10 @@ const salesmen = ref<{ id: number; username: string }[]>([])
 async function loadSalesmen() {
   try {
     const resp: any = await request.get('/auth/users/', { params: { page_size: 200 } })
-    salesmen.value = resp.data.results ?? []
+    // 仅业务员(salesman 角色、非 admin)可被指派为客户业务员
+    salesmen.value = (resp.data.results ?? []).filter(
+      (u: any) => u.groups?.includes('salesman') && !u.groups?.includes('admin'),
+    )
   } catch {
     salesmen.value = []
   }

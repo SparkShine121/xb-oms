@@ -32,6 +32,16 @@ class LogisticsProviderSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(serializers.ModelSerializer):
     salesman_name = serializers.CharField(source='salesman.username', read_only=True, default='')
+
+    def validate_salesman(self, value):
+        if value is not None:
+            groups = value.groups.values_list('name', flat=True)
+            if not ('salesman' in groups):
+                raise serializers.ValidationError('业务员必须为 salesman 角色的用户')
+            if 'admin' in groups:
+                raise serializers.ValidationError('不能将 admin 指派为业务员')
+        return value
+
     class Meta:
         model = Customer
         fields = ['id', 'name', 'contact_person', 'phone', 'email', 'salesman', 'salesman_name', 'remark', 'created_at', 'updated_at']
