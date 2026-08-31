@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listFactories, createFactory, updateFactory, deleteFactory, bulkDeleteFactories,
   importFactories, downloadFactoryTemplate,
 } from '../../api/basicInfo'
 import { useBulkDelete } from '../../composables/useBulkDelete'
+import { useUserStore } from '../../stores/user'
+
+// 基础信息写操作（新增/编辑/删除/导入）仅 admin；其他角色只读
+const isAdmin = computed(() => useUserStore().roles.includes('admin'))
 
 const rows = ref<any[]>([])
 
@@ -106,13 +110,15 @@ onMounted(load)
         <el-input v-model="search" placeholder="搜索名称 / 别名 / 联系人" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
         <div class="toolbar-right">
-          <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
-            <el-button>选择 Excel</el-button>
-          </el-upload>
-          <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
+          <template v-if="isAdmin">
+            <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
+              <el-button>选择 Excel</el-button>
+            </el-upload>
+            <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
+          </template>
           <el-button @click="downloadTemplate">下载模板</el-button>
-          <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button type="primary" @click="openCreate">新增工厂</el-button>
+          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+          <el-button v-if="isAdmin" type="primary" @click="openCreate">新增工厂</el-button>
         </div>
       </div>
 
@@ -126,8 +132,8 @@ onMounted(load)
         <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
+            <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

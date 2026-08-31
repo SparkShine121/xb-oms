@@ -23,6 +23,9 @@ function onLogout() {
   userStore.logout()
   router.push('/login')
 }
+
+// 系统管理仅 admin 可见
+const isAdmin = computed(() => userStore.roles.includes('admin'))
 </script>
 
 <template>
@@ -38,7 +41,7 @@ function onLogout() {
           <el-menu-item index="/basic-info/logistics">物流服务商</el-menu-item>
           <el-menu-item index="/basic-info/customer">客户</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="/system">
+        <el-sub-menu v-if="isAdmin" index="/system">
           <template #title>系统管理</template>
           <el-menu-item index="/system/approvals">待审批</el-menu-item>
           <el-menu-item index="/system/users">用户管理</el-menu-item>

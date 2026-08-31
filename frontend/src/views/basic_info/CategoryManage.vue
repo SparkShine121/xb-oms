@@ -2,6 +2,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { categoryTree, createCategory, updateCategory, deleteCategory, bulkDeleteCategories } from '../../api/basicInfo'
+import { useUserStore } from '../../stores/user'
+
+// 基础信息写操作（新增/编辑/删除）仅 admin；其他角色只读
+const isAdmin = computed(() => useUserStore().roles.includes('admin'))
 
 interface CategoryNode {
   id: number
@@ -88,8 +92,8 @@ async function handleBatchDelete() {
 <template>
   <div class="category-manage">
     <div class="toolbar">
-      <el-button type="primary" @click="openCreate(null)">新增根类目</el-button>
-      <el-button type="danger" plain @click="handleBatchDelete">批量删除</el-button>
+      <el-button v-if="isAdmin" type="primary" @click="openCreate(null)">新增根类目</el-button>
+      <el-button v-if="isAdmin" type="danger" plain @click="handleBatchDelete">批量删除</el-button>
     </div>
     <el-card shadow="never">
       <el-tree ref="treeRef" :data="treeData" node-key="id" :props="{ children: 'children', label: 'name' }" default-expand-all show-checkbox>
@@ -97,9 +101,9 @@ async function handleBatchDelete() {
           <div class="tree-node">
             <span class="tree-label">{{ data.name }}</span>
             <span class="tree-actions">
-              <el-button link type="primary" size="small" @click="openCreate(data.id)">新增子类</el-button>
-              <el-button link type="primary" size="small" @click="openEdit(data)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="remove(data)">删除</el-button>
+              <el-button v-if="isAdmin" link type="primary" size="small" @click="openCreate(data.id)">新增子类</el-button>
+              <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(data)">编辑</el-button>
+              <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(data)">删除</el-button>
             </span>
           </div>
         </template>

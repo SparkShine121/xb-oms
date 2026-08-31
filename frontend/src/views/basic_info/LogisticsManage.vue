@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listLogistics, createLogistics, updateLogistics, deleteLogistics, bulkDeleteLogistics } from '../../api/basicInfo'
 import { useBulkDelete } from '../../composables/useBulkDelete'
+import { useUserStore } from '../../stores/user'
 
 const rows = ref<any[]>([])
 
 const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteLogistics, load)
+// 基础信息写操作（新增/编辑/删除）仅 admin；其他角色只读
+const isAdmin = computed(() => useUserStore().roles.includes('admin'))
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -83,8 +86,8 @@ onMounted(load)
         </el-select>
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
         <div class="toolbar-right">
-          <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button type="primary" @click="openCreate">新增物流商</el-button>
+          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+          <el-button v-if="isAdmin" type="primary" @click="openCreate">新增物流商</el-button>
         </div>
       </div>
 
@@ -101,8 +104,8 @@ onMounted(load)
         <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
+            <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
