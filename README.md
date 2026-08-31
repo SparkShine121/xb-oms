@@ -26,7 +26,7 @@
 | TypeScript | 6.0 | 类型（`npm run build` 含 vue-tsc 类型检查） |
 | Element Plus | 2.14 | PC/平板端组件库 |
 | Vant | 4.10 | 手机端组件库 |
-| Pinia | 4.0 | 状态管理（token/角色，localStorage 持久化） |
+| Pinia | 4.0 | 状态管理（token/角色，sessionStorage 持久化，新标签页需重新登录） |
 | vue-router | 5.2 | 路由（PC `/` 与移动端 `/m/` 双端分流） |
 | ECharts | 6.1 | 数据分析图表（折线/饼图/柱状图） |
 | axios | 1.19 | HTTP 封装（Bearer 注入、401 跳转、全局错误提示） |
@@ -58,7 +58,7 @@
 
 ### 关键架构模式
 
-- **统一响应**：所有 API 返回 `{code: 0, message, data}`，前端 axios 拦截器统一解包、401 跳转登录、非 401 全局报错
+- **统一响应**：所有 API 返回 `{code: 0, message, data}`，前端 axios 拦截器统一解包；401 时非登录页跳登录、登录页弹居中错误提示；token 存 sessionStorage
 - **`common/` 通用库**：`BaseModelViewSet`（统一 CRUD 包装）、`response`、`permissions`（RolePermission/AdminWriteOthersReadOnly）、统一异常处理、分页
 - **TDD 开发流程**：每任务先写失败测试 → 实现 → 验证 → 独立 commit
 
@@ -111,13 +111,19 @@ npm run dev                             # http://localhost:5173（Vite 代理 /a
 
 ```bash
 cd backend && python -m pytest -v        # 163 passed
-cd frontend && npx vitest run --test-timeout=30000   # ARM64 需加长超时
+cd frontend && npx vitest run --test-timeout=30000   # 15 个测试全绿（ARM64 需加长超时）
 npm run build                            # 构建（vue-tsc 类型检查 + vite build）
 ```
 
 ## 当前状态
 
-全部 9 个模块开发完成：后端 163 个测试全绿、前端 Vitest 全绿、`npm run build` 通过。开发用 SQLite（ARM64 无原生 MySQL），生产部署计划用 MySQL 8 + Windows 绿色安装包（待部署阶段）。
+全部 9 个模块开发完成：后端 163 个测试全绿、前端 15 个测试全绿、`npm run build` 通过。开发用 SQLite（ARM64 无原生 MySQL），生产部署计划用 MySQL 8 + Windows 绿色安装包（待部署阶段）。
+
+近期 UI/UX 增强：
+
+- **浅色专业企业风全局主题**：Element Plus / Vant 设计令牌统一换肤（深蓝主色、8px 圆角、柔阴影，表格/卡片/按钮/菜单统一）
+- **登录体验优化**：登录失败弹居中 toast；token 改用 `sessionStorage`（关标签页/新标签页需重新登录）
+- **列表多选/全选 + 批量删除**：类目/产品/工厂/物流服务商/客户/订单/工厂结算/物流/用户 9 个列表支持多选与批量删除（后端 `BaseModelViewSet` 新增 `bulk-delete`，逐个做对象级权限校验）
 
 ## 分支策略
 
