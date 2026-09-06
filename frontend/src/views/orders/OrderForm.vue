@@ -47,14 +47,15 @@ const saving = ref(false)
 const loading = ref(false)
 
 async function loadOptions() {
-  const [custResp, facResp, userResp] = await Promise.all([
+  // allSettled：各请求独立降级。/auth/users/ 为 admin 专属，非 admin 403 时不影响客户/工厂下拉
+  const [custResp, facResp, userResp] = await Promise.allSettled([
     listCustomers({ page: 1, page_size: 500 }),
     listFactories({ page: 1, page_size: 500 }),
     listUsers({ page: 1, page_size: 200 }),
   ])
-  customers.value = (custResp as any).data.results ?? []
-  factories.value = (facResp as any).data.results ?? []
-  const all = (userResp as any).data.results ?? []
+  customers.value = custResp.status === 'fulfilled' ? ((custResp.value as any).data.results ?? []) : []
+  factories.value = facResp.status === 'fulfilled' ? ((facResp.value as any).data.results ?? []) : []
+  const all = userResp.status === 'fulfilled' ? ((userResp.value as any).data.results ?? []) : []
   allUsers.value = all
   salesmen.value = all.filter((u: any) => u.groups?.includes('salesman'))
 }

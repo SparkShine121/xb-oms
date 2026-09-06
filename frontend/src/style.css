@@ -203,3 +203,51 @@ body {
   background: var(--brand-600);
   color: #fff;
 }
+
+/* ============================================================
+ * 全局 Toast 统一样式：居中 + 白底黑字（类似 alert）+ 遮罩
+ * 覆盖 Element Plus 的 ElMessage 与 Vant 的 toast
+ * ============================================================ */
+
+/* 遮罩层（由 main.ts 的 MutationObserver 在出现 toast 时挂载） */
+.global-toast-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 2400;
+  pointer-events: auto;
+}
+
+/* Element Plus ElMessage：页面中间、白底黑字 */
+.el-message {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translate(-50%, -50%) !important;
+  background: #fff !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-900) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  padding: 12px 20px !important;
+  z-index: 2500 !important;
+}
+.el-message .el-message__content {
+  color: var(--text-900) !important;
+  font-size: 14px;
+}
+
+/* Vant toast：白底黑字（Vant 默认已居中） */
+.van-toast {
+  background: #fff !important;
+  color: var(--text-900) !important;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  z-index: 2500 !important;
+}
+.van-toast .van-toast__text {
+  color: var(--text-900) !important;
+}
+.van-toast .van-icon {
+  color: inherit !important;
+}

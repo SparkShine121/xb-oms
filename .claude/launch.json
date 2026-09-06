@@ -7,6 +7,13 @@
       "runtimeArgs": ["D:\\Pad Windows Data\\Claude项目\\xb项目\\frontend\\node_modules\\vite\\bin\\vite.js", "D:\\Pad Windows Data\\Claude项目\\xb项目\\frontend", "--port", "5173", "--strictPort"],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "frontend-mac",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["/Users/xuxu/Documents/Claude项目/xb项目/frontend/node_modules/vite/bin/vite.js", "/Users/xuxu/Documents/Claude项目/xb项目/frontend", "--port", "5173", "--strictPort"],
+      "port": 5173,
+      "autoPort": false
     }
   ]
 }

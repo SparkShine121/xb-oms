@@ -90,16 +90,3 @@ async function onSubmit() {
   width: 100%;
 }
 </style>
-
-<style>
-/* 登录失败的 toast 居中显示在页面中间 */
-.login-toast.el-message {
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: translate(-50%, -50%) !important;
-  margin: 0 !important;
-}
-</style>
