@@ -73,7 +73,9 @@ async function load() {
   }
 }
 
+// 业务员/跟单员筛选仅 admin 使用；/auth/users/ 为 admin 专属接口，非 admin 不请求（避免 403 提示）
 async function loadUsers() {
+  if (!isAdmin.value) return
   const resp: any = await listUsers({ page: 1, page_size: 200 })
   const all = resp.data.results
   allUsers.value = all
@@ -175,10 +177,10 @@ onMounted(() => { loadUsers(); load() })
         <el-select v-model="statusFilter" clearable placeholder="跟踪状态" style="width: 130px" @change="query">
           <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
         </el-select>
-        <el-select v-model="salesmanFilter" clearable placeholder="业务员" style="width: 140px" @change="query">
+        <el-select v-if="isAdmin" v-model="salesmanFilter" clearable placeholder="业务员" style="width: 140px" @change="query">
           <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
         </el-select>
-        <el-select v-model="trackerFilter" clearable placeholder="跟单员" style="width: 140px" @change="query">
+        <el-select v-if="isAdmin" v-model="trackerFilter" clearable placeholder="跟单员" style="width: 140px" @change="query">
           <el-option v-for="u in allUsers" :key="u.id" :label="u.username" :value="u.id" />
         </el-select>
         <el-select v-model="cancelledFilter" clearable placeholder="订单状态" style="width: 120px" @change="query">

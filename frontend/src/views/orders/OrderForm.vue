@@ -151,8 +151,9 @@ async function save() {
     } else {
       await createOrder(payload)
     }
+    // 提示保持 3 秒（与 toast 自动关闭时长一致）后再跳转订单列表
     ElMessage.success('保存成功')
-    router.push('/orders/list')
+    setTimeout(() => router.push('/orders/list'), 3000)
   } finally {
     saving.value = false
   }

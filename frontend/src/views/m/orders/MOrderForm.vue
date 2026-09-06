@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { showSuccessToast } from 'vant'
 import { createOrder, updateOrder, getOrder } from '../../../api/orders'
 import { listCustomers } from '../../../api/basicInfo'
 import { listUsers } from '../../../api/auth'
@@ -205,7 +206,9 @@ async function onSubmit() {
     } else {
       await createOrder(payload)
     }
-    router.push('/m/orders')
+    // 提示保持 3 秒后再跳转移动端订单列表
+    showSuccessToast('保存成功')
+    setTimeout(() => router.push('/m/orders'), 3000)
   } finally {
     saving.value = false
   }

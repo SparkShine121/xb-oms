@@ -19,9 +19,10 @@ const search = ref('')
 const salesmanFilter = ref<number | null>(null)
 const loading = ref(false)
 
-// 业务员列表：来自 /api/auth/users/（admin 可见）；不可见时降级为空列表，仍可正常维护客户
+// 业务员列表：/auth/users/ 为 admin 专属接口，仅 admin 请求；非 admin 显示用 salesman_name，不受影响
 const salesmen = ref<{ id: number; username: string }[]>([])
 async function loadSalesmen() {
+  if (!isAdmin.value) return
   try {
     const resp: any = await request.get('/auth/users/', { params: { page_size: 200 } })
     // 仅业务员(salesman 角色、非 admin)可被指派为客户业务员
@@ -92,7 +93,7 @@ onMounted(() => { loadSalesmen(); load() })
     <el-card shadow="never">
       <div class="toolbar">
         <el-input v-model="search" placeholder="搜索名称 / 联系人 / 电话" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
-        <el-select v-model="salesmanFilter" clearable placeholder="全部业务员" style="width: 160px" @change="page = 1; load()">
+        <el-select v-if="isAdmin" v-model="salesmanFilter" clearable placeholder="全部业务员" style="width: 160px" @change="page = 1; load()">
           <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
         </el-select>
         <el-button type="primary" @click="page = 1; load()">查询</el-button>
