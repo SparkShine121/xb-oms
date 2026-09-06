@@ -4,14 +4,26 @@
     {
       "name": "frontend-dev",
       "runtimeExecutable": "D:\\Pad Windows Data\\nodejs\\node-v22.23.2-win-arm64\\node.exe",
-      "runtimeArgs": ["D:\\Pad Windows Data\\Claude项目\\xb项目\\frontend\\node_modules\\vite\\bin\\vite.js", "D:\\Pad Windows Data\\Claude项目\\xb项目\\frontend", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "D:\\Pad Windows Data\\Claude项目\\xb项目\\frontend\\node_modules\\vite\\bin\\vite.js",
+        "D:\\Pad Windows Data\\Claude项目\\xb项目\\frontend",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173,
       "autoPort": false
     },
     {
       "name": "frontend-mac",
       "runtimeExecutable": "/opt/homebrew/bin/node",
-      "runtimeArgs": ["/Users/xuxu/Documents/Claude项目/xb项目/frontend/node_modules/vite/bin/vite.js", "/Users/xuxu/Documents/Claude项目/xb项目/frontend", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "/Users/xuxu/Documents/Claude项目/xb项目/frontend/node_modules/vite/bin/vite.js",
+        "/Users/xuxu/Documents/Claude项目/xb项目/frontend",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173,
       "autoPort": false
     }
