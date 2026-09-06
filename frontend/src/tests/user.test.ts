@@ -14,7 +14,7 @@ test('setToken stores token', () => {
 
 test('logout clears token and roles', () => {
   const s = useUserStore()
-  s.setToken('abc'); s.roles = ['admin']
+  s.setToken('abc'); s.setProfile({ id: 1, username: 'u', roles: ['admin'] }); s.roles = ['admin']
   s.logout()
-  expect(s.token).toBe(''); expect(s.roles).toEqual([])
+  expect(s.token).toBe(''); expect(s.roles).toEqual([]); expect(s.id).toBeNull()
 })

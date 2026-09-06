@@ -62,15 +62,19 @@ const salesmanText = computed(() => salesmen.value.find((s: any) => s.id === for
 const trackerText = computed(() => allUsers.value.find((u: any) => u.id === form.tracker)?.username || '')
 
 async function loadOptions() {
-  // allSettled：各请求独立降级。/auth/users/ 为 admin 专属，非 admin 403 时不影响客户下拉
+  // allSettled + 条件请求：/auth/users/ 为 admin 专属，非 admin 不请求（避免 403）。
+  // 非 admin（业务员）创建订单时，业务员下拉降级为当前登录用户自己。
   const [custResp, userResp] = await Promise.allSettled([
     listCustomers({ page: 1, page_size: 500 }),
-    listUsers({ page: 1, page_size: 200 }),
+    isAdmin.value ? listUsers({ page: 1, page_size: 200 }) : Promise.resolve(null),
   ])
   customers.value = custResp.status === 'fulfilled' ? ((custResp.value as any).data.results ?? []) : []
-  const all = userResp.status === 'fulfilled' ? ((userResp.value as any).data.results ?? []) : []
+  const all = userResp.status === 'fulfilled' && userResp.value ? ((userResp.value as any).data.results ?? []) : []
   allUsers.value = all
-  salesmen.value = all.filter((u: any) => u.groups?.includes('salesman'))
+  salesmen.value = all.length
+    ? all.filter((u: any) => u.groups?.includes('salesman'))
+    : (isAdmin.value || !userStore.id ? [] : [{ id: userStore.id, username: userStore.username }])
+  if (!isAdmin.value && userStore.id) form.salesman = userStore.id
 }
 
 async function loadOrder() {
