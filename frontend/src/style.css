@@ -182,6 +182,27 @@ body {
 }
 
 /* ============================================================
+ * 工具栏：el-upload 触发按钮（选择 Excel）与相邻按钮垂直对齐
+ * 全局生效：产品库 / 工厂库 / 订单列表等所有含上传按钮的页面
+ * ============================================================ */
+.toolbar .el-upload,
+.toolbar-right .el-upload {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  margin: 0;
+}
+.toolbar .el-upload .el-button,
+.toolbar-right .el-upload .el-button {
+  margin: 0;
+}
+.toolbar-right > div,
+.toolbar > div {
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================================
  * 细节：滚动条 / 选择高亮 / 空状态
  * ============================================================ */
 ::-webkit-scrollbar {
