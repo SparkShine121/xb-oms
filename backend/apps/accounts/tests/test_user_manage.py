@@ -31,10 +31,21 @@ def test_admin_updates_user_password(admin_client, db):
     assert User.objects.get(id=target.id).check_password('new123456')
 
 def test_admin_updates_user_groups(admin_client, db):
+    """角色单选:更新时把用户角色切换为单个角色组"""
     target = User.objects.create_user('target2', password='pw123456')
+    target.groups.add(Group.objects.get(name='salesman'))
     r = admin_client.patch(f'/api/auth/users/{target.id}/', {
-        'groups': ['salesman', 'tracker']
+        'groups': ['tracker']
     }, format='json')
     assert r.status_code == 200
     groups = set(User.objects.get(id=target.id).groups.values_list('name', flat=True))
-    assert groups == {'salesman', 'tracker'}
+    assert groups == {'tracker'}
+
+def test_user_cannot_have_multiple_roles(admin_client, db):
+    """角色单选：一次分配多个角色组应被拒绝"""
+    from apps.accounts.serializers import UserManageSerializer
+    from apps.accounts.serializers import Group
+    s = UserManageSerializer(data={'username': 'multi', 'password': 'pw123456',
+                                   'groups': ['admin', 'tracker']})
+    assert not s.is_valid(), s.errors
+    assert '每个用户只能分配一个角色' in str(s.errors)

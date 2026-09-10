@@ -10,6 +10,7 @@ def admin_client(db):
 
 def test_create_customer_with_salesman(admin_client, db):
     sales = User.objects.create_user('sales1', password='pw123456')
+    sales.groups.add(Group.objects.get(name='salesman'))
     r = admin_client.post('/api/basic-info/customers/', {
         'name': '客户A', 'contact_person': '王五', 'salesman': sales.id
     }, format='json')

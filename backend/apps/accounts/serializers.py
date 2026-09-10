@@ -16,6 +16,12 @@ class UserSerializer(serializers.ModelSerializer):
 class UserManageSerializer(serializers.ModelSerializer):
     groups = serializers.SlugRelatedField(queryset=Group.objects.all(), slug_field='name', many=True, required=False)
     password = serializers.CharField(write_only=True, required=True)
+
+    def validate_groups(self, value):
+        # 角色单选：每个用户最多一个角色组
+        if len(value) > 1:
+            raise serializers.ValidationError('每个用户只能分配一个角色')
+        return value
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'groups']

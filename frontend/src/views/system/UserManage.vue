@@ -29,7 +29,7 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
-const form = reactive({ username: '', email: '', password: '', groups: [] as string[] })
+const form = reactive({ username: '', email: '', password: '', group: '' as string })
 
 async function load() {
   loading.value = true
@@ -47,7 +47,7 @@ function openCreate() {
   form.username = ''
   form.email = ''
   form.password = ''
-  form.groups = []
+  form.group = ''
   dialogVisible.value = true
 }
 
@@ -56,7 +56,7 @@ function openEdit(u: UserItem) {
   form.username = u.username
   form.email = u.email
   form.password = ''
-  form.groups = [...u.groups]
+  form.group = u.groups[0] ?? ''
   dialogVisible.value = true
 }
 
@@ -65,7 +65,7 @@ async function save() {
   if (!editingId.value && !form.password) return ElMessage.warning('请输入初始密码')
   saving.value = true
   try {
-    const payload: any = { username: form.username.trim(), email: form.email, groups: form.groups }
+    const payload: any = { username: form.username.trim(), email: form.email, groups: form.group ? [form.group] : [] }
     if (editingId.value) {
       if (form.password) payload.password = form.password
       await updateUser(editingId.value, payload)
@@ -147,9 +147,9 @@ onMounted(load)
           <el-input v-model="form.password" type="password" show-password :placeholder="editingId ? '留空则不修改' : '登录密码'" />
         </el-form-item>
         <el-form-item label="角色">
-          <el-checkbox-group v-model="form.groups">
-            <el-checkbox v-for="r in ROLE_OPTIONS" :key="r.name" :value="r.name">{{ r.label }}</el-checkbox>
-          </el-checkbox-group>
+          <el-radio-group v-model="form.group">
+            <el-radio v-for="r in ROLE_OPTIONS" :key="r.name" :value="r.name">{{ r.label }}</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>

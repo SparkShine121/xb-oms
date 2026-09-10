@@ -35,3 +35,27 @@ def test_exchange_rate_non_admin_forbidden(db):
     c = APIClient(); c.force_authenticate(u)
     r = c.post('/api/orders/exchange-rates/', {'currency_pair':'USD/CNY','rate':'7.20','effective_date':'2026-08-01'}, format='json')
     assert r.status_code == 403
+def test_salesman_cannot_change_salesman_on_update(db):
+    """非 admin 更新订单时,派单字段(salesman/tracker)应被忽略——仅 admin 可改"""
+    from apps.basic_info.models import Customer
+    admin = User.objects.create_user('admin2', password='pw123456')
+    admin.groups.add(Group.objects.get(name='admin'))
+    sales1 = User.objects.create_user('salesA', password='pw123456')
+    sales1.groups.add(Group.objects.get(name='salesman'))
+    sales2 = User.objects.create_user('salesB', password='pw123456')
+    sales2.groups.add(Group.objects.get(name='salesman'))
+    cust = Customer.objects.create(name='客户甲', salesman=sales1)
+    order = Order.objects.create(order_no='OO1', customer=cust, salesman=sales1)
+    client = APIClient(); client.force_authenticate(sales1)
+    r = client.patch(f'/api/orders/orders/{order.id}/',
+                     {'remark': '业务员改备注', 'salesman': sales2.id}, format='json')
+    assert r.status_code == 200
+    order.refresh_from_db()
+    assert order.salesman_id == sales1.id      # salesman 变更被忽略
+    assert order.remark == '业务员改备注'        # 其他字段正常更新
+    # admin 可以改
+    cadmin = APIClient(); cadmin.force_authenticate(admin)
+    r2 = cadmin.patch(f'/api/orders/orders/{order.id}/', {'salesman': sales2.id}, format='json')
+    assert r2.status_code == 200
+    order.refresh_from_db()
+    assert order.salesman_id == sales2.id      # admin 修改生效

@@ -26,6 +26,16 @@ class OrderSerializer(serializers.ModelSerializer):
                   'created_at', 'updated_at']
         read_only_fields = ['order_profit_usd', 'is_approved']
 
+    def validate(self, attrs):
+        # 派单类字段（业务员/跟单员）仅 admin 可改：非 admin 更新时忽略，防止绕过前端直接调 API
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user is not None and self.instance is not None \
+                and not user.groups.filter(name='admin').exists():
+            attrs.pop('salesman', None)
+            attrs.pop('tracker', None)
+        return attrs
+
     def create(self, validated):
         items = validated.pop('items', [])
         order = Order.objects.create(**validated)

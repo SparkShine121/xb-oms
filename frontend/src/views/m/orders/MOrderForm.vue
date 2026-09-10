@@ -274,8 +274,9 @@ onMounted(async () => {
         />
         <van-field
           :model-value="salesmanText"
-          is-link
+          :is-link="!(isEdit && !isAdmin)"
           readonly
+          :disabled="isEdit && !isAdmin"
           label="业务员"
           placeholder="选择业务员"
           @click="showSalesmanPicker = true"

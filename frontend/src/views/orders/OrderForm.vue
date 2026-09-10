@@ -220,7 +220,7 @@ onMounted(async () => {
           </el-col>
           <el-col :span="8">
             <el-form-item label="业务员">
-              <el-select v-model="form.salesman" clearable filterable placeholder="选择业务员" style="width: 100%">
+              <el-select v-model="form.salesman" clearable filterable placeholder="选择业务员" style="width: 100%" :disabled="isEdit && !isAdmin" title="业务员分配仅管理员可修改">
                 <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
               </el-select>
             </el-form-item>
