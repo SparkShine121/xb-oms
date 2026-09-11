@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * 在每次对代码进行维护后，**必须**调用**neat-freak**这个skill进行代码整理
 * 每次完成任务后都检查一遍产生的中间文件及其所在路径并向我汇报，由我决定是否需要删除这些文件
 * **agent 自进化**：每个任务使用 **agent-evolution** skill 执行自动进化流程——任务开始前按相关性读取错题集（agent-evolution-error）；任务完成后主 agent 攒批记录 MEMORY（agent-evolution-memory）、调用 agent-evolution-review 做旁观者审查、调用 agent-evolution-tool 评估中间文件、更新候选 SOP 计数（达到阈值由 agent-evolution-skill 提案）。所有写入/修改动作必须先经我确认。**强制检查：向用户汇报任务结果之前，若本次任务尚未执行进化流程（或未说明无候选而跳过记录的理由），必须先补执行再汇报；禁止跳过**
+* **bug 修复留档**：每修复一个 bug，其修复方案和修复操作日志必须保存在 **`bug修复/`** 目录下；每个 bug 的相关内容保存在各自独立子目录中（如 `bug修复/BUG-SIM-002/`），子目录不存在时新建
 * **分支策略**：日常开发默认在 **`dev`** 分支进行；`test` 分支用于测试验证；`main` 分支保持稳定发布版本。每个模块开发时从 `dev` 拉出 `feature/<模块名>` 子分支，完成后合并回 `dev`
 
 ## 技术栈
