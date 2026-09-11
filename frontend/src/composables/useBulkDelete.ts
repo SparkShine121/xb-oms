@@ -17,8 +17,18 @@ export function useBulkDelete(deleter: (ids: number[]) => Promise<any>, reload: 
     if (!selection.value.length) return ElMessage.warning('请先勾选要删除的记录')
     const count = selection.value.length
     await ElMessageBox.confirm(`确定删除选中的 ${count} 条记录？`, '批量删除', { type: 'warning' })
-    await deleter(selection.value.map((r: any) => r.id))
-    ElMessage.success(`已删除 ${count} 条`)
+    // 后端响应 data: {deleted, forbidden, not_found}（BUG-SIM-001 修复后新增清单）
+    const resp = await deleter(selection.value.map((r: any) => r.id))
+    const { deleted = count, forbidden = [], not_found = [] } = resp?.data ?? {}
+    if (forbidden.length || not_found.length) {
+      ElMessage.warning(
+        `已删除 ${deleted} 条` +
+        (forbidden.length ? `，${forbidden.length} 条无权限` : '') +
+        (not_found.length ? `，${not_found.length} 条不存在` : '')
+      )
+    } else {
+      ElMessage.success(`已删除 ${deleted} 条`)
+    }
     reload()
   }
 
