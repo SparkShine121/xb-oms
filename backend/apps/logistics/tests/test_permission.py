@@ -134,3 +134,16 @@ def test_tracker_cannot_create_for_other_order(db):
     client = APIClient(); client.force_authenticate(tr)
     r = client.post('/api/logistics/shipments/', {'order': o.id, 'tracking_no': 'X'}, format='json')
     assert r.status_code == 403
+
+# ---- BUG-SIM-001: bulk-delete 权限必须等价于单条删除 ----
+
+def test_tracker_cannot_bulk_delete_shipments(db, setup, tracker_client):
+    tc, _ = tracker_client
+    r = tc.post('/api/logistics/shipments/bulk-delete/', {'ids': [setup['logistics'].id]}, format='json')
+    assert r.status_code == 403
+    assert Logistics.objects.filter(id=setup['logistics'].id).exists()
+
+def test_admin_can_bulk_delete_shipments(db, setup, admin_client):
+    r = admin_client.post('/api/logistics/shipments/bulk-delete/', {'ids': [setup['logistics'].id]}, format='json')
+    assert r.status_code == 200 and r.data['data']['deleted'] == 1
+    assert not Logistics.objects.filter(id=setup['logistics'].id).exists()

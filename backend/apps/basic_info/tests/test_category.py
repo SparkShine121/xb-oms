@@ -42,3 +42,15 @@ def test_search_by_name(admin_client):
     assert r.status_code == 200
     results = r.data['data']['results']
     assert len(results) == 1 and results[0]['name'] == '包装类'
+
+# ---- BUG-SIM-001: bulk-delete 权限必须等价于单条删除（回归锁定） ----
+
+def test_non_admin_cannot_bulk_delete_category(db):
+    from apps.basic_info.models import Category
+    u = User.objects.create_user('sales2', password='pw123456')
+    u.groups.add(Group.objects.get(name='salesman'))
+    c = APIClient(); c.force_authenticate(u)
+    cat = Category.objects.create(name='包装类')
+    r = c.post('/api/basic-info/categories/bulk-delete/', {'ids': [cat.id]}, format='json')
+    assert r.status_code == 403
+    assert Category.objects.filter(id=cat.id).exists()

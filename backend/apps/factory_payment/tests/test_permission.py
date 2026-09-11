@@ -87,3 +87,30 @@ def test_record_delete_reaggregates(db, admin_client):
     fp.refresh_from_db()
     assert str(fp.paid_amount) == '30.00'
     assert fp.status == '部分结'
+
+# ---- BUG-SIM-001: bulk-delete 权限必须等价于单条删除 ----
+
+def _make_payment():
+    f = Factory.objects.create(name='华鑫')
+    c = Customer.objects.create(name='客户A')
+    o = Order.objects.create(order_no='O1', tracking_status='排产', customer=c, amount_usd='100')
+    item = OrderItem.objects.create(order=o, seq=1, factory=f, qty=10, unit_price='10', subtotal='100', cost_price='7.20')
+    return FactoryPayment.objects.create(order_item=item, factory=f, amount_cny='72.00')
+
+def test_finance_cannot_bulk_delete_payments(db, finance_client):
+    p = _make_payment()
+    r = finance_client.post('/api/factory-payment/payments/bulk-delete/', {'ids': [p.id]}, format='json')
+    assert r.status_code == 403
+    assert FactoryPayment.objects.filter(id=p.id).exists()
+
+def test_salesman_cannot_bulk_delete_payments(db, salesman_client):
+    p = _make_payment()
+    r = salesman_client.post('/api/factory-payment/payments/bulk-delete/', {'ids': [p.id]}, format='json')
+    assert r.status_code == 403
+    assert FactoryPayment.objects.filter(id=p.id).exists()
+
+def test_admin_can_bulk_delete_payments(db, admin_client):
+    p = _make_payment()
+    r = admin_client.post('/api/factory-payment/payments/bulk-delete/', {'ids': [p.id]}, format='json')
+    assert r.status_code == 200 and r.data['data']['deleted'] == 1
+    assert not FactoryPayment.objects.filter(id=p.id).exists()

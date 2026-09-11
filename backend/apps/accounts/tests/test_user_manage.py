@@ -49,3 +49,14 @@ def test_user_cannot_have_multiple_roles(admin_client, db):
                                    'groups': ['admin', 'tracker']})
     assert not s.is_valid(), s.errors
     assert '每个用户只能分配一个角色' in str(s.errors)
+
+# ---- BUG-SIM-001: bulk-delete 权限必须等价于单条删除（回归锁定） ----
+
+def test_non_admin_cannot_bulk_delete_users(db):
+    u = User.objects.create_user('sales3', password='pw123456')
+    u.groups.add(Group.objects.get(name='salesman'))
+    target = User.objects.create_user('victim', password='pw123456')
+    c = APIClient(); c.force_authenticate(u)
+    r = c.post('/api/auth/users/bulk-delete/', {'ids': [target.id]}, format='json')
+    assert r.status_code == 403
+    assert User.objects.filter(id=target.id).exists()

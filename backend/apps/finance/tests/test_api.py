@@ -128,3 +128,18 @@ def test_finance_sees_all(db, setup):
     c = _client(fin)
     r = c.get('/api/finance/payments-in/')
     assert len(r.data['data']['results']) == 2
+
+# ---- BUG-SIM-001: bulk-delete 权限必须等价于单条删除 ----
+
+def test_finance_cannot_bulk_delete_payment_ins(db, setup):
+    fin = _make_user('fin1', 'finance')
+    r = _client(fin).post('/api/finance/payments-in/bulk-delete/', {'ids': [setup['p1'].id]}, format='json')
+    assert r.status_code == 403
+    assert PaymentIn.objects.filter(id=setup['p1'].id).exists()
+
+def test_admin_can_bulk_delete_payment_ins(db, setup):
+    adm = _make_user('adm_bulk', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/bulk-delete/',
+                          {'ids': [setup['p1'].id, setup['p2'].id]}, format='json')
+    assert r.status_code == 200 and r.data['data']['deleted'] == 2
+    assert not PaymentIn.objects.filter(id__in=[setup['p1'].id, setup['p2'].id]).exists()
