@@ -19,25 +19,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **后端**：Python 3.13 + Django 5.1 + DRF + SQLite（开发）/ MySQL 8（生产）
 - **前端**：Vue 3 + Vite + TypeScript + Element Plus（PC/平板）+ Vant（手机）
 - **认证**：JWT（djangorestframework-simplejwt）；4 角色：admin / salesman / tracker / finance
-- **环境**：Windows 11 ARM64。Python 在 `D:\Pad Windows Data\Python313-arm64\`，Node 在 `D:\Pad Windows Data\nodejs\node-v22.23.2-win-arm64\`（用前 `export PATH="/d/Pad Windows Data/nodejs/node-v22.23.2-win-arm64:$PATH"`）
+- **环境**：macOS。Python 一律用项目虚拟环境 `backend/.venv/bin/python`（不要裸用 `python`）；Node/npm/npx 直接可用
 
 ## 常用命令
 
 ### 后端（端口 8000）
 ```bash
 cd backend
-python -m pip install -r requirements/dev.txt   # 装依赖（不裸装单包）
-python manage.py migrate                           # 迁移
-python manage.py create_groups                      # 创建 4 个角色 Group（admin/salesman/tracker/finance）
-python manage.py runserver                         # 启动开发服务器
-python manage.py check                             # 系统检查
-python -m pytest -v                                # 全量测试
-python -m pytest apps/orders/tests/test_api.py::test_name -v  # 单测试
+.venv/bin/python -m pip install -r requirements/dev.txt   # 装依赖（不裸装单包）
+.venv/bin/python manage.py migrate                           # 迁移
+.venv/bin/python manage.py create_groups                      # 创建 4 个角色 Group（admin/salesman/tracker/finance）
+.venv/bin/python manage.py runserver                         # 启动开发服务器
+.venv/bin/python manage.py check                             # 系统检查
+.venv/bin/python -m pytest -v                                # 全量测试
+.venv/bin/python -m pytest apps/orders/tests/test_api.py::test_name -v  # 单测试
 ```
 
 ### 前端（端口 5173）
 ```bash
-export PATH="/d/Pad Windows Data/nodejs/node-v22.23.2-win-arm64:$PATH"  # 挂载 Node（每次新 shell）
 cd frontend
 npm install --registry=https://registry.npmmirror.com   # 装依赖（中国镜像加速）
 npm run dev                                               # 启动开发服务器（Vite 代理 /api → 8000）
