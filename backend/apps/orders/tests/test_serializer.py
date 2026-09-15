@@ -126,3 +126,38 @@ def test_status_only_change_does_not_touch_items(db, rate):
     assert s2.is_valid(), s2.errors
     s2.save()
     assert list(o.items.values_list('id', flat=True)) == [ia.id, ib.id]
+
+# ---- BUG-SIM-002 followup（旁观者审查发现）----
+
+def test_bogus_item_id_rejected(db, rate):
+    """payload 带不属于本订单的明细 id → 400"""
+    o, ia, ib, fp = _settled_order()
+    data = {'items': [
+        {'id': 99999, 'seq': 1, 'product_no': 'P1', 'qty': 10, 'unit_price': '10', 'subtotal': '100', 'cost_price': '72'},
+    ]}
+    s = OrderSerializer(o, data=data, partial=True)
+    assert s.is_valid(), s.errors
+    with pytest.raises(ValidationError):
+        s.save()
+
+
+def test_null_amount_rejected_by_field_validation(db, rate):
+    """结算行金额字段传 null：DRF 字段校验先行拒绝（该字段不能为 null），结算完好"""
+    o, ia, ib, fp = _settled_order()
+    data = {'items': [
+        {'id': ia.id, 'seq': 1, 'product_no': 'P1', 'qty': 10, 'unit_price': '10', 'subtotal': '100', 'cost_price': '72'},
+        {'id': ib.id, 'seq': 2, 'product_no': 'P2', 'qty': None, 'unit_price': None, 'subtotal': None, 'cost_price': None, 'spec': '只改规格'},
+    ]}
+    s = OrderSerializer(o, data=data, partial=True)
+    assert not s.is_valid()  # 字段级 400，不会触达结算保护层
+    assert FactoryPayment.objects.filter(id=fp.id).exists()
+
+
+def test_check_items_diff_skips_none_amounts():
+    """服务层防御：金额字段值为 None 视为未提交，不参与冻结比较"""
+    from apps.orders.services import check_items_diff
+    o, ia, ib, fp = _settled_order()
+    # None 不触发冻结错误；改值才触发
+    check_items_diff(o, [{'id': ib.id, 'qty': None, 'spec': '只改规格'}])
+    with pytest.raises(ValidationError):
+        check_items_diff(o, [{'id': ib.id, 'qty': 999}])

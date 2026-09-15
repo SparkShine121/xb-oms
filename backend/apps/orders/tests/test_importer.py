@@ -247,3 +247,16 @@ def test_reimport_blank_product_no_fails_on_update(db, rate):
     r2 = import_orders(buf2)
     assert r2['success_count'] == 0 and r2['fail_count'] == 1
     assert '产品编号' in r2['failures'][0]['reason']
+
+def test_reimport_db_blank_product_no_fails(db, rate):
+    """DB 侧已有 product_no 为空的明细行时，更新路径整单拒绝（无法安全匹配，防静默删除）"""
+    Customer.objects.create(name='吴芳')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    assert import_orders(buf)['success_count'] == 1
+    o = Order.objects.get(order_no='O1')
+    OrderItem.objects.create(order=o, product_no='', seq=2, qty=1)  # 模拟历史空编号行
+    buf2 = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    r2 = import_orders(buf2)
+    assert r2['success_count'] == 0 and r2['fail_count'] == 1
+    assert '产品编号' in r2['failures'][0]['reason']
+    assert OrderItem.objects.filter(order=o).count() == 2  # 零写入

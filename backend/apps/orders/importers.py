@@ -109,6 +109,9 @@ def _update_items(order, d, unmatched):
     existing = list(order.items.all())
     by_no = {}
     for cur in existing:
+        if not cur.product_no:
+            # 空 product_no 永远无法匹配，重导会被误判为"Excel 缺席"而静默删除
+            raise ValueError('已有明细存在产品编号为空的行，无法安全更新，请走编辑页修改')
         if cur.product_no in by_no:
             raise ValueError('已有明细产品编号重复，无法安全更新，请走编辑页修改')
         by_no[cur.product_no] = cur

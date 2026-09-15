@@ -51,7 +51,8 @@ def check_items_diff(order, incoming):
         if cur is None or iid not in settled:
             continue
         for f in AMOUNT_FIELDS:
-            if f in p and _dec(p[f]) != _dec(getattr(cur, f)):
+            if f in p and p[f] is not None and _dec(p[f]) != _dec(getattr(cur, f)):
+                # 值为 None 视为未提交该字段，不参与冻结比较
                 errors.append(
                     f'明细「{_item_label(cur)}」已挂结算单，{FIELD_LABELS[f]}等金额字段已冻结，'
                     f'如需调整请先由管理员删除该结算单')
