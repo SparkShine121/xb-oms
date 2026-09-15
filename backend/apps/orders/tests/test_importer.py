@@ -139,3 +139,111 @@ def test_import_template_download(db):
 def test_import_bad_file(db):
     with pytest.raises(Exception):
         import_orders(BytesIO(b'not an xlsx'))
+# ---- BUG-SIM-002: 导入 diff 更新 + 结算数据保护 + 归属校验（Q7:i）----
+from django.contrib.auth.models import User, Group
+from apps.factory_payment.models import FactoryPayment
+from apps.orders.models import OrderItem
+
+BASE_REC = {
+    'ali_status': '待确认', 'order_date': '2026-05-12', 'contact': '吴芳', 'order_no': 'O1',
+    'freight': 100, 'insurance': 10, 'surcharge': 5, 'amount': 1000, 'service_fee': 30,
+    'transport': 50, 'carrier': '圆通', 'logistics': 'EMS', 'tracking_no': 'T1', 'remark': '',
+}
+
+
+def _item(seq, product_no, qty=10, price=100, subtotal=1000, cost=720, spec='S', supplier='华鑫'):
+    return {'seq': seq, 'supplier': supplier, 'qty': qty, 'model': 'M1', 'spec': spec,
+            'price': price, 'subtotal': subtotal, 'cost': cost, 'product_no': product_no}
+
+
+def _settled_import_setup():
+    """首导 O1（P1、P2 两行），给 P2 挂结算单；返回 (order, item_p1, item_p2, fp)"""
+    Customer.objects.create(name='吴芳')
+    f = Factory.objects.create(name='华鑫')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1'), _item(2, 'P2')]}])
+    r = import_orders(buf)
+    assert r['success_count'] == 1, r['failures']
+    o = Order.objects.get(order_no='O1')
+    ip1 = o.items.get(product_no='P1')
+    ip2 = o.items.get(product_no='P2')
+    fp = FactoryPayment.objects.create(order_item=ip2, factory=f, amount_cny='720.00')
+    return o, ip1, ip2, fp
+
+
+def test_reimport_keeps_settlement(db, rate):
+    """原样重导（P1 改规格，P2 原样）→ 行 id 不变，结算+付款记录完好"""
+    o, ip1, ip2, fp = _settled_import_setup()
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1', spec='改规格'), _item(2, 'P2')]}])
+    r = import_orders(buf)
+    assert r['success_count'] == 1 and r['fail_count'] == 0, r['failures']
+    assert o.items.count() == 2
+    assert list(o.items.values_list('id', flat=True).order_by('id')) == sorted([ip1.id, ip2.id])
+    ip1.refresh_from_db()
+    assert ip1.spec == '改规格'
+    fp.refresh_from_db()
+    assert fp.order_item_id == ip2.id  # 结算仍挂原行
+
+
+def test_reimport_missing_settled_row_fails(db, rate):
+    o, ip1, ip2, fp = _settled_import_setup()
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])  # Excel 缺 P2（已挂结算）
+    r = import_orders(buf)
+    assert r['success_count'] == 0 and r['fail_count'] == 1
+    assert '已挂结算' in r['failures'][0]['reason']
+    assert OrderItem.objects.filter(id=ip2.id).exists()
+    assert FactoryPayment.objects.filter(id=fp.id).exists()
+
+
+def test_reimport_amount_change_on_settled_row_fails(db, rate):
+    o, ip1, ip2, fp = _settled_import_setup()
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1'), _item(2, 'P2', subtotal=1200, cost=864)]}])
+    r = import_orders(buf)
+    assert r['success_count'] == 0 and r['fail_count'] == 1
+    assert '冻结' in r['failures'][0]['reason']
+    ip2.refresh_from_db()
+    assert str(ip2.subtotal) == '1000.00'
+    assert FactoryPayment.objects.filter(id=fp.id).exists()
+
+
+def test_reimport_out_of_scope_salesman_fails(db, rate):
+    """Q7:i 归属校验：非本人客户的订单不可通过导入更新"""
+    owner = User.objects.create_user('owner', password='pw123456')
+    owner.groups.add(Group.objects.get(name='salesman'))
+    Customer.objects.create(name='吴芳', salesman=owner)  # 重置归属再首导
+    Order.objects.all().delete()
+    FactoryPayment.objects.all().delete()
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    r = import_orders(buf, user=owner)
+    assert r['success_count'] == 1, r['failures']
+
+    other = User.objects.create_user('other_sales', password='pw123456')
+    other.groups.add(Group.objects.get(name='salesman'))
+    buf2 = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1', spec='越权改')]}])
+    r2 = import_orders(buf2, user=other)
+    assert r2['success_count'] == 0 and r2['fail_count'] == 1
+    assert '无权限更新该订单' in r2['failures'][0]['reason']
+    o = Order.objects.get(order_no='O1')
+    assert o.items.get(product_no='P1').spec == 'S'  # 未被越权修改
+
+
+def test_reimport_duplicate_product_no_fails(db, rate):
+    """安全失败规则：同订单 Excel 内 product_no 重复 → 整单失败，不猜匹配"""
+    Customer.objects.create(name='吴芳')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1'), _item(2, 'P1')]}])
+    r = import_orders(buf)  # 新建路径容忍（现状），先建成
+    assert r['success_count'] == 1
+    buf2 = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1'), _item(2, 'P1')]}])
+    r2 = import_orders(buf2)  # 更新路径：重复键 → 拒绝
+    assert r2['success_count'] == 0 and r2['fail_count'] == 1
+    assert '重复' in r2['failures'][0]['reason']
+
+
+def test_reimport_blank_product_no_fails_on_update(db, rate):
+    """安全失败规则：更新已有订单时 Excel 行缺产品编号 → 整单失败"""
+    Customer.objects.create(name='吴芳')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    assert import_orders(buf)['success_count'] == 1
+    buf2 = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1'), _item(2, '')]}])
+    r2 = import_orders(buf2)
+    assert r2['success_count'] == 0 and r2['fail_count'] == 1
+    assert '产品编号' in r2['failures'][0]['reason']

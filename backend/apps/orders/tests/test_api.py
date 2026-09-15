@@ -59,3 +59,45 @@ def test_salesman_cannot_change_salesman_on_update(db):
     assert r2.status_code == 200
     order.refresh_from_db()
     assert order.salesman_id == sales2.id      # admin 修改生效
+
+# ---- BUG-SIM-002: 挂结算订单删除保护（Q5:i）----
+from apps.basic_info.models import Customer
+from apps.basic_info.models import Factory as OrderFactory
+from apps.orders.models import OrderItem
+from apps.factory_payment.models import FactoryPayment
+
+
+def _make_orders_with_settlement():
+    f = OrderFactory.objects.create(name='华鑫')
+    c = Customer.objects.create(name='C1')
+    o_settled = Order.objects.create(order_no='OS', customer=c)
+    item = OrderItem.objects.create(order=o_settled, seq=1, product_no='P1', qty=1, subtotal='100', cost_price='72')
+    FactoryPayment.objects.create(order_item=item, factory=f, amount_cny='72.00')
+    o_plain = Order.objects.create(order_no='OP', customer=c)
+    OrderItem.objects.create(order=o_plain, seq=1, product_no='P9', qty=1, subtotal='50', cost_price='36')
+    return o_settled, o_plain
+
+
+def test_destroy_order_with_settlement_rejected(db, admin_client):
+    o_settled, _ = _make_orders_with_settlement()
+    r = admin_client.delete(f'/api/orders/orders/{o_settled.id}/')
+    assert r.status_code == 400
+    assert Order.objects.filter(id=o_settled.id).exists()
+    assert FactoryPayment.objects.count() == 1
+
+
+def test_destroy_order_without_settlement_ok(db, admin_client):
+    _, o_plain = _make_orders_with_settlement()
+    r = admin_client.delete(f'/api/orders/orders/{o_plain.id}/')
+    assert r.status_code == 200
+    assert not Order.objects.filter(id=o_plain.id).exists()
+
+
+def test_bulk_delete_mixed_settlement_reports_forbidden(db, admin_client):
+    o_settled, o_plain = _make_orders_with_settlement()
+    r = admin_client.post('/api/orders/orders/bulk-delete/', {'ids': [o_settled.id, o_plain.id]}, format='json')
+    assert r.status_code == 200
+    assert r.data['data']['deleted'] == 1
+    assert r.data['data']['forbidden'] == [o_settled.id]
+    assert Order.objects.filter(id=o_settled.id).exists()
+    assert FactoryPayment.objects.count() == 1
