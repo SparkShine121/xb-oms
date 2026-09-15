@@ -1,8 +1,13 @@
+from django.db import transaction
 from rest_framework import serializers
 from .models import Order, OrderItem, ExchangeRate, calc_order_profit
+from .services import check_items_diff
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    # BUG-SIM-002：可写 id 作为 diff 更新的行锚点（新建行不传）
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = OrderItem
         fields = ['id', 'seq', 'product', 'factory', 'model', 'product_no', 'spec',
@@ -40,20 +45,41 @@ class OrderSerializer(serializers.ModelSerializer):
         items = validated.pop('items', [])
         order = Order.objects.create(**validated)
         for it in items:
+            it.pop('id', None)  # 新建订单不携带明细 id
             OrderItem.objects.create(order=order, **it)
         calc_order_profit(order)
         return order
 
     def update(self, instance, validated):
+        """BUG-SIM-002：items 改为 diff 更新——带 id 原位更新、无 id 新建、
+        缺失才删除；删除已挂结算明细/修改结算行金额 → 整单 400 零写入。"""
         items = validated.pop('items', None)
-        for k, v in validated.items():
-            setattr(instance, k, v)
-        instance.save()
-        if items is not None:
-            instance.items.all().delete()
-            for it in items:
-                OrderItem.objects.create(order=instance, **it)
-        calc_order_profit(instance)
+        with transaction.atomic():
+            for k, v in validated.items():
+                setattr(instance, k, v)
+            instance.save()
+            if items is not None:
+                check_items_diff(instance, items)  # 先校验，冲突即回滚
+                existing = {it.id: it for it in instance.items.all()}
+                keep_ids = set()
+                for payload in items:
+                    iid = payload.get('id')
+                    if iid:
+                        if iid not in existing:
+                            raise serializers.ValidationError(f'明细 id={iid} 不属于订单 {instance.order_no}')
+                        obj = existing[iid]
+                        for k, v in payload.items():
+                            if k != 'id':
+                                setattr(obj, k, v)
+                        obj.save()
+                        keep_ids.add(iid)
+                    else:
+                        payload.pop('id', None)
+                        OrderItem.objects.create(order=instance, **payload)
+                for iid, obj in existing.items():
+                    if iid not in keep_ids:
+                        obj.delete()
+            calc_order_profit(instance)
         return instance
 
 

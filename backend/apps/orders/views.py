@@ -1,4 +1,5 @@
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
 from django.db.models import Q
@@ -10,6 +11,7 @@ from apps.system_mgmt.approval import resubmit_on_update
 from .models import Order, ExchangeRate
 from .serializers import OrderSerializer, ExchangeRateSerializer
 from .permissions import OrderPermission
+from .services import ensure_order_deletable
 from .importers import import_orders, build_order_template
 
 
@@ -34,6 +36,19 @@ class OrderViewSet(BaseModelViewSet):
             cond |= Q(tracker=u)
         return qs.filter(cond).distinct() if cond else qs.none()
 
+    # BUG-SIM-002 Q5:i：挂结算单（含付款记录）的订单禁止删除
+    def perform_destroy(self, instance):
+        ensure_order_deletable(instance)  # ValidationError → 统一异常处理 400
+        instance.delete()
+
+    def validate_bulk_delete(self, obj):
+        # 批量删除时冲突对象进 forbidden 清单（复用 BUG-SIM-001 的报告机制）
+        try:
+            ensure_order_deletable(obj)
+        except DRFValidationError:
+            return '订单已挂结算单'
+        return None
+
     def perform_create(self, serializer):
         # 审批流：非 admin 新建订单（order_change）→ 挂起待审批；admin 新建 → 直接生效
         instance = serializer.save(is_approved=False)
@@ -55,7 +70,7 @@ class OrderViewSet(BaseModelViewSet):
         if not f:
             return error_response(1001, '未上传文件', status=400)
         try:
-            result = import_orders(f)
+            result = import_orders(f, request.user)  # BUG-SIM-002 Q7:i：归属校验需要操作者
         except Exception as e:
             return error_response(1001, f'文件解析失败：{e}', status=400)
         # 审批流：非 admin 导入的新建订单 → 挂起待审批；admin 导入直接生效

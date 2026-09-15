@@ -1,7 +1,9 @@
 import io
 import openpyxl
 from decimal import Decimal
+from django.db import transaction
 from .models import Order, OrderItem, ExchangeRate, calc_order_profit
+from .services import get_settled_item_ids
 from apps.basic_info.models import Customer, Product, Factory
 
 ALI_STATUS_MAP = {
@@ -48,7 +50,110 @@ def _match_product(no):
     return Product.objects.filter(product_no=str(no).strip()).first()
 
 
-def import_orders(file):
+def _dec(v):
+    return Decimal(str(v)) if v is not None else Decimal('0')
+
+
+def _in_data_scope(order, user):
+    """BUG-SIM-002 Q7:i：导入更新已存在订单需在操作者数据范围内。
+
+    admin/finance 全部；salesman 自己客户的订单；tracker 派给自己的订单。
+    user=None（脚本/旧调用）不校验。
+    """
+    if user is None or user.is_superuser:
+        return True
+    groups = set(user.groups.values_list('name', flat=True))
+    if 'admin' in groups or 'finance' in groups:
+        return True
+    if 'salesman' in groups and order.customer and order.customer.salesman_id == user.id:
+        return True
+    if 'tracker' in groups and order.tracker_id == user.id:
+        return True
+    return False
+
+
+def _match_item_refs(it, d, unmatched):
+    product = _match_product(it['product_no'])
+    if it['product_no'] and not product:
+        unmatched['products'].append({'row': d['row'], 'product_no': str(it['product_no'])})
+    factory = _match_factory(it['supplier'])
+    if it['supplier'] and not factory:
+        unmatched['factories'].append({'row': d['row'], 'name': str(it['supplier'])})
+    return product, factory
+
+
+def _create_items(order, d, unmatched):
+    """新建订单：按 Excel 行建明细（行为与历史版本一致）。"""
+    for it in d['items']:
+        product, factory = _match_item_refs(it, d, unmatched)
+        OrderItem.objects.create(
+            order=order, seq=it['seq'] or 0, product=product, factory=factory,
+            model=it['model'] or '', product_no=str(it['product_no'] or ''), spec=it['spec'] or '',
+            qty=it['qty'] or 0, unit_price=it['price'] or 0, subtotal=it['subtotal'] or 0,
+            cost_price=it['cost'] or 0,
+        )
+
+
+def _update_items(order, d, unmatched):
+    """更新已存在订单：不再整组替换（BUG-SIM-002）。
+
+    按 product_no 匹配（Q6:b）：命中唯一明细 → 原位更新（行 id 不变，结算保持）；
+    未命中 → 新建；已有明细在 Excel 缺席 → 删除（挂结算则拒绝）。
+    结算行金额字段冻结（Q2:i）。product_no 重复/为空 → 整单失败（宁可拒绝不可错账）。
+    """
+    excel_nos = [str(it['product_no'] or '').strip() for it in d['items']]
+    if any(not n for n in excel_nos):
+        raise ValueError('更新已存在订单时明细行产品编号不能为空，请走编辑页修改')
+    if len(set(excel_nos)) != len(excel_nos):
+        raise ValueError('同一订单内产品编号重复，无法安全更新，请走编辑页修改')
+    existing = list(order.items.all())
+    by_no = {}
+    for cur in existing:
+        if cur.product_no in by_no:
+            raise ValueError('已有明细产品编号重复，无法安全更新，请走编辑页修改')
+        by_no[cur.product_no] = cur
+    settled = get_settled_item_ids(order)
+    kept = set()
+    for it, no in zip(d['items'], excel_nos):
+        product, factory = _match_item_refs(it, d, unmatched)
+        cur = by_no.get(no)
+        if cur is not None:
+            kept.add(cur.id)
+            if cur.id in settled:
+                # 冻结校验：任一金额字段与现值不符 → 拒绝整单
+                for f_excel, f_model in (('qty', 'qty'), ('price', 'unit_price'),
+                                         ('subtotal', 'subtotal'), ('cost', 'cost_price')):
+                    if _dec(it[f_excel]) != _dec(getattr(cur, f_model)):
+                        raise ValueError(
+                            f'明细「{no}」已挂结算单，金额字段冻结，如需调整请先由管理员删除该结算单')
+            cur.seq = it['seq'] or 0
+            cur.product = product
+            cur.factory = factory
+            cur.model = it['model'] or ''
+            cur.spec = it['spec'] or ''
+            if cur.id not in settled:
+                cur.qty = it['qty'] or 0
+                cur.unit_price = it['price'] or 0
+                cur.subtotal = it['subtotal'] or 0
+                cur.cost_price = it['cost'] or 0
+            cur.save()
+        else:
+            OrderItem.objects.create(
+                order=order, seq=it['seq'] or 0, product=product, factory=factory,
+                model=it['model'] or '', product_no=no, spec=it['spec'] or '',
+                qty=it['qty'] or 0, unit_price=it['price'] or 0, subtotal=it['subtotal'] or 0,
+                cost_price=it['cost'] or 0,
+            )
+    for cur in existing:
+        if cur.id not in kept:
+            if cur.id in settled:
+                raise ValueError(
+                    f'明细「{cur.product_no}」已挂结算单，不可删除；如需删除请先由管理员删除该结算单')
+            cur.delete()
+
+
+def import_orders(file, user=None):
+    """导入订单 Excel。user 为操作者（视图层传入），用于更新路径的归属校验。"""
     wb = openpyxl.load_workbook(file, data_only=True)
     ws = wb.active
     headers = [c.value for c in ws[1]]
@@ -100,49 +205,44 @@ def import_orders(file):
 
     for order_no, d in orders_data.items():
         try:
-            customer = _match_customer(d['contact'])
-            if d['contact'] and not customer:
-                unmatched['customers'].append({'row': d['row'], 'name': str(d['contact'])})
-            ali_status = str(d['ali_status'] or '').strip()
-            tracking_status = ALI_STATUS_MAP.get(ali_status, '')
-            is_cancelled = ali_status in CANCELLED_STATUSES
-            order, created = Order.objects.update_or_create(
-                order_no=order_no,
-                defaults={
-                    'ali_status': ali_status, 'tracking_status': tracking_status, 'is_cancelled': is_cancelled,
-                    'order_date': d['order_date'],
-                    'customer': customer,
-                    'salesman': customer.salesman if customer else None,
-                    'amount_usd': d['amount'] or 0, 'freight': d['freight'] or 0, 'insurance': d['insurance'] or 0,
-                    'surcharge': d['surcharge'] or 0, 'service_fee_usd': d['service_fee'] or 0,
-                    'transport_cost': d['transport'] or 0, 'carrier': d['carrier'] or '',
-                    'logistics_method': d['logistics'] or '',
-                    'tracking_no': d['tracking_no'] or '', 'remark': d['remark'] or '',
-                },
-            )
-            if created:
-                created_order_nos.append(order_no)
-            # tracker：新订单填 customer.tracker；已存在若空才填
-            if not order.tracker and customer and customer.tracker:
-                order.tracker = customer.tracker
-                order.save(update_fields=['tracker'])
-            # 产品行整组替换
-            order.items.all().delete()
-            for it in d['items']:
-                product = _match_product(it['product_no'])
-                if it['product_no'] and not product:
-                    unmatched['products'].append({'row': d['row'], 'product_no': str(it['product_no'])})
-                factory = _match_factory(it['supplier'])
-                if it['supplier'] and not factory:
-                    unmatched['factories'].append({'row': d['row'], 'name': str(it['supplier'])})
-                OrderItem.objects.create(
-                    order=order, seq=it['seq'] or 0, product=product, factory=factory,
-                    model=it['model'] or '', product_no=str(it['product_no'] or ''), spec=it['spec'] or '',
-                    qty=it['qty'] or 0, unit_price=it['price'] or 0, subtotal=it['subtotal'] or 0,
-                    cost_price=it['cost'] or 0,
+            # 每订单原子化：任一校验失败 → 该订单全部写入回滚，只进 failures 清单
+            with transaction.atomic():
+                customer = _match_customer(d['contact'])
+                if d['contact'] and not customer:
+                    unmatched['customers'].append({'row': d['row'], 'name': str(d['contact'])})
+                ali_status = str(d['ali_status'] or '').strip()
+                tracking_status = ALI_STATUS_MAP.get(ali_status, '')
+                is_cancelled = ali_status in CANCELLED_STATUSES
+                order, created = Order.objects.update_or_create(
+                    order_no=order_no,
+                    defaults={
+                        'ali_status': ali_status, 'tracking_status': tracking_status, 'is_cancelled': is_cancelled,
+                        'order_date': d['order_date'],
+                        'customer': customer,
+                        'salesman': customer.salesman if customer else None,
+                        'amount_usd': d['amount'] or 0, 'freight': d['freight'] or 0, 'insurance': d['insurance'] or 0,
+                        'surcharge': d['surcharge'] or 0, 'service_fee_usd': d['service_fee'] or 0,
+                        'transport_cost': d['transport'] or 0, 'carrier': d['carrier'] or '',
+                        'logistics_method': d['logistics'] or '',
+                        'tracking_no': d['tracking_no'] or '', 'remark': d['remark'] or '',
+                    },
                 )
-            calc_order_profit(order)
-            success += 1
+                if created:
+                    created_order_nos.append(order_no)
+                else:
+                    # BUG-SIM-002 Q7:i：更新路径校验操作者数据范围
+                    if not _in_data_scope(order, user):
+                        raise ValueError('无权限更新该订单（数据范围外）')
+                # tracker：新订单填 customer.tracker；已存在若空才填
+                if not order.tracker and customer and customer.tracker:
+                    order.tracker = customer.tracker
+                    order.save(update_fields=['tracker'])
+                if created:
+                    _create_items(order, d, unmatched)
+                else:
+                    _update_items(order, d, unmatched)
+                calc_order_profit(order)
+                success += 1
         except Exception as e:
             failures.append({'row': d['row'], 'reason': str(e)})
     return {'success_count': success, 'fail_count': len(failures), 'failures': failures,

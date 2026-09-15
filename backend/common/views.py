@@ -33,6 +33,10 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         super().destroy(request, *args, **kwargs)
         return success_response(None, message='已删除')
 
+    def validate_bulk_delete(self, obj):
+        """子类可覆盖：返回错误字符串表示该对象不可删除（None=允许）。"""
+        return None
+
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request, *args, **kwargs):
         """批量删除：权限规则与单条删除（destroy）完全一致。
@@ -66,6 +70,10 @@ class BaseModelViewSet(viewsets.ModelViewSet):
                     try:
                         self.check_object_permissions(request, obj)
                     except DRFPermissionDenied:
+                        forbidden.append(oid)
+                        continue
+                    if self.validate_bulk_delete(obj):
+                        # 子类守卫（如 BUG-SIM-002 结算保护）拒绝的对象进 forbidden 清单
                         forbidden.append(oid)
                         continue
                     obj.delete()
