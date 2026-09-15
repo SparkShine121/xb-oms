@@ -90,6 +90,7 @@ async function loadOrder() {
       remark: d.remark ?? '',
     })
     items.value = (d.items ?? []).map((it: any) => ({
+      id: it.id, // BUG-SIM-002：保留行 id 供后端 diff 原位更新
       seq: it.seq ?? 0,
       product_no: it.product_no ?? '',
       model: it.model ?? '',
@@ -135,6 +136,7 @@ async function save() {
     const payload = {
       ...form,
       items: items.value.map((it: any) => ({
+        id: it.id, // BUG-SIM-002：已有行带 id → 后端原位更新；新加行无 id → 新建
         seq: it.seq,
         product_no: it.product_no,
         model: it.model,
