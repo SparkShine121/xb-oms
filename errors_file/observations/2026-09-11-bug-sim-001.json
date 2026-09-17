@@ -1,0 +1,11 @@
+{
+  "task": "BUG-SIM-001 bulk-delete 越权修复",
+  "date": "2026-09-11",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "错误处理", "severity": "medium", "observation": "macOS 裸用 python 触发 command not found，后改用 backend/.venv/bin/python；错误当时未即时入错题集", "suggestion": "任务开始先确认解释器路径；错误即时记录"},
+    {"dimension": "流程合规(TDD)", "severity": "low", "observation": "1 条 RED 失败为测试自身 fixture 解包错误而非断言失败", "suggestion": "追加测试后先跑一轮确认失败均为断言性"},
+    {"dimension": "验证依据", "severity": "low", "observation": "未做浏览器端到端手工验证，以 179+17 测试为依据；前端 warning 弹窗仅单测覆盖", "suggestion": "下轮安排 admin/非admin 各一次批量删除的手工验证；grep 复核 bulk-delete 调用点均走 useBulkDelete"},
+    {"dimension": "代码质量", "severity": "low", "observation": "bulk_delete 内 str/int id 兼容 hack 较隐晦", "suggestion": "可选：入口统一归一化 ids，消除逐条 str 转换"}
+  ]
+}

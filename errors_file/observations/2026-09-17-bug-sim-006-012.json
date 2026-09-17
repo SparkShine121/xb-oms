@@ -1,0 +1,12 @@
+{
+  "task": "BUG-SIM-006/012 金额域三层校验",
+  "date": "2026-09-17",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "并发/锁正确性", "severity": "medium", "observation": "PATCH 换父结算单绕过超付校验且旧父 paid_amount 失真", "suggestion": "已修：换父 400"},
+    {"dimension": "决策覆盖", "severity": "low", "observation": "结算单改小金额低于已付可绕过超付不变量", "suggestion": "已修：低于已付 400"},
+    {"dimension": "约束副作用", "severity": "low", "observation": "一键生成遇 0 成本明细 IntegrityError 整批 500", "suggestion": "已修：跳过 0 成本明细"},
+    {"dimension": "delete 一致性", "severity": "low", "observation": "Record.delete 未包 atomic+行锁（预存在，仅 admin）", "suggestion": "未实施，记录在案"},
+    {"dimension": "过程", "severity": "low", "observation": "盲替换误插 class Meta 两次 IndentationError；迁移用弃用参数 check=", "suggestion": "结构化编辑先读类体；新参数用 condition="}
+  ]
+}

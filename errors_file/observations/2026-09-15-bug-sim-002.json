@@ -1,0 +1,13 @@
+{
+  "task": "BUG-SIM-002 明细diff更新+结算数据保护",
+  "date": "2026-09-15",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "正确性/边界", "severity": "medium", "observation": "DB侧空product_no明细行重导会被误判缺席而静默删除", "suggestion": "已修：更新路径整单拒绝"},
+    {"dimension": "正确性/边界", "severity": "medium", "observation": "partial PATCH items子集会隐式删除未列出的非结算行（当前前端全量提交故安全）", "suggestion": "已记录API契约备忘：PATCH必须全量提交items"},
+    {"dimension": "测试覆盖", "severity": "low", "observation": "bogus-id分支无测试；None金额在服务层会被误判", "suggestion": "已修：补回归锁+None跳过+直测"},
+    {"dimension": "设计", "severity": "low", "observation": "validate_bulk_delete钩子异常无基类统一兜底", "suggestion": "未实施，OrderViewSet已自行try/except，约定子类照做"},
+    {"dimension": "健壮性", "severity": "low", "observation": "校验与删除间并发窗口", "suggestion": "低并发可接受，需要时加select_for_update"},
+    {"dimension": "工作区", "severity": "low", "observation": "push超时（GitHub网络），5+commit留在本地", "suggestion": "网络恢复后补推"}
+  ]
+}

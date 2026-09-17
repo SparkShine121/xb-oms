@@ -1,0 +1,11 @@
+{
+  "task": "BUG-SIM-003 导入状态覆写修复+审批豁免确认",
+  "date": "2026-09-15",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "test-coverage", "severity": "low", "observation": "Q2:a豁免无回归锁", "suggestion": "已补：重导不产生审批申请回归测试"},
+    {"dimension": "test-quality", "severity": "low", "observation": "旧测试名与断言语义相反", "suggestion": "已改名 test_import_upsert_diff_updates_items"},
+    {"dimension": "correctness-robustness", "severity": "low", "observation": "exists()+update_or_create TOCTOU窗口", "suggestion": "未实施，低并发可接受，可随005/024批次改select_for_update"},
+    {"dimension": "process", "severity": "low", "observation": "本次RED未独立commit（002有先例）", "suggestion": "后续沿用先红独立commit"}
+  ]
+}

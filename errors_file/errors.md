@@ -1,0 +1,11 @@
+# 错题集（上限 50 条，超限归档/合并）
+
+- [2026-09-06][数据生成][中] 用 openpyxl 生成多行分组的 Excel 时，回填"组级汇总值"用 `当前行号-组内行数` 计算组首行，因模板已有 1 行表头而整体错位 1 行。修正：append 数据前先记录 `first_row = ws.max_row + 1`，汇总值回填到 first_row。
+- [2026-09-07][API 操作][高] 调用用户列表接口时使用了后端不支持的 `search` 过滤参数（接口实际返回全量用户），未核对返回记录的 username 就把 results[0].id（实为 admin 的 id=2）当作目标用户 salesman2，PATCH 整组替换误把 admin 的组覆盖为 [salesman]，引发 403。修正：Django shell 恢复 admin 组为 [admin,salesman,tracker,finance]。教训：① 用接口前先确认过滤参数是否被支持（查 ViewSet 的 search_fields/filterset_fields）；② 使用返回记录前先核对唯一标识（如 username）是否为目标；③ 覆盖式修改（如 groups 整组替换）前先取原值备份。
+- [2026-09-07][UI 样式][中] 修复样式问题时只改了报障页面的 scoped 样式（产品库/工厂库的 el-upload 对齐），未全局排查同类元素（订单列表页同样有 el-upload），导致同类问题二次报障。修正：将 el-upload 对齐规则提升到全局 style.css。教训：① 同类 UI 缺陷优先全局化（公共样式/composable）而非页面级复制；② 修复后应全局 grep 同类用法（如 grep -r el-upload src/）确认覆盖所有出现点。
+- [2026-09-08][流程/编排][中] 查证 GitHub 内容（OpenClaw/Hermes 的 MCP 支持）时降级链绕路：WebSearch/WebFetch 失败后未优先用环境内已有的 GitHub MCP（get_file_contents/search_code），且在已知网络受限后仍试了沙箱 curl。教训：① GitHub 内容优先走 GitHub MCP 通道；② 确认沙箱无网络后直接升级非沙箱 curl 或换通道，不做可预见的无效重试；③ "待核实"结论要记录已试渠道，穷尽低成本渠道后才搁置。
+- [2026-09-08][流程/编排][低] 发现本机无 git 身份后，读取同级仓库 .git/config 推断惯例（xb-dev@local）并直接设置本仓库局部身份 rag-dev@local——虽在汇报中披露（"要改说一声"），但更优做法是事前一句话确认。教训：推断性配置（git config、环境变量、默认路径等）默认先向用户确认；至少当场在汇报中显著声明。
+- [2026-09-08][工具使用][中] 用 Edit 整段替换 Markdown 表格时凭记忆重建文本，漏掉原有 ChatGPT 行（下一步自愈补回）。教训：① 结构化内容（表格/列表）用行级锚点编辑，避免整段重写；② 必须整段替换时，替换后立即重读并比对关键行/行数。
+- [2026-09-11][环境/工具][中] macOS 上直接执行 `python` 触发 command not found（项目后端命令需用虚拟环境解释器）。修正：改用 `backend/.venv/bin/python`。教训：① 每次任务开始先确认解释器路径（ls backend/.venv/bin、which python3），不假设系统命令可用；② CLAUDE.md 环境段为 Windows 路径时（现已改 macOS）不能照搬，跨机开发先核对环境段。
+- [2026-09-11][测试][低] 追加测试时未先读同文件夹具的返回契约：logistics 的 `tracker_client` 夹具返回 `(c, u)` 元组，直接 `.post` 触发 AttributeError，浪费一轮 RED 验证。教训：① 新增测试前先读同文件既有夹具签名/返回值；② 追加后先跑一次目标测试，确认失败均为断言性失败（assert）而非 fixture/AttributeError 异常，再进入实现。
+- [2026-09-15][环境/网络][中] git push 到 GitHub 反复超时/中断（443 connect timeout、HTTP2 framing 断流；出现 3 次）。根因：代理只接管系统流量，终端 git 不读 macOS 系统代理，直连 github.com 被卡。解决：本仓库级 `git config http.https://github.com.proxy http://127.0.0.1:7897` + `git config http.version HTTP/1.1`（代理会破坏 HTTP/2 流），push 成功。教训：① macOS 终端 git/curl 不自动走系统代理，用 scutil --proxy + nc 探测本地代理端口后给 git 显式配置；② 代理链路上 HTTP/2 常被搞断，固定 HTTP/1.1；③ push 放后台跑、失败不影响本地提交；④ 诊断顺序：curl 探连通性 → 分通道探测（api.github.com 通而 github.com 不通=部分阻断）→ 查本地代理端口。
