@@ -69,7 +69,7 @@ def test_finance_can_write_not_delete(db, setup):
     fin = _make_user('fin', 'finance')
     c = _client(fin)
     r = c.post('/api/finance/payments-in/',
-               {'order': setup['oa'].id, 'amount_usd': '88.00', 'payment_date': '2026-08-11'}, format='json')
+               {'order': setup['oa'].id, 'amount_usd': '88.00', 'payment_date': '2026-08-11', 'installment': 2}, format='json')  # BUG-SIM-007 后第 1 期已被 setup 占用
     assert r.status_code == 201
     pid = r.data['data']['id']
     r = c.patch(f'/api/finance/payments-in/{pid}/', {'note': 'x'}, format='json')
@@ -161,13 +161,14 @@ def test_zero_payment_in_rejected(db, setup):
 # ---- BUG-SIM-007: 回款 (订单, 期数) 唯一 ----
 
 def test_duplicate_installment_rejected(db, setup):
+    # setup 已登记 oa 第 1 期 → 用第 3 期首次登记，再重复登记第 3 期
     adm = _make_user('adm_dup', 'admin')
     c = _client(adm)
     r1 = c.post('/api/finance/payments-in/',
-                {'order': setup['oa'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 1}, format='json')
+                {'order': setup['oa'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 3}, format='json')
     assert r1.status_code == 201
     r2 = c.post('/api/finance/payments-in/',
-                {'order': setup['oa'].id, 'amount_usd': '200', 'payment_date': '2026-09-18', 'installment': 1}, format='json')
+                {'order': setup['oa'].id, 'amount_usd': '200', 'payment_date': '2026-09-18', 'installment': 3}, format='json')
     assert r2.status_code == 400  # 同订单同期重复
 
 def test_different_installment_allowed(db, setup):
@@ -178,8 +179,8 @@ def test_different_installment_allowed(db, setup):
     assert r.status_code == 201
 
 def test_same_installment_different_order_allowed(db, setup):
-    """回归锁：不同订单同期互不影响"""
+    """回归锁：不同订单同期互不影响（ob 已有第 1 期 → 用第 2 期验证他单同期不受限）"""
     adm = _make_user('adm_o2', 'admin')
     r = _client(adm).post('/api/finance/payments-in/',
-                          {'order': setup['ob'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 1}, format='json')
+                          {'order': setup['ob'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 2}, format='json')
     assert r.status_code == 201

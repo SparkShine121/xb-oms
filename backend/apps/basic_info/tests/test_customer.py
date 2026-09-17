@@ -46,3 +46,21 @@ def test_import_match_customer_still_works(db):
     Customer.objects.create(name='吴芳')
     assert _match_customer('吴芳') is not None
     assert _match_customer('不存在') is None
+
+# ---- BUG-SIM-007 回归锁：DB 层约束兜底 + 统一异常映射 ----
+
+def test_customer_name_db_constraint(db):
+    """绕过 serializer 直写 DB 也被唯一约束拦截"""
+    from django.db import IntegrityError, transaction as dj_transaction
+    from apps.basic_info.models import Customer
+    Customer.objects.create(name='独苗')
+    with pytest.raises(IntegrityError):
+        with dj_transaction.atomic():
+            Customer.objects.create(name='独苗')
+
+def test_integrity_error_maps_to_400():
+    """并发撞唯一约束产生的 IntegrityError 统一映射为 400（原为裸 500）"""
+    from django.db import IntegrityError
+    from common.exceptions import custom_exception_handler
+    resp = custom_exception_handler(IntegrityError('UNIQUE constraint failed'), None)
+    assert resp.status_code == 400 and resp.data['code'] == 1001

@@ -16,6 +16,8 @@ class ExchangeRate(models.Model):
         constraints = [
             # BUG-SIM-012：汇率必须为正（rate=0 会把毛利整体清零）
             models.CheckConstraint(condition=models.Q(rate__gt=0), name='exchangerate_rate_positive'),
+            # BUG-SIM-007：同币种对同日期唯一（毛利取值确定性）
+            models.UniqueConstraint(fields=['currency_pair', 'effective_date'], name='exchangerate_pair_date_unique'),
         ]
 
     @classmethod

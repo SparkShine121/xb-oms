@@ -84,6 +84,18 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class ExchangeRateSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        # BUG-SIM-007：同币种对同日期唯一
+        pair = attrs.get('currency_pair') or getattr(self.instance, 'currency_pair', None)
+        date = attrs.get('effective_date') or getattr(self.instance, 'effective_date', None)
+        if pair and date:
+            qs = ExchangeRate.objects.filter(currency_pair=pair, effective_date=date)
+            if self.instance is not None:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(f'{pair} 在 {date} 已有汇率记录，如需调整请编辑原记录')
+        return attrs
+
     def validate_rate(self, value):
         # BUG-SIM-012：汇率必须为正（rate=0 会把毛利整体清零）
         if value <= 0:

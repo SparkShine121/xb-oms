@@ -33,6 +33,15 @@ class LogisticsProviderSerializer(serializers.ModelSerializer):
 class CustomerSerializer(serializers.ModelSerializer):
     salesman_name = serializers.CharField(source='salesman.username', read_only=True, default='')
 
+    def validate_name(self, value):
+        # BUG-SIM-007：客户名全局唯一（导入按名匹配，同名会歧义）
+        qs = Customer.objects.filter(name=value)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('已存在同名客户')
+        return value
+
     def validate_salesman(self, value):
         if value is not None:
             groups = value.groups.values_list('name', flat=True)

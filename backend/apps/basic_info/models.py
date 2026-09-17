@@ -56,7 +56,7 @@ class LogisticsProvider(models.Model):
         return f'{self.name}({self.type})'
 
 class Customer(models.Model):
-    name = models.CharField(max_length=128)
+    name = models.CharField(max_length=128, unique=True)  # BUG-SIM-007：全局唯一（导入按名匹配）
     contact_person = models.CharField(max_length=64, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     email = models.CharField(max_length=128, blank=True)

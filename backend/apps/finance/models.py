@@ -21,6 +21,8 @@ class PaymentIn(models.Model):
         constraints = [
             # BUG-SIM-006：回款金额必须为正（负数回款在流水中表现为正收入）
             models.CheckConstraint(condition=models.Q(amount_usd__gt=0), name='paymentin_amount_positive'),
+            # BUG-SIM-007：同一订单同一期唯一（一期一笔到账）
+            models.UniqueConstraint(fields=['order', 'installment'], name='paymentin_order_installment_unique'),
         ]
 
     def __str__(self):

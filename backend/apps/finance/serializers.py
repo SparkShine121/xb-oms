@@ -4,6 +4,18 @@ from .models import PaymentIn
 
 
 class PaymentInSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        # BUG-SIM-007：同一订单同一期回款唯一
+        order = attrs.get('order') or getattr(self.instance, 'order', None)
+        installment = attrs.get('installment', getattr(self.instance, 'installment', None))
+        if order is not None and installment is not None:
+            qs = PaymentIn.objects.filter(order=order, installment=installment)
+            if self.instance is not None:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError('该订单此期回款已登记，请修改期数或编辑原记录')
+        return attrs
+
     def validate_amount_usd(self, value):
         # BUG-SIM-006：回款金额必须为正（负数回款在流水中会表现为正收入）
         if value <= 0:
