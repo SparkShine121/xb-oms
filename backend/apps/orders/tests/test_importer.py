@@ -73,7 +73,7 @@ def test_import_cancelled_status(db, rate):
     assert o.is_cancelled is True and o.tracking_status == '已取消'
 
 
-def test_import_upsert_replaces_items(db, rate):
+def test_import_upsert_diff_updates_items(db, rate):
     Customer.objects.create(name='吴芳')
     buf1 = make_xlsx([{
         'ali_status': '待确认', 'order_date': '2026-05-12', 'contact': '吴芳', 'order_no': 'O1',
@@ -317,3 +317,26 @@ def test_reimport_still_updates_business_fields(db, rate):
     o = Order.objects.get(order_no='O1')
     assert o.remark == '新备注' and str(o.freight) == '999.00' and str(o.amount_usd) == '2000.00'
     assert o.tracking_status == '接单'  # 建档时映射的初值仍在
+
+
+def test_reimport_approved_order_no_approval_request(db, rate):
+    """Q2:a 豁免回归锁：非 admin 重导已批准订单 → 不产生审批申请、is_approved 不变。
+
+    与 UI 编辑已批准单同规则（resubmit_on_update"标记不阻断"）。
+    若未来按 BUG-SIM-005/024 收紧审批，改本测试即显式 spec 变更。
+    """
+    from apps.system_mgmt.models import ApprovalRequest
+    owner = User.objects.create_user('owner2', password='pw123456')
+    owner.groups.add(Group.objects.get(name='salesman'))
+    Customer.objects.create(name='吴芳', salesman=owner)
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    assert import_orders(buf, user=owner)['success_count'] == 1
+    o = Order.objects.get(order_no='O1')
+    assert o.is_approved is True  # 新建路径 owner 走审批挂起？——导入建档走 created_order_nos 由视图层挂审，importer 直调不挂
+    before = ApprovalRequest.objects.count()
+    buf2 = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1', spec='二次导入')]}])
+    r2 = import_orders(buf2, user=owner)
+    assert r2['success_count'] == 1, r2['failures']
+    assert ApprovalRequest.objects.count() == before  # 更新路径不产生审批申请
+    o.refresh_from_db()
+    assert o.is_approved is True
