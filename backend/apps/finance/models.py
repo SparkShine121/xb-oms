@@ -18,6 +18,10 @@ class PaymentIn(models.Model):
 
     class Meta:
         ordering = ['-payment_date', '-id']
+        constraints = [
+            # BUG-SIM-006：回款金额必须为正（负数回款在流水中表现为正收入）
+            models.CheckConstraint(condition=models.Q(amount_usd__gt=0), name='paymentin_amount_positive'),
+        ]
 
     def __str__(self):
         return f'{self.order_id}#{self.installment} {self.amount_usd}'

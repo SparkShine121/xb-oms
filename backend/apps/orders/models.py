@@ -13,6 +13,10 @@ class ExchangeRate(models.Model):
 
     class Meta:
         ordering = ['-effective_date', '-id']
+        constraints = [
+            # BUG-SIM-012：汇率必须为正（rate=0 会把毛利整体清零）
+            models.CheckConstraint(condition=models.Q(rate__gt=0), name='exchangerate_rate_positive'),
+        ]
 
     @classmethod
     def get_effective_rate(cls, date):

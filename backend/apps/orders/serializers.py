@@ -84,6 +84,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class ExchangeRateSerializer(serializers.ModelSerializer):
+    def validate_rate(self, value):
+        # BUG-SIM-012：汇率必须为正（rate=0 会把毛利整体清零）
+        if value <= 0:
+            raise serializers.ValidationError('汇率必须大于 0')
+        return value
+
     class Meta:
         model = ExchangeRate
         fields = ['id', 'currency_pair', 'rate', 'effective_date', 'created_at', 'updated_at']

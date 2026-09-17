@@ -19,6 +19,12 @@ class FactoryPayment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        constraints = [
+            # BUG-SIM-006 Q2:i：结算金额必须为正
+            models.CheckConstraint(condition=models.Q(amount_cny__gt=0), name='fp_amount_cny_positive'),
+        ]
+
     def save(self, *args, **kwargs):
         # 字段值可能为 str/int（未经过 to_python），统一转 Decimal 再比较
         paid = Decimal(self.paid_amount)
@@ -41,6 +47,12 @@ class FactoryPaymentRecord(models.Model):
     is_approved = models.BooleanField(default=True)  # 审批流：新建时 False，admin 通过后 True
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            # BUG-SIM-006：付款金额必须为正（负数拉低已付、0 无业务意义）
+            models.CheckConstraint(condition=models.Q(amount__gt=0), name='fp_record_amount_positive'),
+        ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
@@ -120,8 +123,19 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
             cond |= Q(factory_payment__order_item__order__tracker=u)
         return qs.filter(cond).distinct() if cond else qs.none()
 
+    def _check_overpay(self, fp, new_amount, exclude_id=None):
+        """BUG-SIM-006 Q1:a：累计付款不得超过结算金额（调用方须已持 fp 行锁）。"""
+        total = fp.records.exclude(id=exclude_id).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        if total + new_amount > fp.amount_cny:
+            raise DRFValidationError(
+                f'累计付款 {total + new_amount} 将超过结算金额 {fp.amount_cny}，'
+                f'请调整付款金额或先调整结算单金额')
+
     def perform_create(self, serializer):
         with transaction.atomic():
+            fp = FactoryPayment.objects.select_for_update().get(
+                pk=serializer.validated_data['factory_payment'].pk)
+            self._check_overpay(fp, serializer.validated_data['amount'])
             # Record.save() 已自动聚合：records 求和 → 父单 paid_amount → 父单 save() 重算 status
             # 审批流：非 admin 新建付款记录 → 挂起待审批；admin 新建 → 直接生效
             instance = serializer.save(is_approved=False)
@@ -135,5 +149,9 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
 
     def perform_update(self, serializer):
         with transaction.atomic():
+            instance = self.get_object()
+            fp = FactoryPayment.objects.select_for_update().get(pk=instance.factory_payment_id)
+            new_amount = serializer.validated_data.get('amount', instance.amount)
+            self._check_overpay(fp, new_amount, exclude_id=instance.id)  # 改大金额同样不得超付
             instance = serializer.save()
             resubmit_on_update(self.request.user, instance, 'payment', 'FactoryPaymentRecord')
