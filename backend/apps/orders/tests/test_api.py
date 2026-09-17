@@ -109,3 +109,23 @@ def test_exchange_rate_non_positive_rejected(db, admin_client):
         r = admin_client.post('/api/orders/exchange-rates/',
                               {'currency_pair': 'USD/CNY', 'rate': bad, 'effective_date': '2026-09-17'}, format='json')
         assert r.status_code == 400, bad
+
+# ---- BUG-SIM-007: 汇率 (币种对, 日期) 唯一 ----
+
+def test_duplicate_exchange_rate_rejected(db, admin_client):
+    r1 = admin_client.post('/api/orders/exchange-rates/',
+                           {'currency_pair': 'USD/CNY', 'rate': '7.2', 'effective_date': '2026-09-01'}, format='json')
+    assert r1.status_code == 201
+    r2 = admin_client.post('/api/orders/exchange-rates/',
+                           {'currency_pair': 'USD/CNY', 'rate': '7.5', 'effective_date': '2026-09-01'}, format='json')
+    assert r2.status_code == 400
+
+def test_same_pair_different_date_allowed(db, admin_client):
+    r = admin_client.post('/api/orders/exchange-rates/',
+                          {'currency_pair': 'USD/CNY', 'rate': '7.5', 'effective_date': '2026-10-01'}, format='json')
+    assert r.status_code == 201
+
+def test_same_date_different_pair_allowed(db, admin_client):
+    r = admin_client.post('/api/orders/exchange-rates/',
+                          {'currency_pair': 'EUR/CNY', 'rate': '7.9', 'effective_date': '2026-09-01'}, format='json')
+    assert r.status_code == 201

@@ -157,3 +157,29 @@ def test_zero_payment_in_rejected(db, setup):
     r = _client(adm).post('/api/finance/payments-in/',
                           {'order': setup['oa'].id, 'amount_usd': '0', 'payment_date': '2026-09-17', 'installment': 2}, format='json')
     assert r.status_code == 400
+
+# ---- BUG-SIM-007: 回款 (订单, 期数) 唯一 ----
+
+def test_duplicate_installment_rejected(db, setup):
+    adm = _make_user('adm_dup', 'admin')
+    c = _client(adm)
+    r1 = c.post('/api/finance/payments-in/',
+                {'order': setup['oa'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 1}, format='json')
+    assert r1.status_code == 201
+    r2 = c.post('/api/finance/payments-in/',
+                {'order': setup['oa'].id, 'amount_usd': '200', 'payment_date': '2026-09-18', 'installment': 1}, format='json')
+    assert r2.status_code == 400  # 同订单同期重复
+
+def test_different_installment_allowed(db, setup):
+    """回归锁：不同期正常放行"""
+    adm = _make_user('adm_diff', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/',
+                          {'order': setup['oa'].id, 'amount_usd': '100', 'payment_date': '2026-09-18', 'installment': 2}, format='json')
+    assert r.status_code == 201
+
+def test_same_installment_different_order_allowed(db, setup):
+    """回归锁：不同订单同期互不影响"""
+    adm = _make_user('adm_o2', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/',
+                          {'order': setup['ob'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 1}, format='json')
+    assert r.status_code == 201
