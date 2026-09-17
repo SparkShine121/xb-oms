@@ -143,3 +143,17 @@ def test_admin_can_bulk_delete_payment_ins(db, setup):
                           {'ids': [setup['p1'].id, setup['p2'].id]}, format='json')
     assert r.status_code == 200 and r.data['data']['deleted'] == 2
     assert not PaymentIn.objects.filter(id__in=[setup['p1'].id, setup['p2'].id]).exists()
+
+# ---- BUG-SIM-006: 回款金额校验 ----
+
+def test_negative_payment_in_rejected(db, setup):
+    adm = _make_user('adm_neg', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/',
+                          {'order': setup['oa'].id, 'amount_usd': '-500', 'payment_date': '2026-09-17', 'installment': 2}, format='json')
+    assert r.status_code == 400
+
+def test_zero_payment_in_rejected(db, setup):
+    adm = _make_user('adm_zero', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/',
+                          {'order': setup['oa'].id, 'amount_usd': '0', 'payment_date': '2026-09-17', 'installment': 2}, format='json')
+    assert r.status_code == 400

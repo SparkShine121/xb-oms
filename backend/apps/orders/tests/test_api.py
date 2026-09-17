@@ -101,3 +101,11 @@ def test_bulk_delete_mixed_settlement_reports_forbidden(db, admin_client):
     assert r.data['data']['forbidden'] == [o_settled.id]
     assert Order.objects.filter(id=o_settled.id).exists()
     assert FactoryPayment.objects.count() == 1
+
+# ---- BUG-SIM-012: 汇率 rate>0 校验 ----
+
+def test_exchange_rate_non_positive_rejected(db, admin_client):
+    for bad in ('0', '-7.2'):
+        r = admin_client.post('/api/orders/exchange-rates/',
+                              {'currency_pair': 'USD/CNY', 'rate': bad, 'effective_date': '2026-09-17'}, format='json')
+        assert r.status_code == 400, bad
