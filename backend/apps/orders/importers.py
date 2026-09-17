@@ -216,19 +216,27 @@ def import_orders(file, user=None):
                 ali_status = str(d['ali_status'] or '').strip()
                 tracking_status = ALI_STATUS_MAP.get(ali_status, '')
                 is_cancelled = ali_status in CANCELLED_STATUSES
+                defaults = {
+                    'ali_status': ali_status, 'tracking_status': tracking_status, 'is_cancelled': is_cancelled,
+                    'order_date': d['order_date'],
+                    'customer': customer,
+                    'salesman': customer.salesman if customer else None,
+                    'amount_usd': d['amount'] or 0, 'freight': d['freight'] or 0, 'insurance': d['insurance'] or 0,
+                    'surcharge': d['surcharge'] or 0, 'service_fee_usd': d['service_fee'] or 0,
+                    'transport_cost': d['transport'] or 0, 'carrier': d['carrier'] or '',
+                    'logistics_method': d['logistics'] or '',
+                    'tracking_no': d['tracking_no'] or '', 'remark': d['remark'] or '',
+                }
+                # BUG-SIM-003 Q1:a：更新路径不覆写状态三件套（ali_status/tracking_status/
+                # is_cancelled）——跟单状态属 8 节点状态机职权、取消是显式动作，
+                # Excel 的阿里状态快照只在新建建档时映射
+                if Order.objects.filter(order_no=order_no).exists():
+                    defaults.pop('ali_status')
+                    defaults.pop('tracking_status')
+                    defaults.pop('is_cancelled')
                 order, created = Order.objects.update_or_create(
                     order_no=order_no,
-                    defaults={
-                        'ali_status': ali_status, 'tracking_status': tracking_status, 'is_cancelled': is_cancelled,
-                        'order_date': d['order_date'],
-                        'customer': customer,
-                        'salesman': customer.salesman if customer else None,
-                        'amount_usd': d['amount'] or 0, 'freight': d['freight'] or 0, 'insurance': d['insurance'] or 0,
-                        'surcharge': d['surcharge'] or 0, 'service_fee_usd': d['service_fee'] or 0,
-                        'transport_cost': d['transport'] or 0, 'carrier': d['carrier'] or '',
-                        'logistics_method': d['logistics'] or '',
-                        'tracking_no': d['tracking_no'] or '', 'remark': d['remark'] or '',
-                    },
+                    defaults=defaults,
                 )
                 if created:
                     created_order_nos.append(order_no)

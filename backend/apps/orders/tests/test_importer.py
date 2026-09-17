@@ -96,8 +96,9 @@ def test_import_upsert_replaces_items(db, rate):
     }])
     r = import_orders(buf2)
     o = Order.objects.get(order_no='O1')
-    assert o.tracking_status == '排产' and str(o.amount_usd) == '200.00'
-    assert o.items.count() == 2  # 整组替换
+    # BUG-SIM-003 Q1:a：更新路径不覆写状态（保持首导映射的"接单"），业务字段照常同步
+    assert o.tracking_status == '接单' and str(o.amount_usd) == '200.00'
+    assert o.items.count() == 2  # diff 更新：P1 原位改量 + P2 新建
 
 
 def test_import_unmatched(db, rate):
@@ -260,3 +261,59 @@ def test_reimport_db_blank_product_no_fails(db, rate):
     assert r2['success_count'] == 0 and r2['fail_count'] == 1
     assert '产品编号' in r2['failures'][0]['reason']
     assert OrderItem.objects.filter(order=o).count() == 2  # 零写入
+
+# ---- BUG-SIM-003: 导入更新不覆写状态字段（Q1:a）----
+
+def test_reimport_does_not_overwrite_tracking_status(db, rate):
+    """重导不把已推进的跟单状态拉回（状态机职权属跟单模块）"""
+    Customer.objects.create(name='吴芳')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    assert import_orders(buf)['success_count'] == 1
+    o = Order.objects.get(order_no='O1')
+    o.tracking_status = '质检'
+    o.ali_status = '已发货'
+    o.save(update_fields=['tracking_status', 'ali_status'])
+    r2 = import_orders(buf)  # Excel 里是"待确认"（映射接单）
+    assert r2['success_count'] == 1, r2['failures']
+    o.refresh_from_db()
+    assert o.tracking_status == '质检'  # 未被拉回接单
+    assert o.ali_status == '已发货'  # 状态三件套在更新路径整体不动
+
+
+def test_reimport_does_not_cancel_or_revive(db, rate):
+    """重导不改 is_cancelled：已取消不被复活，正常单不被标记取消"""
+    Customer.objects.create(name='吴芳')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    assert import_orders(buf)['success_count'] == 1
+    o = Order.objects.get(order_no='O1')
+    o.is_cancelled = True
+    o.save(update_fields=['is_cancelled'])
+    r2 = import_orders(buf)  # Excel 非取消状态
+    o.refresh_from_db()
+    assert o.is_cancelled is True  # 不被复活
+    # 反向：正常单遇"交易失败"也不被标记取消
+    o2_rec = {**BASE_REC, 'order_no': 'O2', 'ali_status': '交易失败', 'items': [_item(1, 'P1')]}
+    assert import_orders(make_xlsx([o2_rec]))['success_count'] == 1
+    o2 = Order.objects.get(order_no='O2')
+    assert o2.is_cancelled is True and o2.tracking_status == '已取消'  # 新建路径照常映射
+    o2.is_cancelled = False
+    o2.tracking_status = '排产'
+    o2.save(update_fields=['is_cancelled', 'tracking_status'])
+    r3 = import_orders(make_xlsx([o2_rec]))
+    assert r3['success_count'] == 1, r3['failures']
+    o2.refresh_from_db()
+    assert o2.is_cancelled is False and o2.tracking_status == '排产'  # 更新路径不标记取消
+
+
+def test_reimport_still_updates_business_fields(db, rate):
+    """状态剥离不影响业务字段同步：备注/运费/金额照常更新"""
+    Customer.objects.create(name='吴芳')
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    assert import_orders(buf)['success_count'] == 1
+    changed = {**BASE_REC, 'remark': '新备注', 'freight': 999, 'amount': 2000,
+               'items': [_item(1, 'P1')]}
+    r2 = import_orders(make_xlsx([changed]))
+    assert r2['success_count'] == 1, r2['failures']
+    o = Order.objects.get(order_no='O1')
+    assert o.remark == '新备注' and str(o.freight) == '999.00' and str(o.amount_usd) == '2000.00'
+    assert o.tracking_status == '接单'  # 建档时映射的初值仍在
