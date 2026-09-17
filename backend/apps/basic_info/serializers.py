@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from .models import Category, Product, Factory, LogisticsProvider, Customer
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -32,6 +33,12 @@ class LogisticsProviderSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(serializers.ModelSerializer):
     salesman_name = serializers.CharField(source='salesman.username', read_only=True, default='')
+
+    class Meta:
+        extra_kwargs = {
+            # BUG-SIM-007 followup：覆写 unique=True 自动校验器文案
+            'name': {'validators': [UniqueValidator(queryset=Customer.objects.all(), message='已存在同名客户')]},
+        }
 
     def validate_name(self, value):
         # BUG-SIM-007：客户名全局唯一（导入按名匹配，同名会歧义）

@@ -184,3 +184,20 @@ def test_same_installment_different_order_allowed(db, setup):
     r = _client(adm).post('/api/finance/payments-in/',
                           {'order': setup['ob'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 2}, format='json')
     assert r.status_code == 201
+
+# ---- BUG-SIM-007 followup（旁观者审查发现）----
+
+def test_installment_lower_bound_rejected(db, setup):
+    """期数语义为"第几期"，0/负数无意义 → 400"""
+    adm = _make_user('adm_i0', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/',
+                          {'order': setup['oa'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 0}, format='json')
+    assert r.status_code == 400
+
+def test_duplicate_installment_message_is_friendly(db, setup):
+    """重复登记返回业务友好中文文案（而非 DRF 默认机器人文案）"""
+    adm = _make_user('adm_msg', 'admin')
+    r = _client(adm).post('/api/finance/payments-in/',
+                          {'order': setup['oa'].id, 'amount_usd': '100', 'payment_date': '2026-09-17', 'installment': 1}, format='json')
+    assert r.status_code == 400
+    assert '已登记' in str(r.data['message'])

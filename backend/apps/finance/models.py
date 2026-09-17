@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.orders.models import Order
@@ -11,7 +12,7 @@ class PaymentIn(models.Model):
     )
     amount_usd = models.DecimalField(max_digits=14, decimal_places=2)
     payment_date = models.DateField()
-    installment = models.IntegerField(default=1)  # 第几期
+    installment = models.IntegerField(default=1, validators=[MinValueValidator(1)])  # 第几期（BUG-SIM-007 followup：0/负数无意义）
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

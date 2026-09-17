@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 from .models import Order, OrderItem, ExchangeRate, calc_order_profit
 from .services import check_items_diff
 
@@ -105,3 +106,9 @@ class ExchangeRateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExchangeRate
         fields = ['id', 'currency_pair', 'rate', 'effective_date', 'created_at', 'updated_at']
+        # BUG-SIM-007 followup：覆写自动唯一校验器文案
+        validators = [
+            UniqueTogetherValidator(
+                queryset=ExchangeRate.objects.all(), fields=['currency_pair', 'effective_date'],
+                message='同币种对同日期的汇率记录已存在，如需调整请编辑原记录'),
+        ]

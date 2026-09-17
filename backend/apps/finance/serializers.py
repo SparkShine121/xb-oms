@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 from .models import PaymentIn
 
@@ -29,3 +30,9 @@ class PaymentInSerializer(serializers.ModelSerializer):
         fields = ['id', 'order', 'order_no', 'amount_usd', 'payment_date',
                   'installment', 'note', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
+        # BUG-SIM-007 followup：覆写自动唯一校验器文案，业务友好提示可达用户
+        validators = [
+            UniqueTogetherValidator(
+                queryset=PaymentIn.objects.all(), fields=['order', 'installment'],
+                message='该订单此期回款已登记，请修改期数或编辑原记录'),
+        ]

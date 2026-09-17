@@ -129,3 +129,15 @@ def test_same_date_different_pair_allowed(db, admin_client):
     r = admin_client.post('/api/orders/exchange-rates/',
                           {'currency_pair': 'EUR/CNY', 'rate': '7.9', 'effective_date': '2026-09-01'}, format='json')
     assert r.status_code == 201
+
+# ---- BUG-SIM-007 followup：PATCH 场景回归锁 ----
+
+def test_exchange_rate_patch_date_to_occupied_rejected(db, admin_client):
+    """PATCH 汇率生效日期到同币种对已占日期 → 400"""
+    admin_client.post('/api/orders/exchange-rates/',
+                      {'currency_pair': 'USD/CNY', 'rate': '7.2', 'effective_date': '2026-09-01'}, format='json')
+    r2 = admin_client.post('/api/orders/exchange-rates/',
+                           {'currency_pair': 'USD/CNY', 'rate': '7.5', 'effective_date': '2026-10-01'}, format='json')
+    rid = r2.data['data']['id']
+    r3 = admin_client.patch(f'/api/orders/exchange-rates/{rid}/', {'effective_date': '2026-09-01'}, format='json')
+    assert r3.status_code == 400
