@@ -72,7 +72,8 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         is_admin = request.user.groups.filter(name='admin').exists()
         with transaction.atomic():
             for item in items:
-                if hasattr(item, 'factory_payment'):
+                if hasattr(item, 'factory_payment') or item.qty * item.cost_price <= 0:
+                    # 已有结算单 / 成本为 0（0 元结算单是脏数据，BUG-SIM-006 followup）
                     skipped += 1
                     continue
                 fp = FactoryPayment.objects.create(
@@ -150,6 +151,10 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
     def perform_update(self, serializer):
         with transaction.atomic():
             instance = self.get_object()
+            if 'factory_payment' in serializer.validated_data and \
+                    serializer.validated_data['factory_payment'].pk != instance.factory_payment_id:
+                # BUG-SIM-006 followup：换父会绕过超付校验并使旧父 paid_amount 失真
+                raise DRFValidationError('付款记录不支持更换所属结算单')
             fp = FactoryPayment.objects.select_for_update().get(pk=instance.factory_payment_id)
             new_amount = serializer.validated_data.get('amount', instance.amount)
             self._check_overpay(fp, new_amount, exclude_id=instance.id)  # 改大金额同样不得超付

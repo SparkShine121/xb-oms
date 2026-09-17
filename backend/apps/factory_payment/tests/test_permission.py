@@ -171,3 +171,50 @@ def test_non_positive_settlement_amount_rejected(db, admin_client):
         r = admin_client.post('/api/factory-payment/payments/',
                               {'order_item': item.id, 'factory': f.id, 'amount_cny': bad}, format='json')
         assert r.status_code == 400, bad
+
+# ---- BUG-SIM-006 followup（旁观者审查发现）----
+
+def test_record_cannot_switch_parent_settlement(db, finance_client):
+    """PATCH 付款记录不得更换所属结算单（换父会绕过超付校验并使旧父 paid_amount 失真）"""
+    p = _make_payment()
+    r1 = finance_client.post('/api/factory-payment/records/',
+                             {'factory_payment': p.id, 'amount': '50', 'payment_date': '2026-09-17'}, format='json')
+    rid = r1.data['data']['id']
+    # 第二张结算单：复用同一工厂（工厂名唯一），用新订单号避免唯一冲突
+    f = Factory.objects.get(name='华鑫')
+    c2 = Customer.objects.create(name='客户B')
+    o2 = Order.objects.create(order_no='O1b', tracking_status='排产', customer=c2, amount_usd='100')
+    item2 = OrderItem.objects.create(order=o2, seq=1, factory=f, qty=10, unit_price='10', subtotal='100', cost_price='7.20')
+    p2 = FactoryPayment.objects.create(order_item=item2, factory=f, amount_cny='72.00')
+    r2 = finance_client.patch(f'/api/factory-payment/records/{rid}/',
+                              {'factory_payment': p2.id}, format='json')
+    assert r2.status_code == 400
+    assert FactoryPaymentRecord.objects.get(id=rid).factory_payment_id == p.id
+
+def test_settlement_amount_below_paid_rejected(db, admin_client):
+    """结算单改小金额不得低于已付（否则静默"已结"并绕过超付不变量）"""
+    from apps.basic_info.models import Factory as FPFactory
+    f = FPFactory.objects.create(name='华鑫')
+    c = Customer.objects.create(name='客户A')
+    o = Order.objects.create(order_no='OS2', tracking_status='排产', customer=c, amount_usd='100')
+    item = OrderItem.objects.create(order=o, seq=1, factory=f, qty=10, unit_price='10', subtotal='100', cost_price='7.20')
+    r = admin_client.post('/api/factory-payment/payments/',
+                          {'order_item': item.id, 'factory': f.id, 'amount_cny': '100'}, format='json')
+    fid = r.data['data']['id']
+    admin_client.post('/api/factory-payment/records/',
+                      {'factory_payment': fid, 'amount': '80', 'payment_date': '2026-09-17'}, format='json')
+    r2 = admin_client.patch(f'/api/factory-payment/payments/{fid}/', {'amount_cny': '50'}, format='json')
+    assert r2.status_code == 400  # 50 < 已付 80
+
+def test_generate_skips_zero_cost_items(db, admin_client):
+    """一键生成：成本为 0 的明细跳过（0 元结算单是脏数据），不整批 500"""
+    from apps.basic_info.models import Factory as FPFactory
+    f = FPFactory.objects.create(name='华鑫')
+    c = Customer.objects.create(name='客户A')
+    o = Order.objects.create(order_no='OG', tracking_status='排产', customer=c, amount_usd='100')
+    OrderItem.objects.create(order=o, seq=1, factory=f, qty=10, unit_price='10', subtotal='100', cost_price='7.20')
+    OrderItem.objects.create(order=o, seq=2, factory=f, qty=5, unit_price='10', subtotal='50', cost_price='0')
+    r = admin_client.post(f'/api/factory-payment/payments/orders/{o.id}/generate/', format='json')
+    assert r.status_code == 200
+    assert r.data['data']['created_count'] == 1  # 只有正常明细生成
+    assert FactoryPayment.objects.filter(order_item__order=o).count() == 1

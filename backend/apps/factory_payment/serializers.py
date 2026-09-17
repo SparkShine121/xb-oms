@@ -21,6 +21,13 @@ class FactoryPaymentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('结算金额必须大于 0')
         return value
 
+    def validate(self, attrs):
+        # BUG-SIM-006 followup：改小结算金额不得低于已付（否则静默"已结"并绕过超付不变量）
+        amount = attrs.get('amount_cny')
+        if amount is not None and self.instance is not None and amount < self.instance.paid_amount:
+            raise serializers.ValidationError(f'结算金额不得低于已付金额 {self.instance.paid_amount}')
+        return attrs
+
     records = FactoryPaymentRecordSerializer(many=True, read_only=True)
     factory_name = serializers.CharField(source='factory.name', read_only=True)
     order_no = serializers.CharField(source='order_item.order.order_no', read_only=True)
