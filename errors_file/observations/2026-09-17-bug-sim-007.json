@@ -1,0 +1,13 @@
+{
+  "task": "BUG-SIM-007 三处唯一性",
+  "date": "2026-09-17",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "文案可达性", "severity": "medium", "observation": "自定义友好文案被 DRF 自动唯一校验器抢先，成为死代码", "suggestion": "已修：UniqueValidator/UniqueTogetherValidator message 覆写"},
+    {"dimension": "前端体验", "severity": "medium", "observation": "dict 型 message 渲染成空白 toast（UX#6）", "suggestion": "已修：异常处理器拍平字段错误 dict"},
+    {"dimension": "映射宽度", "severity": "medium-low", "observation": "IntegrityError 全量映射 400 过宽且无日志", "suggestion": "已修：仅唯一性冲突→400，其余 500+logger.exception"},
+    {"dimension": "测试覆盖", "severity": "low", "observation": "PATCH 场景无 committed 锁", "suggestion": "已补：汇率改期撞已占日 400"},
+    {"dimension": "语义一致性", "severity": "low", "observation": "dev/prod 大小写唯一性差异；installment 无下界", "suggestion": "已修 installment 下界；大小写差异已记录部署注意事项"},
+    {"dimension": "文档准确性", "severity": "low", "observation": "归档测试计数漏加", "suggestion": "已更正为 227"}
+  ]
+}
