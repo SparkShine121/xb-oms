@@ -44,14 +44,35 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f'订单号 {value} 已存在')
         return value
 
+    def validate_tracker(self, value):
+        # BUG-SIM-014 Q3:a：tracker 目标必须为 tracker 角色（admin 建单/编辑同规则）。
+        # 非 admin 建单时该字段会被 validate() 剔除（Q1' 忽略语义），故此处不拦截，
+        # 让 payload 杂音被静默忽略而非报错。
+        if value is not None and not value.groups.filter(name='tracker').exists():
+            request = self.context.get('request')
+            user = getattr(request, 'user', None)
+            creating_non_admin = (
+                self.instance is None and user is not None
+                and not user.groups.filter(name='admin').exists())
+            if not creating_non_admin:
+                raise serializers.ValidationError('目标用户必须为跟单员（tracker）角色')
+        return value
+
     def validate(self, attrs):
-        # 派单类字段（业务员/跟单员）仅 admin 可改：非 admin 更新时忽略，防止绕过前端直接调 API
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        if user is not None and self.instance is not None \
-                and not user.groups.filter(name='admin').exists():
-            attrs.pop('salesman', None)
-            attrs.pop('tracker', None)
+        if user is not None and not user.groups.filter(name='admin').exists():
+            if self.instance is not None:
+                # 更新：派单字段仅 admin 可改（既有规则）
+                attrs.pop('salesman', None)
+                attrs.pop('tracker', None)
+            else:
+                # BUG-SIM-004 Q1'：非 admin 建单归属=建单人，限自己客户；tracker 忽略
+                customer = attrs.get('customer')
+                if customer is not None and customer.salesman_id != user.id:
+                    raise serializers.ValidationError('只能为自己客户的订单录入')
+                attrs['salesman'] = user
+                attrs.pop('tracker', None)
         return attrs
 
     def create(self, validated):

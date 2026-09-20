@@ -5,12 +5,18 @@ class OrderPermission(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         groups = set(request.user.groups.values_list('name', flat=True))
-        if 'admin' in groups or 'finance' in groups:
+        # BUG-SIM-004 Q1'：导入是批量跨客户动作，收紧为仅 admin（归属自动按客户分配）
+        if view.action == 'import_data':
+            return 'admin' in groups
+        if 'admin' in groups:
             return True
-        if view.action in ('import_data', 'create'):
-            return 'salesman' in groups
+        if 'finance' in groups:
+            # BUG-SIM-014 Q2:a：派单仅 admin，finance 只读结算域
+            return view.action != 'set_tracker'
         if view.action in ('destroy', 'set_tracker'):
             return False
+        if view.action == 'create':
+            return 'salesman' in groups
         return True
 
     def has_object_permission(self, request, view, obj):

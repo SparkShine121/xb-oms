@@ -244,8 +244,10 @@ def import_orders(file, user=None):
                     # BUG-SIM-002 Q7:i：更新路径校验操作者数据范围
                     if not _in_data_scope(order, user):
                         raise ValueError('无权限更新该订单（数据范围外）')
-                # tracker：新订单填 customer.tracker；已存在若空才填
-                if not order.tracker and customer and customer.tracker:
+                # tracker：新订单填 customer.tracker（须为 tracker 角色，否则静默不填——
+                # 与 029 孤儿字段现状兼容）；已存在若空才填
+                if not order.tracker and customer and customer.tracker \
+                        and customer.tracker.groups.filter(name='tracker').exists():
                     order.tracker = customer.tracker
                     order.save(update_fields=['tracker'])
                 if created:

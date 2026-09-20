@@ -13,7 +13,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const roles = computed(() => userStore.roles)
 const isAdmin = computed(() => roles.value.includes('admin'))
-const canImport = computed(() => isAdmin.value || roles.value.includes('salesman'))
+const canImport = computed(() => isAdmin.value) // BUG-SIM-004：导入收紧为仅 admin
 const canCreate = computed(() => isAdmin.value || roles.value.includes('salesman'))
 const canEdit = computed(() => isAdmin.value || roles.value.includes('salesman') || roles.value.includes('tracker'))
 

@@ -61,6 +61,7 @@ def test_only_admin_can_set_tracker(db, tracker_client, admin_client):
     ac, _ = admin_client
     o = Order.objects.create(order_no='O1')
     new_tr = User.objects.create_user('tr2', password='pw123456')
+    new_tr.groups.add(Group.objects.get(name='tracker'))  # BUG-SIM-014 后目标须为 tracker 角色
     r = tc.post(f'/api/orders/orders/{o.id}/set-tracker/', {'tracker': new_tr.id}, format='json')
     assert r.status_code == 403
     r2 = ac.post(f'/api/orders/orders/{o.id}/set-tracker/', {'tracker': new_tr.id}, format='json')

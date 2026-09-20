@@ -100,9 +100,13 @@ class OrderViewSet(BaseModelViewSet):
         tracker_id = request.data.get('tracker')
         from django.contrib.auth.models import User
         try:
-            order.tracker = User.objects.get(pk=tracker_id); order.save()
+            tracker = User.objects.get(pk=tracker_id)
         except User.DoesNotExist:
             return error_response(1004, '用户不存在', status=404)
+        # BUG-SIM-014 Q3:a：派单目标必须为 tracker 角色
+        if not tracker.groups.filter(name='tracker').exists():
+            return error_response(1001, '目标用户必须为跟单员（tracker）角色', status=400)
+        order.tracker = tracker; order.save()
         return success_response(OrderSerializer(order).data)
 
 

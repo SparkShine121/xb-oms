@@ -264,8 +264,8 @@ def test_admin_edit_does_not_create_request(db, setup):
 
 # ---- 批量写入路径审批流（final review 修复）----
 
-def test_import_data_pends_for_salesman(db, setup):
-    """Excel 导入审批流：salesman 导入的新建订单挂起待审批；admin 导入直接生效。"""
+def test_import_data_admin_only_direct_effective(db, setup):
+    """BUG-SIM-004 Q1'：导入收紧为仅 admin（salesman 导入 403）；admin 导入直接生效不挂审批。"""
     from io import BytesIO
     import openpyxl
 
@@ -281,14 +281,8 @@ def test_import_data_pends_for_salesman(db, setup):
 
     c = _client(setup['sales'])
     r = c.post('/api/orders/orders/import/', {'file': make_xlsx('OIMP-1')}, format='multipart')
-    assert r.status_code == 200, r.data
-    assert r.data['data']['created_order_nos'] == ['OIMP-1']
-    od = Order.objects.get(order_no='OIMP-1')
-    assert od.is_approved is False
-    ar = ApprovalRequest.objects.get(target_id=od.id, approval_type='order_change')
-    assert ar.target_model == 'Order'
-    assert ar.status == 'pending'
-    assert ar.submitted_by.username == 'sales_a'
+    assert r.status_code == 403
+    assert not Order.objects.filter(order_no='OIMP-1').exists()  # 未产生任何数据
 
     adm = _client(_make_user('adm_imp', 'admin'))
     r = adm.post('/api/orders/orders/import/', {'file': make_xlsx('OIMP-2')}, format='multipart')

@@ -119,6 +119,7 @@ def test_import_unmatched(db, rate):
 def test_import_tracker_auto(db, rate):
     from django.contrib.auth.models import User
     t = User.objects.create_user('tracker1', password='pw123456')
+    t.groups.add(Group.objects.get(name='tracker'))  # BUG-SIM-014 后仅 tracker 角色会被自动映射
     Customer.objects.create(name='吴芳', tracker=t)
     buf = make_xlsx([{
         'ali_status': '待确认', 'order_date': '2026-05-12', 'contact': '吴芳', 'order_no': 'O1',
