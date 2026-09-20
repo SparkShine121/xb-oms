@@ -15,6 +15,18 @@
       "autoPort": false
     },
     {
+      "name": "backend-mac",
+      "runtimeExecutable": "/Users/xuxu/Documents/Claude项目/xb项目/backend/.venv/bin/python",
+      "runtimeArgs": [
+        "manage.py",
+        "runserver",
+        "8000"
+      ],
+      "cwd": "/Users/xuxu/Documents/Claude项目/xb项目/backend",
+      "port": 8000,
+      "autoPort": false
+    },
+    {
       "name": "frontend-mac",
       "runtimeExecutable": "/opt/homebrew/bin/node",
       "runtimeArgs": [
@@ -25,6 +37,18 @@
         "--strictPort"
       ],
       "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "project-map-preview",
+      "runtimeExecutable": "/Users/xuxu/Documents/Claude项目/xb项目/backend/.venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8899"
+      ],
+      "cwd": "/Users/xuxu/Documents/Claude项目/xb项目/project-map",
+      "port": 8899,
       "autoPort": false
     }
   ]

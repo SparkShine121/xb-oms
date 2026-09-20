@@ -54,3 +54,6 @@ coverage/
 
 # 构建产物
 *.log
+
+# project-map 项目星图（纯本地可视化工具，project-map skill 生成与维护）
+project-map/
