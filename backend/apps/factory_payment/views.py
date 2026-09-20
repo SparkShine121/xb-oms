@@ -75,7 +75,8 @@ class FactoryPaymentViewSet(BaseModelViewSet):
             Order.objects.select_for_update().get(pk=order.pk)
             items = list(order.items.filter(factory__isnull=False))
             for item in items:
-                if hasattr(item, 'factory_payment') or item.qty * item.cost_price <= 0:
+                if order.is_cancelled or hasattr(item, 'factory_payment') or item.qty * item.cost_price <= 0:
+                    # BUG-SIM-015 Q2:a：取消订单明细不再参与生成（全部 skipped）
                     # 已有结算单 / 成本为 0（0 元结算单是脏数据，BUG-SIM-006 followup）
                     skipped += 1
                     continue

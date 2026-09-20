@@ -319,3 +319,42 @@ def test_salesman_create_without_customer_rejected(db):
     c = APIClient(); c.force_authenticate(sales)
     r = c.post('/api/orders/orders/', {'order_no': 'ONC', 'amount_usd': '1', 'items': []}, format='json')
     assert r.status_code == 400
+
+# ---- BUG-SIM-013: 编辑页状态处理 ----
+
+def test_salesman_edit_tracking_status_ignored(db):
+    """非 admin 编辑时 tracking_status 被忽略（状态机唯一入口=跟单流转）"""
+    from apps.basic_info.models import Customer
+    sales = _sales_user('sales_ts')
+    o = Order.objects.create(order_no='OTS1', tracking_status='排产',
+                             customer=Customer.objects.create(name='C', salesman=sales), salesman=sales)
+    c = APIClient(); c.force_authenticate(sales)
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'tracking_status': '发货', 'remark': '改备注'}, format='json')
+    assert r.status_code == 200
+    o.refresh_from_db()
+    assert o.tracking_status == '排产'  # 未被跳节点
+    assert o.remark == '改备注'  # 其余字段照常
+
+
+def test_admin_edit_to_cancelled_rejected(db):
+    """admin 编辑也不能置"已取消"——取消必须走显式 is_cancelled 操作"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_ts', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    o = Order.objects.create(order_no='OTS2', tracking_status='排产', customer=Customer.objects.create(name='C2'))
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'tracking_status': '已取消'}, format='json')
+    assert r.status_code == 400
+    o.refresh_from_db()
+    assert o.tracking_status == '排产' and o.is_cancelled is False
+
+
+def test_admin_edit_status_correction_ok(db):
+    """回归锁：admin 纠错改其他状态正常"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_ts2', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    o = Order.objects.create(order_no='OTS3', tracking_status='排产', customer=Customer.objects.create(name='C3'))
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'tracking_status': '生产中'}, format='json')
+    assert r.status_code == 200
+    o.refresh_from_db()
+    assert o.tracking_status == '生产中'

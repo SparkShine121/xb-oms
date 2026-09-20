@@ -60,13 +60,17 @@ class OrderSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        # BUG-SIM-013 Q1:a：任何路径都不能经编辑置"已取消"——取消走显式 is_cancelled 操作
+        if attrs.get('tracking_status') == '已取消':
+            raise serializers.ValidationError('订单取消请使用「取消订单」操作，不能通过编辑置为已取消')
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user is not None and not user.groups.filter(name='admin').exists():
             if self.instance is not None:
-                # 更新：派单字段仅 admin 可改（既有规则）
+                # 更新：派单字段仅 admin 可改（既有规则）；状态字段忽略（跟单流转是唯一入口）
                 attrs.pop('salesman', None)
                 attrs.pop('tracker', None)
+                attrs.pop('tracking_status', None)
             else:
                 # BUG-SIM-004 Q1'：非 admin 建单归属=建单人，限自己客户；tracker 忽略
                 customer = attrs.get('customer')

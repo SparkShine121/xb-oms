@@ -302,3 +302,32 @@ def test_overview_totals_and_monthly_trend(api, db):
     jul = d['monthly'][0]
     assert jul['sales'] == 1500
     assert jul['profit'] == 300
+
+# ---- BUG-SIM-015 Q3:a: 工厂汇总排除取消单，对账单保留 ----
+
+def test_factory_summary_excludes_cancelled_orders(db):
+    from django.contrib.auth.models import User, Group
+    from rest_framework.test import APIClient
+    from apps.basic_info.models import Factory, Customer
+    from apps.orders.models import Order, OrderItem
+    from apps.factory_payment.models import FactoryPayment
+    adm = User.objects.create_user('adm_fs', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    f = Factory.objects.create(name='工厂FS')
+    c1 = Customer.objects.create(name='正常客户')
+    o1 = Order.objects.create(order_no='FS1', customer=c1, amount_usd='100')
+    i1 = OrderItem.objects.create(order=o1, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    FactoryPayment.objects.create(order_item=i1, factory=f, amount_cny='500', paid_amount='200')
+    c2 = Customer.objects.create(name='取消客户')
+    o2 = Order.objects.create(order_no='FS2', customer=c2, amount_usd='100', tracking_status='已取消', is_cancelled=True)
+    i2 = OrderItem.objects.create(order=o2, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    FactoryPayment.objects.create(order_item=i2, factory=f, amount_cny='700', paid_amount='100')
+    cl = APIClient(); cl.force_authenticate(adm)
+    r = cl.get('/api/analytics/factory-summary/')
+    assert r.status_code == 200
+    row = next(x for x in r.data['data'] if x['factory__name'] == '工厂FS')
+    assert row['total_amount'] == 500.0   # 取消单的 700 被排除
+    assert row['total_paid'] == 200.0
+    # 对账单（statement）保留取消单——对账凭据完整性
+    r2 = cl.get('/api/factory-payment/payments/statement/', {'factory': f.id})
+    assert r2.status_code == 200
+    assert float(r2.data['data']['total_amount']) == 1200.0  # 500+700 都在

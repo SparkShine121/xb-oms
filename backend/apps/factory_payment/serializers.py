@@ -22,6 +22,11 @@ class FactoryPaymentSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        # BUG-SIM-015 Q2:a：取消订单不可新建结算（存量结算付款清偿不受限）
+        if self.instance is None:
+            order_item = attrs.get('order_item')
+            if order_item is not None and order_item.order.is_cancelled:
+                raise serializers.ValidationError('已取消订单不可新建结算')
         # BUG-SIM-006 followup：改小结算金额不得低于已付（否则静默"已结"并绕过超付不变量）
         amount = attrs.get('amount_cny')
         if amount is not None and self.instance is not None and amount < self.instance.paid_amount:

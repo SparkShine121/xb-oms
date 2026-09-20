@@ -248,3 +248,35 @@ def test_shipment_seq_after_middle_delete(db):
     b.delete()
     d = Logistics.objects.create(order=o, tracking_no='D')
     assert d.seq == 4  # max+1，不再被 count 误导
+
+# ---- BUG-SIM-015: 取消单财务冻结 ----
+
+def _cancelled_order_item():
+    f = Factory.objects.create(name='华鑫X')
+    c = Customer.objects.create(name='客户X')
+    o = Order.objects.create(order_no='OCX', tracking_status='已取消', is_cancelled=True, customer=c, amount_usd='100')
+    item = OrderItem.objects.create(order=o, seq=1, factory=f, qty=10, unit_price='10', subtotal='100', cost_price='7.20')
+    return o, item
+
+def test_generate_skips_cancelled_order_items(db, admin_client):
+    """取消订单的明细不再参与一键生成（全 skipped）"""
+    o, item = _cancelled_order_item()
+    r = admin_client.post(f'/api/factory-payment/payments/orders/{o.id}/generate/', format='json')
+    assert r.status_code == 200
+    assert r.data['data']['created_count'] == 0 and r.data['data']['skipped_count'] == 1
+    assert FactoryPayment.objects.count() == 0
+
+def test_manual_settlement_for_cancelled_order_rejected(db, admin_client):
+    """取消订单手动新建结算 → 400"""
+    o, item = _cancelled_order_item()
+    r = admin_client.post('/api/factory-payment/payments/', {
+        'order_item': item.id, 'factory': item.factory.id, 'amount_cny': '72'}, format='json')
+    assert r.status_code == 400
+
+def test_payment_record_on_legacy_settlement_of_cancelled_order_ok(db, finance_client):
+    """回归锁：取消前已存在的结算单，付款清偿仍可登记"""
+    o, item = _cancelled_order_item()
+    fp = FactoryPayment.objects.create(order_item=item, factory=item.factory, amount_cny='72.00')
+    r = finance_client.post('/api/factory-payment/records/', {
+        'factory_payment': fp.id, 'amount': '50', 'payment_date': '2026-09-20'}, format='json')
+    assert r.status_code == 201

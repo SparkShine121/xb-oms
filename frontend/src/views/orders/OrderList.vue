@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  listOrders, deleteOrder, importOrders, downloadOrderTemplate, setTracker, bulkDeleteOrders,
+  listOrders, deleteOrder, updateOrder, importOrders, downloadOrderTemplate, setTracker, bulkDeleteOrders,
 } from '../../api/orders'
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import { listUsers } from '../../api/auth'
@@ -92,6 +92,17 @@ async function remove(row: any) {
   await ElMessageBox.confirm(`确定删除订单「${row.order_no}」？`, '删除确认', { type: 'warning' })
   await deleteOrder(row.id)
   ElMessage.success('已删除')
+  load()
+}
+
+// ---- 取消订单（仅 admin，BUG-SIM-027：显式取消入口，替代编辑页假取消） ----
+async function handleCancelOrder(row: any) {
+  await ElMessageBox.confirm(
+    `确定取消订单 ${row.order_no}？取消后将冻结其新增结算/付款动作（已产生的结算与对账保留）`,
+    '取消订单', { type: 'warning' },
+  )
+  await updateOrder(row.id, { is_cancelled: true })
+  ElMessage.success('订单已取消')
   load()
 }
 
@@ -238,11 +249,12 @@ onMounted(() => { loadUsers(); load() })
             <span :class="profitClass(row.order_profit_usd)">{{ fmtMoney(row.order_profit_usd) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <router-link :to="`/orders/${row.id}`" class="action-link">详情</router-link>
             <el-button v-if="canEdit" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
             <el-button v-if="isAdmin" link type="warning" size="small" @click="openDispatch(row)">派单</el-button>
+            <el-button v-if="isAdmin && !row.is_cancelled" link type="warning" size="small" @click="handleCancelOrder(row)">取消</el-button>
             <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>

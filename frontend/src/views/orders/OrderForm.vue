@@ -14,7 +14,7 @@ const roles = computed(() => userStore.roles)
 const isAdmin = computed(() => roles.value.includes('admin'))
 const isEdit = computed(() => !!props.id)
 
-const TRACKING_STATUS_OPTIONS = ['接单', '排产', '生产中', '质检', '发货', '签收', '结算', '回款', '已取消']
+const TRACKING_STATUS_OPTIONS = ['接单', '排产', '生产中', '质检', '发货', '签收', '结算', '回款'] // BUG-SIM-013："已取消"经「取消订单」操作，不在此选择
 
 const form = reactive({
   order_no: '',
