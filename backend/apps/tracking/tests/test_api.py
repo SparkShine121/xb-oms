@@ -86,3 +86,33 @@ def test_advance_too_many_photos(db, admin_client):
     r = c.post(f'/api/tracking/orders/{o.id}/advance/', {'photos': photos}, format='multipart')
     assert r.status_code == 400
     assert TrackingLog.objects.filter(order=o).count() == 0
+
+# ---- BUG-SIM-009/016 followup ----
+
+def test_advance_rejects_stale_state(db, admin_client, monkeypatch):
+    """指纹校验：请求读取后状态被他人推进 → 400 变更拒绝（防双击双推）"""
+    from apps.tracking.views import TrackingViewSet
+    from apps.tracking.services import advance_order
+    from rest_framework.exceptions import ValidationError
+    from apps.orders.models import Order as O
+    o = O.objects.create(order_no='OADV', tracking_status='接单')
+    # 模拟并发：请求 A 已读到旧对象（stale），请求 B 两次推进并提交（save 才触发 updated_at）
+    b1 = O.objects.get(pk=o.pk); b1.tracking_status = '排产'
+    b1.save(update_fields=['tracking_status', 'updated_at'])  # 模拟并发服务（会刷新指纹）
+    stale = O.objects.get(pk=o.pk)  # 请求 A 的读取点（指纹=排产时刻）
+    b2 = O.objects.get(pk=o.pk); b2.tracking_status = '生产中'
+    b2.save(update_fields=['tracking_status', 'updated_at'])
+    with pytest.raises(ValidationError):
+        advance_order(stale, None, '', [])
+    o.refresh_from_db()
+    assert o.tracking_status == '生产中'  # 旧请求被拒，状态未被旧请求改动
+
+def test_advance_service_normal_flow(db, admin_client):
+    """回归锁：service 层正常推进 + 视图行为一致"""
+    from apps.tracking.services import advance_order
+    from apps.orders.models import Order as O
+    o = O.objects.create(order_no='ONRM', tracking_status='接单')
+    fresh, node = advance_order(O.objects.get(pk=o.pk), None, '', [])
+    assert node == '排产'
+    o.refresh_from_db()
+    assert o.tracking_status == '排产'

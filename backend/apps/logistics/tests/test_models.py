@@ -46,3 +46,31 @@ def test_currency_and_payer_defaults(setup):
     shipment.full_clean()
     shipment.payer = 'factory'
     shipment.full_clean()
+
+# ---- BUG-SIM-008: seq 唯一约束兜底 ----
+
+def test_shipment_seq_unique_constraint(db):
+    """同订单同 seq 直写 DB → IntegrityError（并发竞态的兜底线）"""
+    from django.db import IntegrityError, transaction as dj_transaction
+    from apps.basic_info.models import LogisticsProvider
+    from apps.logistics.models import Logistics
+    carrier = LogisticsProvider.objects.create(name='圆通', type='domestic')
+    from apps.basic_info.models import Customer
+    o = Order.objects.create(order_no='OL', customer=Customer.objects.create(name='C'))
+    Logistics.objects.create(order=o, seq=1, tracking_no='T1')
+    # save() 创建时会重算 seq，故用 bulk_create 绕过——等价于并发竞态中
+    # 两个请求都算出 seq=1 后先后 INSERT 的场景
+    with pytest.raises(IntegrityError):
+        with dj_transaction.atomic():
+            Logistics.objects.bulk_create([Logistics(order=o, seq=1, tracking_no='T2')])
+
+def test_shipment_seq_serial_assignment(db):
+    """回归锁：顺序创建 seq 正常自增"""
+    from apps.basic_info.models import LogisticsProvider
+    from apps.logistics.models import Logistics
+    carrier = LogisticsProvider.objects.create(name='德邦', type='domestic')
+    from apps.basic_info.models import Customer
+    o = Order.objects.create(order_no='OL2', customer=Customer.objects.create(name='C2'))
+    a = Logistics.objects.create(order=o, tracking_no='A')
+    b = Logistics.objects.create(order=o, tracking_no='B')
+    assert (a.seq, b.seq) == (1, 2)

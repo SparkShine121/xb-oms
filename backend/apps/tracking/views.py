@@ -1,3 +1,4 @@
+from rest_framework.exceptions import ValidationError
 from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -11,7 +12,8 @@ from apps.orders.serializers import OrderSerializer
 from .models import TrackingLog, TrackingPhoto
 from .serializers import TrackingLogSerializer
 from .permissions import TrackingPermission
-from .state_machine import next_node, prev_node
+from .services import advance_order, reject_order
+from .state_machine import next_node, prev_node  # my 工作台仍需判断 can_advance/can_reject
 
 MAX_PHOTOS = 9
 ALLOWED_TYPES = {'image/jpeg', 'image/png', 'image/jpg'}
@@ -67,18 +69,13 @@ class TrackingViewSet(ViewSet):
         self.check_object_permissions(request, order)
         if order.is_cancelled:
             return error_response(1001, '已取消订单不可流转', status=400)
-        node = next_node(order.tracking_status)
-        if not node:
-            return error_response(1001, '当前节点不可推进（终态）', status=400)
         photos, err = self._validate_photos(request)
         if err:
             return error_response(1001, err, status=400)
-        with transaction.atomic():
-            log = TrackingLog.objects.create(order=order, node=node, note=request.data.get('note', ''), operator=request.user, is_reject=False)
-            for p in (photos or []):
-                TrackingPhoto.objects.create(tracking_log=log, image=p)
-            order.tracking_status = node
-            order.save(update_fields=['tracking_status'])
+        try:
+            log, node = advance_order(order, request.user, request.data.get('note', ''), photos)
+        except ValidationError as e:
+            return error_response(1001, str(e.detail[0]), status=400)
         return success_response({'log': TrackingLogSerializer(log, context={'request': request}).data, 'tracking_status': node})
 
     @action(detail=True, methods=['post'])
@@ -89,18 +86,13 @@ class TrackingViewSet(ViewSet):
         self.check_object_permissions(request, order)
         if order.is_cancelled:
             return error_response(1001, '已取消订单不可流转', status=400)
-        node = prev_node(order.tracking_status)
-        if not node:
-            return error_response(1001, '当前节点不可驳回（起点）', status=400)
         photos, err = self._validate_photos(request)
         if err:
             return error_response(1001, err, status=400)
-        with transaction.atomic():
-            log = TrackingLog.objects.create(order=order, node=node, note=request.data.get('note', ''), operator=request.user, is_reject=True)
-            for p in (photos or []):
-                TrackingPhoto.objects.create(tracking_log=log, image=p)
-            order.tracking_status = node
-            order.save(update_fields=['tracking_status'])
+        try:
+            log, node = reject_order(order, request.user, request.data.get('note', ''), photos)
+        except ValidationError as e:
+            return error_response(1001, str(e.detail[0]), status=400)
         return success_response({'log': TrackingLogSerializer(log, context={'request': request}).data, 'tracking_status': node})
 
     @action(detail=True, methods=['get'])

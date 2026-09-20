@@ -31,6 +31,10 @@ class Logistics(models.Model):
 
     class Meta:
         ordering = ['order', 'seq']
+        constraints = [
+            # BUG-SIM-008：同订单发货序号唯一（并发重号兜底，应用层另有行锁排队）
+            models.UniqueConstraint(fields=['order', 'seq'], name='logistics_order_seq_unique'),
+        ]
 
     def __str__(self):
         return f'{self.order_id}#{self.seq}'

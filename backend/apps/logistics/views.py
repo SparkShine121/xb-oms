@@ -1,4 +1,6 @@
+from django.db import transaction
 from django.db.models import Q
+from apps.orders.models import Order
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
@@ -40,6 +42,12 @@ class LogisticsViewSet(BaseModelViewSet):
 
     def perform_create(self, serializer):
         order = serializer.validated_data['order']
+        with transaction.atomic():
+            # BUG-SIM-008：锁订单行使并发创建排队拿号（SQLite 由唯一约束兜底）
+            Order.objects.select_for_update().get(pk=order.pk)
+            self._do_create(serializer, order)
+
+    def _do_create(self, serializer, order):
         groups = set(self.request.user.groups.values_list('name', flat=True))
         if 'admin' not in groups and 'tracker' in groups and order.tracker_id != self.request.user.id:
             raise PermissionDenied('跟单员只能为派给自己的订单登记物流')

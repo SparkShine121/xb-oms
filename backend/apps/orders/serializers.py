@@ -31,6 +31,18 @@ class OrderSerializer(serializers.ModelSerializer):
                   'is_approved', 'customer_name', 'salesman_name', 'tracker_name', 'items',
                   'created_at', 'updated_at']
         read_only_fields = ['order_profit_usd', 'is_approved']
+        extra_kwargs = {
+            # BUG-SIM-016：去掉自动 UniqueValidator，用带订单号的业务文案
+            'order_no': {'validators': []},
+        }
+
+    def validate_order_no(self, value):
+        qs = Order.objects.filter(order_no=value)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(f'订单号 {value} 已存在')
+        return value
 
     def validate(self, attrs):
         # 派单类字段（业务员/跟单员）仅 admin 可改：非 admin 更新时忽略，防止绕过前端直接调 API

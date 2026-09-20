@@ -141,3 +141,12 @@ def test_exchange_rate_patch_date_to_occupied_rejected(db, admin_client):
     rid = r2.data['data']['id']
     r3 = admin_client.patch(f'/api/orders/exchange-rates/{rid}/', {'effective_date': '2026-09-01'}, format='json')
     assert r3.status_code == 400
+
+# ---- BUG-SIM-016: 重复 order_no 定制文案 ----
+
+def test_duplicate_order_no_friendly_message(db, admin_client):
+    r1 = admin_client.post('/api/orders/orders/', {'order_no': 'ODUP', 'amount_usd': '1', 'items': []}, format='json')
+    assert r1.status_code == 201
+    r2 = admin_client.post('/api/orders/orders/', {'order_no': 'ODUP', 'amount_usd': '1', 'items': []}, format='json')
+    assert r2.status_code == 400
+    assert 'ODUP 已存在' in str(r2.data['message'])
