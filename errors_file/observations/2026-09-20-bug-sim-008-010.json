@@ -1,0 +1,13 @@
+{
+  "task": "BUG-SIM-008/009/010/016 并发批次",
+  "date": "2026-09-20",
+  "overall": "fail→修复后全绿",
+  "findings": [
+    {"dimension": "correctness", "severity": "high", "observation": "010 行锁与创建循环分处两个 atomic 块，锁未生效，Q2:a 语义落空", "suggestion": "已修：合并单事务（锁行→list求值→循环创建）"},
+    {"dimension": "regression", "severity": "medium", "observation": "008 count+1 取号遇删除中间序号后永久阻断建单（审查实证）", "suggestion": "已修：max(seq)+1 取号"},
+    {"dimension": "test-coverage", "severity": "medium", "observation": "010 零测试（恰为实现失效项）；计数勘误 5 条非 4 条", "suggestion": "已补：重复生成 skipped 回归锁"},
+    {"dimension": "permissions-staleness", "severity": "low", "observation": "锁内 fresh 订单未传给权限判断", "suggestion": "已修"},
+    {"dimension": "code-hygiene", "severity": "low", "observation": "tracking/views 死导入 transaction/OrderSerializer", "suggestion": "已清理"},
+    {"dimension": "migration-ops", "severity": "low", "observation": "logistics 0003 遇存量重复会硬失败", "suggestion": "部署清单项：上线前查重清洗（已记录）"}
+  ]
+}
