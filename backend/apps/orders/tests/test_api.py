@@ -150,3 +150,138 @@ def test_duplicate_order_no_friendly_message(db, admin_client):
     r2 = admin_client.post('/api/orders/orders/', {'order_no': 'ODUP', 'amount_usd': '1', 'items': []}, format='json')
     assert r2.status_code == 400
     assert 'ODUP 已存在' in str(r2.data['message'])
+
+# ---- BUG-SIM-004/014: 建单归属 + set-tracker 校验 ----
+from apps.tracking.models import TrackingLog as _TL  # noqa
+from apps.system_mgmt.models import ApprovalRequest
+
+
+def _sales_user(name='sales_own'):
+    u = User.objects.create_user(name, password='pw123456')
+    u.groups.add(Group.objects.get(name='salesman'))
+    return u
+
+
+def test_salesman_create_forces_self_ownership(db):
+    """非 admin 建单：payload 指定 salesman=别人/tracker=财务 全部被忽略"""
+    from apps.basic_info.models import Customer
+    sales = _sales_user()
+    other = _sales_user('sales_other')
+    fin = User.objects.create_user('fin_x', password='pw123456'); fin.groups.add(Group.objects.get(name='finance'))
+    cust = Customer.objects.create(name='自己的客户', salesman=sales)
+    c = APIClient(); c.force_authenticate(sales)
+    r = c.post('/api/orders/orders/', {
+        'order_no': 'OOWN', 'amount_usd': '100', 'customer': cust.id,
+        'salesman': other.id, 'tracker': fin.id, 'items': [],
+    }, format='json')
+    assert r.status_code == 201
+    o = Order.objects.get(order_no='OOWN')
+    assert o.salesman_id == sales.id      # 强制=建单人（payload 被忽略）
+    assert o.tracker_id is None           # tracker 忽略置空待派单
+
+
+def test_salesman_create_other_customer_rejected(db):
+    """非 admin 建单只能选自己客户"""
+    from apps.basic_info.models import Customer
+    sales = _sales_user('sales_a2')
+    other_sales = _sales_user('sales_b2')
+    other_cust = Customer.objects.create(name='别人的客户', salesman=other_sales)
+    c = APIClient(); c.force_authenticate(sales)
+    r = c.post('/api/orders/orders/', {
+        'order_no': 'OOTH', 'amount_usd': '100', 'customer': other_cust.id, 'items': [],
+    }, format='json')
+    assert r.status_code == 400
+
+
+def test_salesman_create_own_customer_still_works(db):
+    """回归锁：建自己客户正常 + 挂审批"""
+    from apps.basic_info.models import Customer
+    sales = _sales_user('sales_ok')
+    cust = Customer.objects.create(name='我的客户', salesman=sales)
+    c = APIClient(); c.force_authenticate(sales)
+    before = ApprovalRequest.objects.count()
+    r = c.post('/api/orders/orders/', {
+        'order_no': 'OOMY', 'amount_usd': '100', 'customer': cust.id, 'items': [],
+    }, format='json')
+    assert r.status_code == 201
+    assert ApprovalRequest.objects.count() == before + 1  # 非 admin 建单挂审批
+    o = Order.objects.get(order_no='OOMY')
+    assert o.is_approved is False
+
+
+def test_salesman_import_forbidden(db):
+    """导入收紧为仅 admin（Q1'）"""
+    sales = _sales_user('sales_imp')
+    c = APIClient(); c.force_authenticate(sales)
+    from io import BytesIO
+    f = BytesIO(b'not xlsx'); f.name = 'x.xlsx'
+    r = c.post('/api/orders/orders/import/', {'file': f}, format='multipart')
+    assert r.status_code == 403
+
+
+def test_finance_set_tracker_forbidden(db):
+    """set-tracker 收紧为仅 admin（Q2:a）——finance 绕前端直调 → 403"""
+    from apps.basic_info.models import Customer
+    fin = User.objects.create_user('fin_st', password='pw123456'); fin.groups.add(Group.objects.get(name='finance'))
+    tr = User.objects.create_user('tr_st', password='pw123456'); tr.groups.add(Group.objects.get(name='tracker'))
+    o = Order.objects.create(order_no='OST1', customer=Customer.objects.create(name='C'))
+    c = APIClient(); c.force_authenticate(fin)
+    r = c.post(f'/api/orders/orders/{o.id}/set-tracker/', {'tracker': tr.id}, format='json')
+    assert r.status_code == 403
+
+
+def test_admin_set_tracker_non_tracker_role_rejected(db):
+    """admin 派单目标必须 tracker 角色（Q3:a）"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_st', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    sales = _sales_user('sales_st')
+    o = Order.objects.create(order_no='OST2', customer=Customer.objects.create(name='C2'))
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.post(f'/api/orders/orders/{o.id}/set-tracker/', {'tracker': sales.id}, format='json')
+    assert r.status_code == 400
+    o.refresh_from_db()
+    assert o.tracker_id is None
+
+
+def test_admin_set_tracker_tracker_role_ok(db):
+    """回归锁：admin 派给 tracker 角色成功"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_st2', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    tr = User.objects.create_user('tr_st2', password='pw123456'); tr.groups.add(Group.objects.get(name='tracker'))
+    o = Order.objects.create(order_no='OST3', customer=Customer.objects.create(name='C3'))
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.post(f'/api/orders/orders/{o.id}/set-tracker/', {'tracker': tr.id}, format='json')
+    assert r.status_code == 200
+    o.refresh_from_db()
+    assert o.tracker_id == tr.id
+
+
+def test_admin_create_can_assign_roles(db):
+    """回归锁：admin 建单可任意指定 salesman/tracker（但 tracker 须为 tracker 角色）"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_cr', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    sales = _sales_user('sales_cr')
+    tr = User.objects.create_user('tr_cr', password='pw123456'); tr.groups.add(Group.objects.get(name='tracker'))
+    cust = Customer.objects.create(name='C4', salesman=sales)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.post('/api/orders/orders/', {
+        'order_no': 'OADM', 'amount_usd': '100', 'customer': cust.id,
+        'salesman': sales.id, 'tracker': tr.id, 'items': [],
+    }, format='json')
+    assert r.status_code == 201
+    o = Order.objects.get(order_no='OADM')
+    assert (o.salesman_id, o.tracker_id) == (sales.id, tr.id)
+
+
+def test_admin_create_tracker_non_role_rejected(db):
+    """Q3:a：admin 建单指定非 tracker 角色的 tracker → 400"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_cr2', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    sales = _sales_user('sales_cr2')
+    cust = Customer.objects.create(name='C5', salesman=sales)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.post('/api/orders/orders/', {
+        'order_no': 'OADM2', 'amount_usd': '100', 'customer': cust.id,
+        'tracker': sales.id, 'items': [],
+    }, format='json')
+    assert r.status_code == 400
