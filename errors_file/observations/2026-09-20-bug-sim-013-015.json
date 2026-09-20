@@ -1,0 +1,12 @@
+{
+  "task": "BUG-SIM-013/015/027 取消语义批次",
+  "date": "2026-09-20",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "correctness", "severity": "medium", "observation": "已取消→400 误伤存量已取消订单编辑（导入映射+原值回传）", "suggestion": "已修：移角色分支后+原值豁免"},
+    {"dimension": "permission", "severity": "medium", "observation": "is_cancelled 仅前端闸，非 admin PATCH 可取消订单（探针实测）", "suggestion": "已修：非 admin pop is_cancelled"},
+    {"dimension": "concurrency", "severity": "low", "observation": "generate 锁内 order 快照过期", "suggestion": "已修：获锁后重赋值"},
+    {"dimension": "scope", "severity": "low", "observation": "结算 update 改挂取消单明细绕过 400", "suggestion": "已修：同规则拦截"},
+    {"dimension": "scope", "severity": "low", "observation": "移动端无取消入口", "suggestion": "记录为既定范围"}
+  ]
+}

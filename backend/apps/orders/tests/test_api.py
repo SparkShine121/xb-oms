@@ -358,3 +358,36 @@ def test_admin_edit_status_correction_ok(db):
     assert r.status_code == 200
     o.refresh_from_db()
     assert o.tracking_status == '生产中'
+
+# ---- BUG-SIM-013 followup（旁观者审查发现）----
+
+def test_edit_legacy_cancelled_order_allowed(db):
+    """存量已取消订单（导入映射产生）原值回传 tracking_status 编辑不误伤"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_legc', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    o = Order.objects.create(order_no='OLEGC', tracking_status='已取消', is_cancelled=True,
+                             customer=Customer.objects.create(name='C'))
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'remark': '改备注', 'tracking_status': '已取消'}, format='json')
+    assert r.status_code == 200
+    sales = _sales_user('sales_legc')
+    o2 = Order.objects.create(order_no='OLEGC2', tracking_status='已取消', is_cancelled=True,
+                              customer=Customer.objects.create(name='C2', salesman=sales), salesman=sales)
+    r2 = APIClient(); r2.force_authenticate(sales)
+    r3 = r2.patch(f'/api/orders/orders/{o2.id}/', {'remark': '业务员也能编辑'}, format='json')
+    assert r3.status_code == 200
+
+def test_salesman_cannot_cancel_via_patch(db):
+    """Q4:a 后端闸：is_cancelled 变更仅 admin 生效（前端按钮只是体验层）"""
+    from apps.basic_info.models import Customer
+    sales = _sales_user('sales_canx')
+    o = Order.objects.create(order_no='OCANX', customer=Customer.objects.create(name='C', salesman=sales), salesman=sales)
+    c = APIClient(); c.force_authenticate(sales)
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'is_cancelled': True}, format='json')
+    assert r.status_code == 200
+    o.refresh_from_db()
+    assert o.is_cancelled is False  # 被忽略
+    r2 = c.post('/api/orders/orders/', {'order_no': 'OCANX2', 'amount_usd': '1', 'is_cancelled': True,
+                                        'customer': o.customer_id, 'items': []}, format='json')
+    o2 = Order.objects.get(order_no='OCANX2')
+    assert o2.is_cancelled is False  # 建单携带同样无效

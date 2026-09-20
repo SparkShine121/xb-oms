@@ -280,3 +280,18 @@ def test_payment_record_on_legacy_settlement_of_cancelled_order_ok(db, finance_c
     r = finance_client.post('/api/factory-payment/records/', {
         'factory_payment': fp.id, 'amount': '50', 'payment_date': '2026-09-20'}, format='json')
     assert r.status_code == 201
+
+def test_settlement_update_cannot_repoint_to_cancelled_order(db, admin_client):
+    """结算 update 改挂明细到已取消订单 → 400（与 create 同规则）"""
+    f = Factory.objects.create(name='华鑫Y')
+    c1 = Customer.objects.create(name='正常Y')
+    o1 = Order.objects.create(order_no='OY1', tracking_status='排产', customer=c1, amount_usd='100')
+    i1 = OrderItem.objects.create(order=o1, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    c2 = Customer.objects.create(name='取消Y')
+    o2 = Order.objects.create(order_no='OY2', tracking_status='已取消', is_cancelled=True, customer=c2, amount_usd='100')
+    i2 = OrderItem.objects.create(order=o2, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    r = admin_client.post('/api/factory-payment/payments/', {
+        'order_item': i1.id, 'factory': f.id, 'amount_cny': '50'}, format='json')
+    fid = r.data['data']['id']
+    r2 = admin_client.patch(f'/api/factory-payment/payments/{fid}/', {'order_item': i2.id}, format='json')
+    assert r2.status_code == 400

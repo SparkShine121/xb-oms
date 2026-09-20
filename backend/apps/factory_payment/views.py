@@ -72,7 +72,7 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         # BUG-SIM-010 Q2:a：锁订单行 + 查明细 + 创建循环必须在同一事务——
         # 行锁使并发生成排队，获锁后重查明细，已被先生成结算的明细自然进 skipped
         with transaction.atomic():
-            Order.objects.select_for_update().get(pk=order.pk)
+            order = Order.objects.select_for_update().get(pk=order.pk)  # 获锁后重查（含 is_cancelled）
             items = list(order.items.filter(factory__isnull=False))
             for item in items:
                 if order.is_cancelled or hasattr(item, 'factory_payment') or item.qty * item.cost_price <= 0:
