@@ -341,3 +341,12 @@ def test_reimport_approved_order_no_approval_request(db, rate):
     assert ApprovalRequest.objects.count() == before  # 更新路径不产生审批申请
     o.refresh_from_db()
     assert o.is_approved is True
+
+def test_import_silently_skips_non_tracker_customer_tracker(db, rate):
+    """BUG-SIM-014 Q3:a：customer.tracker 指向非 tracker 角色 → 静默不填（不报错不硬填）"""
+    User.objects.create_user('sales_ntk', password='pw123456').groups.add(Group.objects.get(name='salesman'))
+    Customer.objects.create(name='吴芳', tracker=User.objects.get(username='sales_ntk'))
+    buf = make_xlsx([{**BASE_REC, 'items': [_item(1, 'P1')]}])
+    r = import_orders(buf)
+    assert r['success_count'] == 1 and r['fail_count'] == 0
+    assert Order.objects.get(order_no='O1').tracker_id is None

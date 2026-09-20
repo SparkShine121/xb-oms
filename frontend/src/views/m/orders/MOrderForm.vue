@@ -55,7 +55,7 @@ const datePickerValue = ref<string[]>([])
 // Picker 列数据
 const customerColumns = computed(() => customers.value.map((c: any) => ({ text: c.name, value: c.id })))
 const salesmanColumns = computed(() => salesmen.value.map((s: any) => ({ text: s.username, value: s.id })))
-const trackerColumns = computed(() => allUsers.value.map((u: any) => ({ text: u.username, value: u.id })))
+const trackerColumns = computed(() => allUsers.value.filter((u: any) => u.groups?.includes('tracker')).map((u: any) => ({ text: u.username, value: u.id }))) // BUG-SIM-014：仅列 tracker 角色
 
 // Picker 字段显示文本
 const customerText = computed(() => customers.value.find((c: any) => c.id === form.customer)?.name || '')

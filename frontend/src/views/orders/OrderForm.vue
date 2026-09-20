@@ -42,6 +42,7 @@ const customers = ref<any[]>([])
 const factories = ref<any[]>([])
 const salesmen = ref<any[]>([])
 const allUsers = ref<any[]>([])
+const trackers = ref<any[]>([])
 
 const saving = ref(false)
 const loading = ref(false)
@@ -58,6 +59,7 @@ async function loadOptions() {
   factories.value = facResp.status === 'fulfilled' ? ((facResp.value as any).data.results ?? []) : []
   const all = userResp.status === 'fulfilled' && userResp.value ? ((userResp.value as any).data.results ?? []) : []
   allUsers.value = all
+  trackers.value = all.filter((u: any) => u.groups?.includes('tracker')) // BUG-SIM-014
   salesmen.value = all.length
     ? all.filter((u: any) => u.groups?.includes('salesman'))
     : (isAdmin.value || !userStore.id ? [] : [{ id: userStore.id, username: userStore.username }])
@@ -240,7 +242,7 @@ onMounted(async () => {
                 style="width: 100%"
                 :disabled="!isAdmin"
               >
-                <el-option v-for="u in allUsers" :key="u.id" :label="u.username" :value="u.id" />
+                <el-option v-for="t in trackers" :key="t.id" :label="t.username" :value="t.id" />
               </el-select>
             </el-form-item>
           </el-col>

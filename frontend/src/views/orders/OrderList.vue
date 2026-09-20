@@ -53,6 +53,7 @@ const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bu
 
 const salesmen = ref<any[]>([])
 const allUsers = ref<any[]>([])
+const trackers = ref<any[]>([])
 
 async function load() {
   loading.value = true
@@ -80,6 +81,7 @@ async function loadUsers() {
   const all = resp.data.results
   allUsers.value = all
   salesmen.value = all.filter((u: any) => u.groups?.includes('salesman'))
+  trackers.value = all.filter((u: any) => u.groups?.includes('tracker')) // BUG-SIM-014：派单/筛选仅列 tracker 角色
 }
 
 function goEdit(id: number) {
@@ -181,7 +183,7 @@ onMounted(() => { loadUsers(); load() })
           <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
         </el-select>
         <el-select v-if="isAdmin" v-model="trackerFilter" clearable placeholder="跟单员" style="width: 140px" @change="query">
-          <el-option v-for="u in allUsers" :key="u.id" :label="u.username" :value="u.id" />
+          <el-option v-for="t in trackers" :key="t.id" :label="t.username" :value="t.id" />
         </el-select>
         <el-select v-model="cancelledFilter" clearable placeholder="订单状态" style="width: 120px" @change="query">
           <el-option label="正常" value="false" />
@@ -264,7 +266,7 @@ onMounted(() => { loadUsers(); load() })
         订单：<strong>{{ dispatchOrder.order_no }}</strong>
       </p>
       <el-select v-model="dispatchTracker" placeholder="选择跟单员" style="width: 100%">
-        <el-option v-for="u in allUsers" :key="u.id" :label="u.username" :value="u.id" />
+        <el-option v-for="t in trackers" :key="t.id" :label="t.username" :value="t.id" />
       </el-select>
       <template #footer>
         <el-button @click="dispatchVisible = false">取消</el-button>

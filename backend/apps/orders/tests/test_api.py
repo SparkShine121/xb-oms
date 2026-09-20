@@ -285,3 +285,37 @@ def test_admin_create_tracker_non_role_rejected(db):
         'tracker': sales.id, 'items': [],
     }, format='json')
     assert r.status_code == 400
+
+# ---- BUG-SIM-004/014 followup（旁观者审查发现）----
+
+def test_patch_order_with_legacy_orphan_tracker_allowed(db):
+    """遗留数据兼容：订单挂着非 tracker 角色的历史 tracker，admin 原值编辑不误伤"""
+    from apps.basic_info.models import Customer
+    adm = User.objects.create_user('adm_leg', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    fin = User.objects.create_user('fin_leg', password='pw123456'); fin.groups.add(Group.objects.get(name='finance'))
+    o = Order.objects.create(order_no='OLEG', customer=Customer.objects.create(name='C'), tracker=fin)  # 历史孤儿数据
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'remark': '改备注', 'tracker': fin.id}, format='json')
+    assert r.status_code == 200  # 未改动的原值豁免
+    r2 = c.patch(f'/api/orders/orders/{o.id}/', {'tracker': fin.id}, format='json')  # 改成另一个非 tracker 也不行
+    assert r2.status_code == 200  # 仍是原值
+    sales = User.objects.create_user('sales_leg', password='pw123456'); sales.groups.add(Group.objects.get(name='salesman'))
+    r3 = c.patch(f'/api/orders/orders/{o.id}/', {'tracker': sales.id}, format='json')
+    assert r3.status_code == 400  # 换成非 tracker 角色 → 拒绝
+
+
+def test_finance_import_forbidden(db):
+    """Q1'：导入仅 admin，finance → 403"""
+    fin = User.objects.create_user('fin_imp', password='pw123456'); fin.groups.add(Group.objects.get(name='finance'))
+    c = APIClient(); c.force_authenticate(fin)
+    from io import BytesIO
+    f = BytesIO(b'not xlsx'); f.name = 'x.xlsx'
+    r = c.post('/api/orders/orders/import/', {'file': f}, format='multipart')
+    assert r.status_code == 403
+
+def test_salesman_create_without_customer_rejected(db):
+    """非 admin 建单必须选客户（否则产生建单人自己都看不见的悬空单）"""
+    sales = _sales_user('sales_nocust')
+    c = APIClient(); c.force_authenticate(sales)
+    r = c.post('/api/orders/orders/', {'order_no': 'ONC', 'amount_usd': '1', 'items': []}, format='json')
+    assert r.status_code == 400

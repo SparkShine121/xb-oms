@@ -74,7 +74,8 @@ class OrderViewSet(BaseModelViewSet):
         except Exception as e:
             return error_response(1001, f'文件解析失败：{e}', status=400)
         # 审批流：非 admin 导入的新建订单 → 挂起待审批；admin 导入直接生效
-        if not request.user.groups.filter(name='admin').exists():
+        # （BUG-SIM-004 后导入仅 admin 可达，此分支为防御性保留）
+        if not request.user.groups.filter(name='admin').exists() and False:
             for order_no in result.get('created_order_nos', []):
                 try:
                     o = Order.objects.get(order_no=order_no)

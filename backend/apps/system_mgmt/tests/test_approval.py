@@ -99,9 +99,11 @@ def test_tracker_create_logistics_pends(db, setup):
 
 def test_salesman_create_order_pends(db, setup):
     """业务员新建订单 → order_change 审批；admin 新建直接通过。"""
+    from apps.basic_info.models import Customer
+    own = Customer.objects.create(name='审批用客户', salesman=setup['sales'])
     c = _client(setup['sales'])
     r = c.post('/api/orders/orders/', {
-        'order_no': 'OB-NEW', 'amount_usd': '50.00', 'items': [],
+        'order_no': 'OB-NEW', 'amount_usd': '50.00', 'customer': own.id, 'items': [],
     }, format='json')
     assert r.status_code == 201, r.data
     od = Order.objects.get(order_no='OB-NEW')
