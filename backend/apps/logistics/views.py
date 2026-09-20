@@ -44,8 +44,8 @@ class LogisticsViewSet(BaseModelViewSet):
         order = serializer.validated_data['order']
         with transaction.atomic():
             # BUG-SIM-008：锁订单行使并发创建排队拿号（SQLite 由唯一约束兜底）
-            Order.objects.select_for_update().get(pk=order.pk)
-            self._do_create(serializer, order)
+            fresh = Order.objects.select_for_update().get(pk=order.pk)
+            self._do_create(serializer, fresh)
 
     def _do_create(self, serializer, order):
         groups = set(self.request.user.groups.values_list('name', flat=True))

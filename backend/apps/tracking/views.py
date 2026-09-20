@@ -3,12 +3,10 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from django.db import transaction
 from django.core.files.uploadedfile import UploadedFile
 from PIL import Image
 from common.response import success_response, error_response
 from apps.orders.models import Order
-from apps.orders.serializers import OrderSerializer
 from .models import TrackingLog, TrackingPhoto
 from .serializers import TrackingLogSerializer
 from .permissions import TrackingPermission

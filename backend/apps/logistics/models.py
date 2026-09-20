@@ -41,5 +41,8 @@ class Logistics(models.Model):
 
     def save(self, *args, **kwargs):
         if self._state.adding:
-            self.seq = self.order.shipments.count() + 1
+            # BUG-SIM-008 followup：max(seq)+1 而非 count+1——删除中间序号后
+            # count+1 会撞唯一约束永久阻断该订单发货登记
+            from django.db.models import Max
+            self.seq = (self.order.shipments.aggregate(m=Max('seq'))['m'] or 0) + 1
         super().save(*args, **kwargs)

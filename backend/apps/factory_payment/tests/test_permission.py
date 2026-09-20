@@ -218,3 +218,33 @@ def test_generate_skips_zero_cost_items(db, admin_client):
     assert r.status_code == 200
     assert r.data['data']['created_count'] == 1  # 只有正常明细生成
     assert FactoryPayment.objects.filter(order_item__order=o).count() == 1
+
+# ---- BUG-SIM-010 回归锁（审查收口）----
+
+def test_generate_twice_skips_all(db, admin_client):
+    """同一订单重复一键生成：第二次 created=0、skipped=全部明细（锁内重查语义）"""
+    from apps.basic_info.models import Factory as FPFactory
+    f = FPFactory.objects.create(name='华鑫')
+    c = Customer.objects.create(name='客户A')
+    o = Order.objects.create(order_no='OG2', tracking_status='排产', customer=c, amount_usd='100')
+    OrderItem.objects.create(order=o, seq=1, factory=f, qty=10, unit_price='10', subtotal='100', cost_price='7.20')
+    OrderItem.objects.create(order=o, seq=2, factory=f, qty=5, unit_price='10', subtotal='50', cost_price='3.60')
+    r1 = admin_client.post(f'/api/factory-payment/payments/orders/{o.id}/generate/', format='json')
+    assert r1.status_code == 200 and r1.data['data']['created_count'] == 2
+    r2 = admin_client.post(f'/api/factory-payment/payments/orders/{o.id}/generate/', format='json')
+    assert r2.status_code == 200
+    assert r2.data['data']['created_count'] == 0 and r2.data['data']['skipped_count'] == 2
+
+def test_shipment_seq_after_middle_delete(db):
+    """回归锁：删除中间序号后仍可继续建单（max+1 取号）"""
+    from apps.basic_info.models import LogisticsProvider
+    from apps.logistics.models import Logistics
+    carrier = LogisticsProvider.objects.create(name='顺丰', type='domestic')
+    o = Order.objects.create(order_no='OL3', customer=Customer.objects.create(name='C3'))
+    a = Logistics.objects.create(order=o, tracking_no='A')
+    b = Logistics.objects.create(order=o, tracking_no='B')
+    cc = Logistics.objects.create(order=o, tracking_no='C')
+    assert (a.seq, b.seq, cc.seq) == (1, 2, 3)
+    b.delete()
+    d = Logistics.objects.create(order=o, tracking_no='D')
+    assert d.seq == 4  # max+1，不再被 count 误导

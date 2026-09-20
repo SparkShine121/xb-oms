@@ -66,15 +66,14 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         except Order.DoesNotExist:
             return error_response(1004, '订单不存在', status=404)
         created, skipped = 0, 0
-        with transaction.atomic():
-            # BUG-SIM-010 Q2:a：锁订单行使并发生成排队；锁定后重查明细，
-            # 已被先生成结算的明细自然进 skipped（200 优雅跳过）
-            Order.objects.select_for_update().get(pk=order.pk)
-            items = order.items.filter(factory__isnull=False)
         # 审批流：非 admin（finance）一键生成 → 结算单挂起待审批；admin 生成直接生效
         # （FactoryPayment.save() 只重算 status，不影响 is_approved）
         is_admin = request.user.groups.filter(name='admin').exists()
+        # BUG-SIM-010 Q2:a：锁订单行 + 查明细 + 创建循环必须在同一事务——
+        # 行锁使并发生成排队，获锁后重查明细，已被先生成结算的明细自然进 skipped
         with transaction.atomic():
+            Order.objects.select_for_update().get(pk=order.pk)
+            items = list(order.items.filter(factory__isnull=False))
             for item in items:
                 if hasattr(item, 'factory_payment') or item.qty * item.cost_price <= 0:
                     # 已有结算单 / 成本为 0（0 元结算单是脏数据，BUG-SIM-006 followup）
