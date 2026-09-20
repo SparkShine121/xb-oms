@@ -1,0 +1,12 @@
+{
+  "task": "BUG-SIM-004/014 权限批次",
+  "date": "2026-09-20",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "兼容性", "severity": "medium", "observation": "遗留孤儿 tracker 数据的订单整单不可编辑（validate_tracker 不豁免原值）", "suggestion": "已修：原值豁免"},
+    {"dimension": "test-coverage", "severity": "medium", "observation": "导入静默分支零覆盖；finance 导入未测", "suggestion": "已补 2 条"},
+    {"dimension": "validation-gap", "severity": "low", "observation": "非 admin 建单不带 customer 产生悬空单", "suggestion": "已修：请选择客户 400"},
+    {"dimension": "frontend-UX", "severity": "low", "observation": "三处 tracker 选择器未按角色过滤", "suggestion": "已修：PC×2+移动端统一过滤"},
+    {"dimension": "dead-code", "severity": "low", "observation": "import_data 非 admin 审批分支不可达", "suggestion": "已标注防御性保留"}
+  ]
+}
