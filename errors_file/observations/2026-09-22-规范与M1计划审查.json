@@ -1,0 +1,38 @@
+{
+  "task": "用 taste-skill/redesign-skill 审查设计方案 + 修订规范 + 编写 M1 实施计划",
+  "date": "2026-09-22",
+  "reviewer": "旁观者审查子 agent（实际动手核验：按计划行号把 CSS 代码块套进真实 style.css 跑断言、node 实算 WCAG 对比度、在 /tmp 建 vitest 探针实跑测试可行性；项目内文件零改动）",
+  "verification": "验证通过项：行号锚点（style.css:21-55 / 228-274、Login.vue 67-92、MobileHome.vue 47-80）逐行准确；计划 8 条对比度断言实测全通过（txt 17.15 / mut 6.08 / dim 5.16 / lime-text 5.08 / success 4.89 / warning 5.05 / danger 5.41 / lime-ink-on-lime 14.63）；测试可运行性（node 环境 + import.meta.url 读文件 + vitest 4.1.10 实跑）可行；正则 --${name} 不会误匹配 --panel2/--lime-ink 等；规范↔计划 hex 逐字一致；17 个旧令牌别名全覆盖无悬空引用；Vant cell/navBar/tabbar 背景经 --van-background-2 自动覆盖。",
+  "findings": [
+    {
+      "错误描述": "M1 计划 Task 2 Step 4 期望的「8 个用例全绿」不可能达到——Task 2 新增第三个用例必然失败（两个独立原因）",
+      "错误细节": "按计划行号把 CSS 套进真实 style.css 逐条跑断言：(a) expect(css).not.toContain('var(--brand-600)') 失败——Task 2 只替换 EP 覆盖块，var(--brand-600) 还留在划归 Task 3 的四段（菜单 hover/active、Vant、::selection），实测命中 4 处；(b) expect(css).not.toMatch(/#2563eb|#1d4ed8\\b(?![^;]*tint)/) 失败——Task 1 写入 --info: #1d4ed8;，而 (?![^;]*tint) 在分号前恒成立，该 lookahead 在任何真实写法下都无效。",
+      "建议解决方案": "把两条断言移到 Task 3（四段替换后才成立），Task 2 只保留 #2563eb 不存在 + 表格变量断言；删除无效 lookahead。〔已修复：断言移至 Task 3 并改为 not.toContain('var(--brand-600)')〕"
+    },
+    {
+      "错误描述": "规范 §4.2 的「菜单激活 = --panel3 底 + --lime-text 文字」对比度 4.44:1，不达规范 §0 铁律的 4.5:1，属规范自身违规且无测试能发现",
+      "错误细节": "实测 contrast(#5b7600, #ecedf0)=4.444（菜单字号 13px 属正文级，AA 要求 4.5）。这是规范所有实际组合中唯一不达标的一对（lime-text 对 panel 5.075、对 panel2 4.812、对 canvas 4.645 均通过）。Task 1 对比度用例只测 --panel，Task 3 菜单用例只查「含 var(--lime-text)」，都测不到这一对。",
+      "建议解决方案": "激活底改 --panel2（4.812 通过），或激活文字改用 --el-color-primary-dark-2 (#4a6100，对 panel3 = 5.977 通过)；并补一条 contrast(lime-text, panel3) >= 4.5 断言。〔已修复：新增 --lime-deep:#4A6100 令牌（6.0:1），菜单激活文字与 EP dark-2 均改用它，规范 §1.2/§4.2/附录 A/B 同步，计划补断言〕"
+    },
+    {
+      "错误描述": "规范 §5 的 Toast 规格（深墨底药丸）与计划 Task 3f 的 Toast 配色（浅色卡片）互相矛盾，两份文档都自称唯一依据",
+      "错误细节": "规范 §5 写「底部居中、#17191E 深墨底 + off-white 字 + 999（保留目标站形态）」；计划 Global Constraints 与 Task 3f 明确保留现有「居中 + 遮罩 + 浅色卡片」alert 式交互。二者不可调和，M2 落地 §5 时必然撞车；计划未记为偏离，规范附录 B 也无处置记录。",
+      "建议解决方案": "推荐保留现有 alert 式（main.ts MutationObserver + .global-toast-mask 是既成交互，改动风险大），规范 §5 改为「居中 + 遮罩 + --panel 底 + --txt 字 + --r-card 圆角」，附录 B 加处置记录。〔已修复：规范 §5 与附录 B 已同步〕"
+    },
+    {
+      "错误描述": "表格排版在规范与计划之间不一致（字号/字重/行内距三项），且测试完全未锁定这些值",
+      "错误细节": "规范 §2 写「12px/400 → 表格表头」、§5 写「表头 12px/--mut；行 8px 12px/13px」、§1.6 又写「8px 12px/12.5-13px」（规范自身先矛盾）；计划 Task 2 取第三套值（表头 12.5px/600、行 padding 8px 0）。计划声称「值必须逐字一致」但无断言覆盖。",
+      "建议解决方案": "统一为一套值并把表头字号/字重/行内距写进断言。〔已修复：统一为表头 12.5px·600、行垂直内距 8px（水平沿用 EP 默认 12px），规范 §1.6/§2/§5 三处同步，计划 Task 2 补 3 条断言〕"
+    },
+    {
+      "错误描述": "计划中两处与实际不符的事实性描述（行号锚点、gitignore 状态）会误导执行 agent",
+      "错误细节": "(a) Task 2 Files 写「原 EP 覆盖块，即旧 57-133 行」，实际表单标签段在 135-139，整段应为 57-139，按 57-133 替换会漏掉表单标签段。(b) Task 0 括注「graphify-out/ 已被 gitignore」不实：.gitignore 无该条目，git check-ignore 返回未忽略。",
+      "建议解决方案": "行号改 57-139；删除或修正 gitignore 括注。〔已修复：两处均已纠正〕"
+    },
+    {
+      "错误描述": "令牌「测试锁定」覆盖有实质遗漏（Self-Review 却宣称已覆盖），且令牌集缺规范 §4.2 要用的 14px 圆角",
+      "错误细节": "Task 1-3 从未锁定 --line/--line2、各 --*-tint、--r-*、--ease、--shadow-* 具体值（只查非纯黑）；EP 侧色阶/语义色/input 变量、Vant 侧 button/text/border/radius 均无断言；规范附录 A 圆角阶梯含 14px 但令牌集只有 5 档，M3 的 rail 项「圆角 14」只能硬编码。",
+      "建议解决方案": "补齐断言并新增 --r-nav:14px。〔已修复：新增 --r-nav 令牌 + 13 条锁定断言；机械自检确认计划内 63 条断言与实现代码块逐字一致、0 处不一致〕"
+    }
+  ]
+}

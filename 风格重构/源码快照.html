@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>var __mr='all',__md='fuu9qs9u.qwenwork.host';document.addEventListener('DOMContentLoaded', function () {
+  var BAR_HEIGHT = 48;
+
+  // --- detect page theme ---
+  var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  // fallback: sample body/html background color
+  if (!isDark) {
+    try {
+      var sample = getComputedStyle(document.body).backgroundColor;
+      if (sample === 'rgba(0, 0, 0, 0)' || sample === 'transparent') {
+        sample = getComputedStyle(document.documentElement).backgroundColor;
+      }
+      if (sample && sample !== 'rgba(0, 0, 0, 0)' && sample !== 'transparent') {
+        var m = sample.match(/\d+/g);
+        if (m) {
+          var brightness = (parseInt(m[0]) * 299 + parseInt(m[1]) * 587 + parseInt(m[2]) * 114) / 1000;
+          isDark = brightness < 128;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // --- shared CSS (always injected into <head>) ---
+  var SHARED_CSS = '<style>' +
+    '@keyframes mulepage-svg-glow-dark{0%,100%{color:#ffffff}50%{color:#3b82f6}}' +
+    '@keyframes mulepage-svg-glow-light{0%,100%{color:#000000}50%{color:#3b82f6}}' +
+    '.mulepage-anim-dark{animation:mulepage-svg-glow-dark 2.5s ease-in-out infinite}' +
+    '.mulepage-anim-light{animation:mulepage-svg-glow-light 2.5s ease-in-out infinite}' +
+    '.mulepage-close-dark{color:rgba(255,255,255,0.3);transition:color 0.2s ease}' +
+    '.mulepage-close-dark:hover{color:#ffffff}' +
+    '.mulepage-close-light{color:rgba(0,0,0,0.3);transition:color 0.2s ease}' +
+    '.mulepage-close-light:hover{color:#000000}' +
+    '#mulepage-footer-link{display:inline-flex;align-items:center;line-height:0;outline:none}' +
+    '.mulepage-footer-brand{display:inline-flex;align-items:center;box-sizing:border-box;height:32px;max-width:104px;overflow:hidden;padding:6px 12px;border-radius:999px;background:' + (isDark ? 'rgba(26,26,26,0.85)' : 'rgba(255,255,255,0.85)') + ';backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 0 0 0.5px ' + (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)') + ',0 8px 24px -4px ' + (isDark ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.07)') + ';transition:max-width 260ms cubic-bezier(0.22,1,0.36,1);will-change:max-width;white-space:nowrap}' +
+    '.mulepage-footer-brand-hint{display:inline-block;max-width:0;margin-left:0;overflow:hidden;opacity:0;color:' + (isDark ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.64)') + ';font-size:14px;font-weight:400;line-height:20px;transition:max-width 260ms cubic-bezier(0.22,1,0.36,1),margin-left 260ms cubic-bezier(0.22,1,0.36,1),opacity 180ms ease-out;will-change:max-width,opacity}' +
+    '#mulepage-footer:hover .mulepage-footer-brand,#mulepage-footer:focus-within .mulepage-footer-brand{max-width:246px}' +
+    '#mulepage-footer:hover .mulepage-footer-brand-hint,#mulepage-footer:focus-within .mulepage-footer-brand-hint{max-width:126px;margin-left:8px;opacity:1}' +
+    '.mulepage-float-close{display:inline-flex;align-items:center;justify-content:center;max-width:0;margin-left:0;overflow:hidden;opacity:0;transition:max-width 0.2s ease,margin-left 0.2s ease,opacity 0.15s ease;padding:0;border:none;background:none;cursor:pointer;font-size:16px;line-height:1;font-weight:300;height:16px;will-change:max-width,opacity}' +
+    '.mulepage-float:hover .mulepage-float-close{max-width:14px;margin-left:4px;opacity:1}' +
+    '</style>';
+
+  // always inject shared CSS into <head> so it survives banner removal
+  document.head.insertAdjacentHTML('beforeend', SHARED_CSS);
+
+  // --- SVG icon (shared, rx=0 for sharp corners) ---
+  var ICON16 = '<svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="36" height="36" rx="0" fill="#FBF9F6"/><g clip-path="url(#c_top)">' +
+    '<path d="M6.387 21.732v8.895H18.762V28.5h2.32v1.16h8.121V28.5h1.16v-7.928h-1.16v-1.16h-4.64v-1.16h-1.16v-1.16h-1.16v-1.16h-1.16v-1.16h-1.16v-1.16h3.287v-1.934h3.48V9.357H16.442v3.48h-2.128V6.07h-2.32v2.127H9.674v3.48H7.547v10.055H6.387Z" fill="#000"/>' +
+    '<path d="M13.154 21.732v-4.447h1.16v-1.16h4.448v4.447h-1.16v1.16h-4.448Z" fill="#fff"/>' +
+    '<rect x="15.281" y="18.252" width="2.32" height="2.32" fill="#000"/>' +
+    '<path d="M21.082 27.34v-5.608h1.16v-1.16h5.801v1.16h1.16v5.608h-1.16V28.5h-5.801v-1.16h-1.16Z" fill="#fff"/>' +
+    '<path d="M26.883 21.732h-2.32v1.16h1.16v1.16h1.16v-2.32Z" fill="#000"/>' +
+    '<path d="M22.242 24.053v2.32h1.16v1.16h3.48v-1.16h-2.32v-1.16h-1.16v-1.16h-1.16Z" fill="#000"/>' +
+    '</g><defs><clipPath id="c_top"><rect width="24.75" height="24.75" fill="#fff" transform="translate(6 6)"/></clipPath></defs></svg>';
+
+  var ICON16_FOOT = ICON16.replace(/c_top/g, 'c_foot');
+
+  // --- 品牌标志：浅色主题使用原始深色 SVG，深色主题反相为白色。 ---
+  var brandAssetFilter = isDark ? 'filter:invert(1);' : '';
+  var BRAND_MARK = '<span style="display:inline-flex;align-items:center;gap:4px;line-height:0;">' +
+    '<img src="https://gw.alicdn.com/imgextra/i3/O1CN01KjiMsP20F9vea7rMy_!!6000000006819-55-tps-20-20.svg" alt="" width="20" height="20" style="display:block;user-select:none;' + brandAssetFilter + '" />' +
+    '<img src="https://gw.alicdn.com/imgextra/i2/O1CN01Hn0m411NLmdtyiXpF_!!6000000001554-55-tps-56-14.svg" alt="千问办公" width="56" height="14" style="display:block;user-select:none;' + brandAssetFilter + '" />' +
+    '</span>';
+  // 20 + 4 + 56 + 24 = 104px，与设计稿的 104 × 32 品牌胶囊一致。
+  var TOP_BRAND_LOGO = '<span style="display:inline-flex;align-items:center;justify-content:center;width:104px;height:32px;padding:6px 12px;box-sizing:border-box;border-radius:999px;' +
+    'background:' + (isDark ? 'rgba(255,255,255,0.12)' : '#f5f5f5') + ';">' + BRAND_MARK + '</span>';
+  // 右下角入口默认只展示品牌；悬浮或键盘聚焦时在同一胶囊中平滑展开提示语。
+  var FOOTER_BRAND_LOGO = '<span class="mulepage-footer-brand">' + BRAND_MARK +
+    '<span class="mulepage-footer-brand-hint">AI 生成，请注意核实</span></span>';
+
+  // --- banner (adapts to page theme) ---
+  var bannerBg = isDark ? '#050505' : '#ffffff';
+  var bannerBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  var bannerColor = isDark ? '#fff' : '#000';
+  var bannerDividerColor = isDark ? 'rgba(255,255,255,0.24)' : 'rgba(0,0,0,0.16)';
+  var bannerCloseClass = isDark ? 'mulepage-close-dark' : 'mulepage-close-light';
+
+  var BANNER = '<div id="mulepage-bar" dir="ltr" style="position:fixed;top:0;left:0;width:100%;height:' + BAR_HEIGHT + 'px;' +
+    'background:' + bannerBg + ';border-bottom:1px solid ' + bannerBorder + ';color:' + bannerColor + ';' +
+    'box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:8px;' +
+    'font-family:\'PingFang SC\',Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;' +
+    'font-size:14px;font-weight:500;line-height:20px;z-index:2147483647;">' +
+    '<span aria-hidden="true" style="flex:1 1 0;height:32px;"></span>' +
+    '<div style="display:flex;align-items:center;gap:8px;white-space:nowrap;">' +
+    '<span>由</span>' +
+    '<span id="mulepage-bar-link" role="link" tabindex="0" aria-label="打开千问办公" style="display:inline-flex;align-items:center;cursor:pointer;line-height:0;">' +
+    TOP_BRAND_LOGO + '</span>' +
+    '<span>创建</span>' +
+    '<span aria-hidden="true" style="width:1px;height:16px;margin:0 4px;background:' + bannerDividerColor + ';"></span>' +
+    '<span id="mulepage-bar-cta" role="link" tabindex="0" aria-label="用千问办公创建网站" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;cursor:pointer;">' +
+    '<span>一句话创建你的网站</span><span aria-hidden="true" style="font-size:16px;line-height:16px;">\u2192</span></span>' +
+    '</div>' +
+    '<span style="flex:1 1 0;display:flex;justify-content:flex-end;align-items:center;">' +
+    '<button id="mulepage-bar-close" class="' + bannerCloseClass + '" aria-label="关闭千问办公品牌栏" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:8px;background:none;border:none;border-radius:999px;' +
+    'font-size:18px;cursor:pointer;line-height:16px;font-weight:300;">\u00d7</button></span>' +
+    '</div>';
+
+  // --- 右下角品牌入口 ---
+  var floatCloseColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)';
+  var floatCloseHover = isDark ? '#ffffff' : '#000000';
+  var byColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+
+  var FOOTER = '<div id="mulepage-footer" dir="ltr" class="mulepage-float" style="position:fixed !important;bottom:16px !important;right:16px !important;z-index:2147483646;' +
+    'display:inline-flex;align-items:center;padding:0;cursor:pointer;background:transparent;border:0;box-shadow:none;' +
+    'font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',\'Helvetica Neue\',sans-serif;">' +
+    '<span id="mulepage-footer-link" role="link" tabindex="0" aria-label="打开千问办公" style="display:inline-flex;align-items:center;line-height:0;">' +
+    FOOTER_BRAND_LOGO +
+    '</span>' +
+    '</div>';
+
+  // --- insert banner (only when mode is "all") ---
+  if (__mr === 'all') {
+    document.body.insertAdjacentHTML('afterbegin', BANNER);
+
+    // 顶栏品牌标志和行动文案均跳转至千问办公。
+    var openQwenWork = function () {
+      window.open('https://qwenwork.cn?utm_source=pages&utm_medium=banner&utm_campaign=pages_branding&utm_content=top_bar', '_blank', 'noopener');
+    };
+    var topBrandLink = document.getElementById('mulepage-bar-link');
+    var topBrandCta = document.getElementById('mulepage-bar-cta');
+    topBrandLink.addEventListener('click', openQwenWork);
+    topBrandCta.addEventListener('click', openQwenWork);
+    topBrandLink.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openQwenWork();
+      }
+    });
+    topBrandCta.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openQwenWork();
+      }
+    });
+
+    // Use the QwenWork favicon only as a fallback. Preserve favicons generated
+    // by the page itself so published sites can keep their own branding.
+    var existingIcon = document.querySelector('link[rel="icon"],link[rel="shortcut icon"]');
+    if (!existingIcon) {
+      var fi = document.createElement('link');
+      fi.rel = 'icon';
+      fi.type = 'image/svg+xml';
+      fi.href = 'https://qwenwork.cn/app/favicon.svg';
+      document.head.appendChild(fi);
+    }
+
+    // push down normal-flow content (accumulate on existing padding-top)
+    var origPT = parseFloat(getComputedStyle(document.body).paddingTop) || 0;
+    document.body.style.paddingTop = (origPT + BAR_HEIGHT) + 'px';
+
+    // push down all existing position:fixed elements
+    var all = document.querySelectorAll('*');
+    var shifted = [];
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (el.id && el.id.indexOf('mulepage') === 0) continue;
+      var cs = getComputedStyle(el);
+      if (cs.position === 'fixed') {
+        var t = parseFloat(cs.top);
+        if (isNaN(t)) t = 0;
+        el.style.top = (t + BAR_HEIGHT) + 'px';
+        shifted.push({ el: el, orig: t });
+      }
+    }
+
+    // close handler: restore everything
+    document.getElementById('mulepage-bar-close').addEventListener('click', function () {
+      document.getElementById('mulepage-bar').remove();
+      document.body.style.paddingTop = origPT + 'px';
+      for (var j = 0; j < shifted.length; j++) {
+        shifted[j].el.style.top = shifted[j].orig + 'px';
+      }
+    });
+  }
+
+  // --- insert floating widget (only when __mr is set) ---
+  if (__mr) {
+    document.body.insertAdjacentHTML('beforeend', FOOTER);
+
+    // 底部品牌标志点击后打开官网
+    var footerLink = document.getElementById('mulepage-footer-link');
+    if (footerLink) {
+      footerLink.addEventListener('click', function () {
+        window.open('https://qwenwork.cn?utm_source=pages&utm_medium=banner&utm_campaign=pages_branding&utm_content=bottom_bar', '_blank', 'noopener');
+      });
+      footerLink.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          footerLink.click();
+        }
+      });
+    }
+
+    // paid users (footer-only mode): add close button on hover
+    if (__mr === 'footer') {
+      var floatEl = document.getElementById('mulepage-footer');
+      if (floatEl) {
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'mulepage-float-close';
+        closeBtn.style.color = floatCloseColor;
+        closeBtn.textContent = '\u00d7';
+        closeBtn.addEventListener('mouseenter', function () { closeBtn.style.color = floatCloseHover; });
+        closeBtn.addEventListener('mouseleave', function () { closeBtn.style.color = floatCloseColor; });
+        closeBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          floatEl.remove();
+        });
+        floatEl.appendChild(closeBtn);
+      }
+    }
+  }
+
+  // --- inject canonical link (all users) ---
+  var canon = document.createElement('link');
+  canon.rel = 'canonical';
+  canon.href = 'https://' + location.hostname + '/';
+  document.head.appendChild(canon);
+
+  // --- inject og meta tags (all users) ---
+  var ogDomain = __md;
+  var ogTitle = document.title || ogDomain;
+  var ogTags = [
+    ['og:title', ogTitle],
+    ['og:url', 'https://' + location.hostname + '/'],
+    ['og:type', 'website'],
+    ['og:image', 'https://mule.page/og/' + ogDomain + '.webp']
+  ];
+  for (var n = 0; n < ogTags.length; n++) {
+    var existing = document.querySelector('meta[property="' + ogTags[n][0] + '"]');
+    if (existing) existing.remove();
+    var meta = document.createElement('meta');
+    meta.setAttribute('property', ogTags[n][0]);
+    meta.setAttribute('content', ogTags[n][1]);
+    document.head.appendChild(meta);
+  }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产品设计部 · 协作工作台</title>
+<style>
+:root{
+  --bg:#0E0E10; --panel:#17171B; --panel2:#1E1E24; --panel3:#26262E;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --txt:#F2F3F5; --mut:#8A8F98; --dim:#5C616B;
+  --lime:#CBF74E; --blue:#3355FF; --orange:#FF7A3D; --green:#4ADE80;
+  --r-frame:32px; --r-card:24px; --r-in:16px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --font:'Inter','Manrope','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.hide{display:none!important}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--txt);background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:10px 14px;outline:none;transition:border .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--lime)}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+a{color:var(--lime)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#2c2c34;border-radius:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-card);padding:20px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11.5px;background:var(--panel3);color:var(--mut);white-space:nowrap}
+.chip.p0{background:rgba(255,122,61,.14);color:var(--orange)}
+.chip.p1{background:rgba(51,85,255,.16);color:#8FA5FF}
+.chip.p2{background:rgba(255,255,255,.07);color:var(--mut)}
+.chip.lime{background:rgba(203,247,78,.13);color:var(--lime)}
+.chip.green{background:rgba(74,222,128,.13);color:var(--green)}
+.chip.grey{background:rgba(255,255,255,.06);color:var(--dim)}
+.avt{width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--panel3);flex:none;border:1px solid var(--line2)}
+.avt.big{width:56px;height:56px}
+.avt.sm{width:22px;height:22px}
+.dot-online{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:var(--green);border:2px solid var(--panel)}
+.dot-off{background:var(--dim)}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--lime);transition:width .7s var(--ease)}
+.bar i.warn{background:var(--orange)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:12px;font-size:13.5px;font-weight:600;transition:transform .18s var(--ease),opacity .18s}
+.btn:active{transform:scale(.96)}
+.btn.pri{background:var(--lime);color:#101204}
+.btn.sec{background:var(--panel3);color:var(--txt);border:1px solid var(--line2)}
+.btn.ghost{color:var(--mut);padding:8px 10px}
+.btn.danger{background:rgba(255,122,61,.12);color:var(--orange)}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:10px}
+.mut{color:var(--mut)} .dim{color:var(--dim)} .or{color:var(--orange)} .gr{color:var(--green)} .li{color:var(--lime)}
+/* ---------- 登录页 ---------- */
+.login{display:flex;min-height:100vh}
+.login-brand{flex:1.1;display:flex;flex-direction:column;justify-content:center;padding:8vh 6vw;background:radial-gradient(1000px 700px at 12% 10%,rgba(51,85,255,.28),transparent 55%),radial-gradient(900px 700px at 85% 90%,rgba(203,247,78,.12),transparent 55%),#0B0B0D;position:relative;overflow:hidden}
+.login-brand::after{content:'';position:absolute;width:420px;height:420px;border:1px solid var(--line);border-radius:50%;right:-160px;top:-120px}
+.login-brand::before{content:'';position:absolute;width:280px;height:280px;border:1px dashed rgba(255,255,255,.08);border-radius:50%;left:8%;bottom:-90px}
+.lb-tag{display:inline-flex;align-items:center;gap:8px;color:var(--lime);font-size:13px;font-weight:600;letter-spacing:.12em}
+.lb-tag::before{content:'';width:22px;height:2px;background:var(--lime)}
+.lb-title{font-size:clamp(34px,4.2vw,54px);font-weight:800;letter-spacing:-.02em;line-height:1.22;margin:22px 0 14px}
+.lb-sub{color:var(--mut);max-width:420px}
+.lb-stats{display:flex;gap:36px;margin-top:52px}
+.lb-stats .v{font-size:34px;font-weight:800;letter-spacing:-.02em}
+.lb-stats .v em{font-style:normal;font-size:15px;color:var(--lime);margin-left:2px}
+.lb-stats .k{color:var(--dim);font-size:12.5px;margin-top:2px}
+.login-side{flex:.9;display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.login-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-frame);padding:32px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.lc-tabs{display:flex;background:var(--panel2);border-radius:12px;padding:4px;margin-bottom:22px}
+.lc-tabs button{flex:1;padding:8px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--mut)}
+.lc-tabs button.on{background:var(--panel3);color:var(--txt);box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:6px}
+.field input{width:100%}
+.lc-btn{width:100%;justify-content:center;padding:12px;margin-top:6px}
+.demo-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.demo-chips button{display:inline-flex;align-items:center;gap:6px;padding:5px 11px 5px 5px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px;color:var(--mut);transition:border .2s,color .2s}
+.demo-chips button:hover{border-color:var(--lime);color:var(--txt)}
+.login-note{margin-top:14px;font-size:11.8px;color:var(--dim);line-height:1.7}
+/* ---------- 应用壳 ---------- */
+.shell{display:flex;height:100vh;padding:14px;gap:14px}
+.side{width:76px;flex:none;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-frame);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:6px}
+.side .logo{width:38px;height:38px;border-radius:12px;background:var(--lime);color:#101204;font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.nv{position:relative;width:48px;height:46px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--dim);transition:background .22s var(--ease),color .22s}
+.nv svg{width:20px;height:20px}
+.nv span{font-size:9.5px}
+.nv:hover{background:var(--panel2);color:var(--txt)}
+.nv.on{background:var(--panel3);color:var(--lime)}
+.nv .tip{position:absolute;left:56px;top:50%;transform:translateY(-50%) translateX(-6px);background:#000;color:var(--txt);border:1px solid var(--line2);font-size:11.5px;padding:4px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s var(--ease);z-index:60}
+.nv:hover .tip{opacity:1;transform:translateY(-50%) translateX(0)}
+.nv .badge{position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--orange)}
+.main{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0}
+.topbar{flex:none;display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-frame);padding:12px 22px}
+.tb-greet b{font-size:15.5px}
+.tb-greet p{font-size:12px;color:var(--mut)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.searchbox{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:7px 12px;color:var(--dim);font-size:12.5px;min-width:170px;transition:border .2s}
+.searchbox:hover{border-color:var(--line2)}
+.searchbox kbd{margin-left:auto;background:var(--panel3);border-radius:6px;padding:1px 6px;font-size:10.5px;font-family:inherit}
+.stack{display:flex;align-items:center}
+.stack img{width:26px;height:26px;border-radius:50%;border:2px solid var(--panel);margin-left:-8px;transition:margin .25s var(--ease);opacity:.9}
+.stack:hover img{margin-left:2px}
+.stack .more{width:26px;height:26px;border-radius:50%;background:var(--panel3);border:2px solid var(--panel);margin-left:-8px;font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+.icobtn{position:relative;width:36px;height:36px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--mut);transition:.2s}
+.icobtn:hover{color:var(--txt);border-color:var(--line2)}
+.icobtn .n{position:absolute;top:-4px;right:-4px;background:var(--orange);color:#fff;font-size:9.5px;border-radius:999px;padding:1px 5px;font-weight:700}
+.view{flex:1;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-frame);padding:26px 28px;scroll-behavior:smooth}
+.pg-h{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.pg-h h2{font-size:20px;letter-spacing:-.01em}
+.pg-h .sub{color:var(--mut);font-size:12.5px}
+.pg-h .grow{flex:1}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:1.6fr 1fr}
+.g22{grid-template-columns:1fr 1fr}
+@media(max-width:1100px){.g3{grid-template-columns:1fr 1fr}.g2,.g22{grid-template-columns:1fr}}
+.card h3{font-size:14.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h3 .sub{font-weight:400;font-size:11.5px;color:var(--dim)}
+/* 总览 */
+.tm-card{position:relative;overflow:hidden}
+.tm-card .v{font-size:30px;font-weight:800}
+.tm-card .k{color:var(--mut);font-size:12.5px}
+.tm-card .s{font-size:11.5px;margin-top:4px}
+.spark{position:absolute;right:16px;bottom:14px;opacity:.9}
+.task-row{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-in);transition:background .2s;border:1px solid transparent}
+.task-row:hover{background:var(--panel2);border-color:var(--line)}
+.task-row .t{flex:1;min-width:0}
+.task-row .t b{font-weight:600;font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-row .t .m{font-size:11.5px;color:var(--dim);display:flex;gap:8px;align-items:center;margin-top:1px}
+.task-row.hl{background:rgba(51,85,255,.07);border-color:rgba(51,85,255,.25)}
+.task-row.od .due{color:var(--orange);font-weight:600}
+.task-row.fd .t b{color:var(--dim);text-decoration:line-through}
+.ckbx{width:19px;height:19px;flex:none;border-radius:6px;border:1.5px solid var(--line2);background:transparent;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:.2s var(--ease)}
+.ckbx:hover{border-color:var(--lime)}
+.ckbx.on{background:var(--lime);border-color:var(--lime);color:#101204}
+.load-row{display:flex;align-items:center;gap:10px;padding:7px 0}
+.load-row .nm{width:64px;font-size:12.5px}
+.load-row .bar{flex:1}
+.load-row .pv{width:40px;text-align:right;font-size:12px;color:var(--mut)}
+.feed{display:flex;gap:10px;padding:9px 2px;align-items:flex-start;font-size:12.8px}
+.feed .m{color:var(--dim);font-size:11.5px;margin-left:auto;white-space:nowrap}
+.feed b{font-weight:600}
+/* 迷你/大日历 */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .wd{color:var(--dim);font-size:10.5px;padding:4px 0}
+.cal .cd{position:relative;aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--mut);cursor:pointer;transition:.15s var(--ease);border:1px solid transparent}
+.cal .cd:hover{background:var(--panel2)}
+.cal .cd.out{opacity:.25;cursor:default}
+.cal .cd.today{background:var(--lime);color:#101204;font-weight:800}
+.cal .cd.sel{border-color:var(--line2);background:var(--panel2)}
+.cal .cd .pts{display:flex;gap:2.5px;position:absolute;bottom:4px}
+.cal .cd .pts i{width:3.5px;height:3.5px;border-radius:50%;background:var(--blue)}
+.cal .cd.today .pts i{background:#101204}
+.cal .cd .ms{position:absolute;inset:2px;border:1.5px solid #fff;border-radius:9px;pointer-events:none}
+.cal-lg .cd{aspect-ratio:1.15;font-size:13px;border-radius:var(--r-in)}
+.ev-row{display:flex;gap:12px;padding:10px 12px;border-radius:var(--r-in);background:var(--panel2);border:1px solid var(--line);margin-bottom:8px;align-items:center}
+.ev-row .cl{width:3px;align-self:stretch;border-radius:2px}
+.ev-row .tm{font-size:12px;color:var(--mut);width:40px}
+.ev-row b{font-size:13px}
+.ev-row .mt{font-size:11.5px;color:var(--dim)}
+.c-lime{background:var(--lime)} .c-blue{background:var(--blue)} .c-orange{background:var(--orange)} .c-grey{background:var(--dim)}
+/* 项目 */
+.pj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.pj{cursor:pointer;transition:transform .25s var(--ease),border-color .25s;position:relative}
+.pj:hover{transform:translateY(-3px);border-color:var(--line2)}
+.pj.hl-card{border-color:rgba(203,247,78,.35);background:linear-gradient(160deg,rgba(203,247,78,.06),transparent 40%),var(--panel)}
+.pj .code{font-size:10px;font-weight:800;letter-spacing:.1em;color:#101204;background:var(--lime);border-radius:7px;padding:2.5px 8px}
+.pj .code.b{background:var(--blue);color:#fff} .pj .code.o{background:var(--orange);color:#fff} .pj .code.g{background:#5C616B;color:#fff} .pj .code.st{background:var(--panel3);color:var(--mut)}
+.pj h4{font-size:16px;margin:12px 0 3px}
+.pj .ddl{font-size:12px;color:var(--mut)}
+.pj .row{display:flex;align-items:center;gap:12px;margin-top:14px}
+.pj .stats{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line2);font-size:11.5px;color:var(--dim)}
+.pj .stats b{color:var(--txt);font-size:14px;display:block}
+.avatars{display:flex}
+.avatars img{width:24px;height:24px;border-radius:50%;border:2px solid var(--panel);margin-left:-7px}
+.avatars img:first-child{margin-left:0}
+.avatars .x{width:24px;height:24px;border-radius:50%;background:var(--panel3);border:2px solid var(--panel);margin-left:-7px;font-size:9.5px;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+/* 详情 & 看板 & 甘特 */
+.tabs{display:flex;gap:4px;background:var(--panel2);padding:4px;border-radius:14px;border:1px solid var(--line)}
+.tabs button{padding:7px 16px;border-radius:11px;font-size:12.8px;color:var(--mut);font-weight:600}
+.tabs button.on{background:var(--panel3);color:var(--txt)}
+.kb{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;min-width:840px}
+.kb-wrap{overflow-x:auto;padding-bottom:6px}
+.lane{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-card);padding:12px;min-height:240px}
+.lane h5{font-size:12.5px;display:flex;gap:8px;align-items:center;margin-bottom:10px;color:var(--mut)}
+.lane h5 .n{background:var(--panel3);border-radius:999px;padding:1px 8px;font-size:11px}
+.lane.over{border-color:var(--lime);background:rgba(203,247,78,.05)}
+.kcard{background:var(--panel);border:1px solid var(--line2);border-radius:var(--r-in);padding:12px;margin-bottom:10px;cursor:grab;transition:transform .2s var(--ease),box-shadow .2s}
+.kcard:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.kcard:active{cursor:grabbing}
+.kcard.drag{opacity:.4}
+.kcard.hl-k{border-color:rgba(203,247,78,.4)}
+.kcard .tt{font-size:13px;font-weight:600;margin:6px 0 4px}
+.kcard .meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);margin-top:8px;flex-wrap:wrap}
+.kcard.od-k{border-color:rgba(255,122,61,.45)}
+.gantt{min-width:760px}
+.g-row{display:grid;grid-template-columns:170px 1fr;align-items:center;gap:10px;padding:7px 0}
+.g-lab{font-size:12px;display:flex;align-items:center;gap:7px;min-width:0}
+.g-lab b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.g-track{position:relative;height:26px;background:repeating-linear-gradient(90deg,transparent,transparent calc(100%/14 - 1px),var(--line) calc(100%/14 - 1px),var(--line) calc(100%/14))}
+.g-bar{position:absolute;top:4px;height:18px;border-radius:9px;background:rgba(51,85,255,.55);border:1px solid var(--blue)}
+.g-bar.p0{background:rgba(203,247,78,.3);border-color:var(--lime)}
+.g-bar.odp0{background:rgba(255,122,61,.28);border-color:var(--orange)}
+.g-head{display:grid;grid-template-columns:170px 1fr;gap:10px}
+.g-days{display:grid;grid-template-columns:repeat(14,1fr);font-size:9.5px;color:var(--dim);text-align:center}
+.file-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-in);border:1px solid var(--line);background:var(--panel2);margin-bottom:8px;cursor:pointer;transition:.2s}
+.file-row:hover{border-color:var(--line2)}
+.fic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex:none}
+.fic.fig{background:rgba(203,247,78,.13);color:var(--lime)} .fic.png{background:rgba(51,85,255,.16);color:#8FA5FF}
+.fic.pdf{background:rgba(255,122,61,.14);color:var(--orange)} .fic.xls{background:rgba(74,222,128,.13);color:var(--green)} .fic.zip{background:rgba(255,255,255,.07);color:var(--mut)}
+.doc-card{border:1px solid var(--line);background:var(--panel2);border-radius:var(--r-card);padding:16px;cursor:pointer;transition:.22s var(--ease)}
+.doc-card:hover{border-color:var(--line2);transform:translateY(-2px)}
+.doc-card .ic{font-size:22px}
+/* 成员 */
+.mb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.mb{display:flex;flex-direction:column;gap:10px}
+.mb .top{display:flex;gap:12px;align-items:center}
+.mb .pos{position:relative;flex:none}
+.mb h4{font-size:14.5px}
+.mb .rl{font-size:11.5px;color:var(--dim)}
+/* 数据/后台图表 */
+.wk{display:flex;gap:14px;align-items:flex-end;height:150px;padding-top:10px}
+.wk .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.wk .col i{width:100%;max-width:38px;border-radius:8px 8px 4px 4px;background:var(--panel3);transition:height .8s var(--ease)}
+.wk .col.last i{background:var(--lime)}
+.wk .col span{font-size:10px;color:var(--dim)}
+.wk .col b{font-size:11px;color:var(--mut)}
+.heat-row{display:grid;grid-template-columns:120px 1fr 36px;gap:10px;align-items:center;font-size:12px;padding:5px 0}
+.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-card)}
+table.tb{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}
+.tb th{text-align:left;color:var(--dim);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel);white-space:nowrap}
+.tb td{padding:9px 12px;border-bottom:1px solid var(--line);color:var(--mut);white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.tb tr:hover td{background:var(--panel2);color:var(--txt)}
+.kpi{display:flex;flex-direction:column;gap:2px}
+.kpi .v{font-size:24px;font-weight:800}
+.kpi .k{font-size:11.5px;color:var(--dim)}
+.rec{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12.3px}
+.rec:last-child{border:none}
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:13px 2px;border-bottom:1px solid var(--line)}
+.set-row:last-child{border:none}
+.sw{width:38px;height:21px;border-radius:999px;background:var(--panel3);position:relative;cursor:pointer;transition:.25s var(--ease);flex:none}
+.sw::after{content:'';position:absolute;top:2.5px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--dim);transition:.25s var(--ease)}
+.sw.on{background:var(--lime)} .sw.on::after{left:19px;background:#101204}
+/* 弹窗/抽屉/toast/引导/命令面板 */
+.mask{position:fixed;inset:0;background:rgba(5,6,8,.72);backdrop-filter:blur(4px);z-index:80;display:flex;align-items:center;justify-content:center;animation:fade .25s var(--ease)}
+.modal{width:min(720px,92vw);max-height:84vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line2);border-radius:var(--r-frame);padding:28px;animation:pop .32s var(--ease)}
+@keyframes fade{from{opacity:0}} @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(390px,94vw);background:var(--panel);border-left:1px solid var(--line2);z-index:85;display:flex;flex-direction:column;animation:slide .32s var(--ease);box-shadow:-30px 0 70px rgba(0,0,0,.5)}
+@keyframes slide{from{transform:translateX(100%)}}
+.msg-me{align-self:flex-end;background:var(--lime);color:#101204;border-radius:16px 16px 4px 16px;max-width:80%;padding:9px 13px;font-size:13px;margin:3px 0}
+.msg-them{align-self:flex-start;background:var(--panel3);border-radius:16px 16px 16px 4px;max-width:80%;padding:9px 13px;font-size:13px;margin:3px 0}
+.conv{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;cursor:pointer}
+.conv:hover,.conv.on{background:var(--panel2)}
+#toasts{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:#000;border:1px solid var(--line2);color:var(--txt);padding:10px 18px;border-radius:999px;font-size:13px;animation:pop .3s var(--ease);box-shadow:0 10px 40px rgba(0,0,0,.6);max-width:80vw}
+.toast.warn{border-color:rgba(255,122,61,.5)}
+#pal-root{position:fixed;inset:0;background:rgba(5,6,8,.6);z-index:95;display:flex;justify-content:center;padding-top:14vh}
+.pal{width:min(560px,92vw);height:max-content;background:var(--panel);border:1px solid var(--line2);border-radius:var(--r-card);overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.6);animation:pop .25s var(--ease)}
+.pal input{width:100%;border:none;border-radius:0;background:transparent;padding:16px 18px;font-size:15px}
+.pal .it{display:flex;gap:10px;align-items:center;padding:9px 16px;font-size:13px;cursor:pointer;color:var(--mut)}
+.pal .it.on,.pal .it:hover{background:var(--panel2);color:var(--txt)}
+.pal .grp{font-size:10.5px;color:var(--dim);padding:8px 16px 2px;letter-spacing:.08em}
+.tour-mask{position:fixed;inset:0;z-index:100;background:rgba(5,6,8,.78);pointer-events:auto}
+.tour-card{position:fixed;z-index:101;width:300px;background:var(--panel);border:1px solid var(--lime);border-radius:var(--r-card);padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:pop .3s var(--ease)}
+.tour-hl{position:fixed;z-index:100;border:2px solid var(--lime);border-radius:16px;box-shadow:0 0 0 4000px rgba(5,6,8,.78);transition:.35s var(--ease);pointer-events:none}
+.skl{background:linear-gradient(90deg,var(--panel2) 25%,var(--panel3) 50%,var(--panel2) 75%);background-size:200% 100%;animation:sh 1.4s infinite;border-radius:var(--r-card)}
+@keyframes sh{to{background-position:-200% 0}}
+.fade-in{animation:fin .35s var(--ease)} @keyframes fin{from{opacity:0;transform:translateY(6px)}}
+.hint{font-size:11.5px;color:var(--dim);background:var(--panel2);border:1px dashed var(--line2);border-radius:12px;padding:8px 12px}
+</style>
+</head>
+<body>
+
+<!-- ========== 登录 ========== -->
+<div id="login" class="login hide">
+  <div class="login-brand">
+    <div class="lb-tag">产品设计部 · 协作工作台</div>
+    <h1 class="lb-title">把部门的事<br>装进一块屏幕。</h1>
+    <p class="lb-sub">项目、日历、任务、成员负载与对齐资料，一个入口全部收拢。少开五个窗口，多留一小时深度工作。</p>
+    <div class="lb-stats">
+      <div><div class="v num">5<em>个</em></div><div class="k">进行中项目</div></div>
+      <div><div class="v num">42<em>个</em></div><div class="k">本周任务</div></div>
+      <div><div class="v num">2940<em>次</em></div><div class="k">成员互助</div></div>
+    </div>
+  </div>
+  <div class="login-side">
+    <div class="login-card">
+      <div class="lc-tabs">
+        <button id="tab-login" class="on" onclick="lcTab('login')">登录</button>
+        <button id="tab-reg" onclick="lcTab('reg')">注册新成员</button>
+      </div>
+      <div id="form-login">
+        <div class="field"><label>账号</label><input id="li-acc" placeholder="如 linzheyuan" autocomplete="username"></div>
+        <div class="field"><label>密码</label><input id="li-pw" type="password" placeholder="演示密码统一为 123456" autocomplete="current-password"></div>
+        <button class="btn pri lc-btn" onclick="doLogin()">进入工作台 →</button>
+      </div>
+      <div id="form-reg" class="hide">
+        <div class="field"><label>姓名</label><input id="rg-name" placeholder="如 白起云"></div>
+        <div class="field"><label>账号（拼音）</label><input id="rg-acc" placeholder="如 baiqiyun"></div>
+        <div class="field"><label>密码</label><input id="rg-pw" type="password" placeholder="至少 6 位"></div>
+        <div class="field"><label>岗位</label><input id="rg-title" placeholder="如 工业设计师"></div>
+        <button class="btn pri lc-btn" onclick="doRegister()">注册并进入 →</button>
+      </div>
+      <div class="demo-chips" id="demo-chips"></div>
+      <p class="login-note">演示账号均为人名拼音（如 苏晚 → suwan），登录密码统一为 <b style="color:var(--lime)">123456</b>，点击头像快速填入。<br>权限说明：<b style="color:var(--lime)">林哲远</b> 为部门负责人，可查看全部数据看板、新建项目与日程、邀请成员；其余为成员账号，只看到与自己相关的任务，管理类操作会被服务端拦截。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 应用壳 ========== -->
+<div id="shell" class="shell hide">
+  <nav class="side" id="nav"></nav>
+  <div class="main">
+    <header class="topbar" id="topbar"></header>
+    <section class="view" id="view"></section>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div id="drawer-root"></div>
+<div id="toasts"></div>
+<div id="tour-root"></div>
+<div id="pal-root" class="hide"></div>
+
+<script>
+'use strict';
+/* ================= 配置与工具 ================= */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TODAY=18, YEAR=2026, MONTH=8;
+const memList=()=>(S.members&&S.members.length?S.members:MOCK.members);
+const AVA=id=>'https://i.pravatar.cc/80?img='+(memList().find(m=>m.id==id)?.img ?? 12);
+const user=id=>memList().find(m=>m.id==id)||{name:'未知',img:12,title:''};
+const toast=(t,warn)=>{const d=document.createElement('div');d.className='toast'+(warn?' warn':'');d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>{d.style.opacity=0;d.style.transition='.4s';setTimeout(()=>d.remove(),400)},2600)};
+
+/* ================= 兜底 mock（服务端 bootstrap 不可用时降级） ================= */
+const T=(id,title,project,owner_id,prio,due,overdue,done,dir,lane,tags,sub,files,comments,highlight)=>({id,title,project,owner_id,prio,due,overdue:!!overdue,done:!!done,dir,lane,tags,sub,files,comments,highlight:!!highlight});
+const MOCK={
+ members:[
+  {id:1,name:'林哲远',account:'linzheyuan',title:'部门负责人',role:'admin',img:12,online:true},
+  {id:2,name:'苏晚',account:'suwan',title:'视觉设计师',role:'member',img:47,online:true},
+  {id:3,name:'陈嘉禾',account:'chenjiahe',title:'前端工程师',role:'member',img:33,online:true},
+  {id:4,name:'周砚',account:'zhouyan',title:'产品经理',role:'member',img:15,online:false},
+  {id:5,name:'郑允',account:'zhengyun',title:'交互设计师',role:'member',img:68,online:true},
+  {id:6,name:'高然',account:'gaoran',title:'数据分析师',role:'member',img:51,online:false},
+  {id:7,name:'徐柏舟',account:'xubaizhou',title:'前端工程师',role:'member',img:60,online:true},
+  {id:8,name:'沈栖',account:'shenqi',title:'内容运营',role:'member',img:26,online:false}],
+ tasks:[
+  T(1,'官网首页 hero 视觉初稿 v4','品牌官网改版',2,'P0','8月20日',1,0,'设计方向',null,['视觉','官网'],'2/5',3,4,0),
+  T(2,'店铺 KV 延展三套','',2,'P1','8月21日',0,0,'设计方向',null,['KV'],'1/3',1,2,0),
+  T(3,'年会主视觉提案','',2,'P1','8月25日',0,0,'设计方向',null,['主视觉'],'0/2',2,1,0),
+  T(4,'品牌手册第三章文案修订','',2,'P2','8月28日',0,0,'品牌资产',null,['品牌'],'3/4',1,0,0),
+  T(5,'组件库按钮状态补齐','',3,'P0','8月19日',1,0,'前端工程',null,['组件库'],'6/8',2,3,0),
+  T(6,'官网首页响应式适配','品牌官网改版',3,'P1','8月22日',0,0,'前端工程',null,['响应式'],'2/6',1,2,0),
+  T(7,'数据看板图表交互重构','Q3 数据中台',3,'P1','8月26日',0,0,'前端工程',null,['图表'],'1/5',0,1,0),
+  T(8,'Q3 OKR 周报模板','',4,'P2','8月20日',0,0,'产品事务',null,['OKR'],'0/1',1,0,0),
+  T(9,'竞品功能矩阵更新','',4,'P1','8月24日',0,0,'产品事务',null,['竞品'],'4/6',2,2,0),
+  T(10,'用户访谈纪要整理','',4,'P0','8月17日',1,0,'用户研究',null,['访谈'],'2/8',3,5,1),
+  T(11,'下单链路交互走查','',5,'P1','8月21日',0,0,'交互设计',null,['走查'],'3/7',1,3,0),
+  T(12,'设计规范 v2 注释补全','品牌官网改版',5,'P0','8月20日',1,0,'规范文档',null,['规范'],'5/9',2,4,0),
+  T(13,'增长漏斗数据拉取','用户增长实验',6,'P1','8月23日',0,0,'数据分析',null,['漏斗'],'1/2',1,1,0),
+  T(14,'流失用户归因分析','',6,'P2','8月27日',0,1,'数据分析',null,['流失'],'4/4',2,3,0),
+  T(15,'搜索框性能优化','',7,'P1','8月25日',0,0,'前端工程',null,['性能'],'2/3',0,1,0),
+  T(16,'暗色模式样式变量','',7,'P2','8月29日',0,1,'前端工程',null,['主题'],'5/5',1,2,0),
+  T(17,'十月内容日历排期','',8,'P2','8月30日',0,0,'内容运营',null,['排期'],'1/4',2,0,0)],
+ kanbanCards:[
+  T(18,'多语言方案调研','品牌官网改版',4,'P2','8月24日',0,0,'','todo',['调研','i18n'],'1/3',1,2,0),
+  T(19,'页脚信息架构重排','品牌官网改版',8,'P2','8月23日',0,0,'','todo',['信息架构'],'0/2',0,1,0),
+  T(20,'竞品动效调研合集','品牌官网改版',5,'P1','8月21日',0,0,'','todo',['动效','竞品'],'2/6',2,3,0),
+  T(21,'下载中心组件库素材','品牌官网改版',7,'P2','8月25日',0,0,'','todo',['组件库'],'0/4',0,0,0),
+  T(22,'首页动效开发','品牌官网改版',3,'P0','8月21日',0,0,'','doing',['动效','开发'],'2/5',4,6,1),
+  T(23,'首页视觉稿 v2','品牌官网改版',2,'P0','8月20日',0,0,'','doing',['视觉','首页'],'3/4',5,8,0),
+  T(24,'搜索体验优化方案','品牌官网改版',2,'P2','8月27日',0,0,'','doing',['搜索'],'1/3',1,1,0),
+  T(25,'视觉规范 v2 评审','品牌官网改版',5,'P0','8月20日',1,0,'','review',['规范','评审'],'4/6',1,4,0),
+  T(26,'首页视觉稿 v3','品牌官网改版',2,'P0','8月19日',0,0,'','review',['视觉','首页'],'1/2',3,5,0),
+  T(27,'首页视觉稿 v1','品牌官网改版',2,'P1','8月12日',0,1,'','done',['视觉'],'5/5',2,7,0)],
+ projects:[
+  {id:1,name:'品牌官网改版',code:'WEB',deadline:'8月26日',progress:64,highlight:true,members:[2,3,4],extra:4,total:42,done:27,overdue:3,days_left:8,status:'进行中'},
+  {id:2,name:'Q3 数据中台',code:'DATA',deadline:'9月12日',progress:38,highlight:false,members:[6,4],extra:2,total:31,done:12,overdue:1,days_left:25,status:'进行中'},
+  {id:3,name:'用户增长实验',code:'GROW',deadline:'8月30日',progress:71,highlight:false,members:[4,6,8],extra:1,total:24,done:17,overdue:2,days_left:12,status:'进行中'},
+  {id:4,name:'供应链系统迁移',code:'ERP',deadline:'10月18日',progress:22,highlight:false,members:[3,7,5],extra:3,total:56,done:12,overdue:4,days_left:61,status:'进行中'},
+  {id:5,name:'APP 5.0 改版',code:'APP',deadline:'9月30日',progress:0,highlight:false,members:[2],extra:5,total:18,done:0,overdue:0,days_left:43,status:'待启动'}],
+ events:[
+  {id:1,day:18,time:'09:30',title:'每日站会',meta:'全员 · 15 分钟',color:'grey'},
+  {id:2,day:18,time:'10:00',title:'产品评审',meta:'六人参与 · 会议室 A',color:'blue'},
+  {id:3,day:18,time:'15:00',title:'增长实验周中对齐',meta:'三人 · 线上',color:'lime'},
+  {id:4,day:18,time:'19:00',title:'首页动效结对调试',meta:'两人 · 工位',color:'lime'},
+  {id:5,day:19,time:'14:00',title:'官网动效交接',meta:'四人 · 线上',color:'blue'},
+  {id:6,day:19,time:'17:00',title:'视觉规范 v2 预审',meta:'五人 · 会议室 B',color:'orange'},
+  {id:7,day:20,time:'11:00',title:'品牌手册终稿确认',meta:'三人 · 线上',color:'lime'},
+  {id:8,day:20,time:'16:00',title:'hero 视觉截止提醒',meta:'全员 · 自动提醒',color:'orange'},
+  {id:9,day:21,time:'10:00',title:'官网改版上线评审',meta:'里程碑 · 八人参与',color:'blue'},
+  {id:10,day:21,time:'14:00',title:'设计部例会',meta:'全员 · 每月固定',color:'grey'},
+  {id:11,day:22,time:'09:30',title:'每日站会',meta:'全员 · 15 分钟',color:'grey'},
+  {id:12,day:22,time:'13:00',title:'数据中台接口联调',meta:'四人 · 线上',color:'blue'},
+  {id:13,day:25,time:'10:00',title:'上线前回归测试',meta:'六人 · 线上',color:'orange'},
+  {id:14,day:25,time:'15:00',title:'Q3 复盘材料准备',meta:'三人 · 文档协作',color:'grey'},
+  {id:15,day:26,time:'09:30',title:'正式上线日 · 动员会',meta:'里程碑 · 八人参与',color:'blue'},
+  {id:16,day:26,time:'16:00',title:'上线复盘会',meta:'全员 · 会议室 A',color:'grey'},
+  {id:17,day:28,time:'14:00',title:'十月规划启动会',meta:'六人 · 线上',color:'lime'}],
+ messages:[
+  {id:1,user_id:2,from_me:true,text:'首页 v3 的圆角我再统一收一档，你下午看一眼？'},
+  {id:2,user_id:2,from_me:false,text:'收到，我看一下'},
+  {id:3,user_id:2,from_me:true,text:'hero 那版的动效曲线用 cubic-bezier(.22,1,.36,1) 更顺'},
+  {id:4,user_id:2,from_me:false,text:'好的，没问题'},
+  {id:5,user_id:2,from_me:false,text:'v3 我按你说的改完了，评审前传你'},
+  {id:6,user_id:2,from_me:true,text:'辛苦，晚上前我确认'},
+  {id:7,user_id:3,from_me:true,text:'动效交接文档放文件区了，重点看第 4 节'},
+  {id:8,user_id:3,from_me:false,text:'明白，稍后同步给你'},
+  {id:9,user_id:3,from_me:false,text:'按钮状态今天能合完，晚于你预期吗'},
+  {id:10,user_id:3,from_me:true,text:'不晚，明早联调够用'},
+  {id:11,user_id:5,from_me:true,text:'规范 v2 评审的议程我发你，先补充「导航」章节'},
+  {id:12,user_id:5,from_me:false,text:'这个我来跟进'},
+  {id:13,user_id:8,from_me:true,text:'十月内容日历先出一版草案哈'},
+  {id:14,user_id:8,from_me:false,text:'OK，有进展随时说'}],
+ milestones:[21,26],
+ docs:[
+  {id:'d1',title:'品牌官网改版 · 阶段汇报',project:'品牌官网改版',status:'已对齐',icon:'📊',blocks:[
+   {type:'p',text:'本次汇报覆盖 8 月 4 日至 8 月 18 日的改版进展。首页视觉已迭代至 v3，动效开发完成 40%，整体进度 64%，按 8 月 26 日上线排期推进中。'},
+   {type:'kpi',items:[{label:'任务完成',val:'27/42',sub:'本周 +6'},{label:'逾期任务',val:'3',sub:'均已排产'},{label:'评审通过',val:'8',sub:'一次通过率 75%'},{label:'剩余天数',val:'8',sub:'截止 8月26日'}]},
+   {type:'timeline',items:[{date:'8月8日',txt:'首页视觉定稿 v1'},{date:'8月14日',txt:'组件库迁移完成 80%'},{date:'8月21日',txt:'上线评审（里程碑）'},{date:'8月26日',txt:'正式上线'}]},
+   {type:'bullets',items:['新首页跳出率预估下降 12%，主 CTA 点击区扩大 36%','多语言方案采用 i18n 资源包延迟加载，首屏零增重','风险：动效开发依赖视觉走查节奏，已改为每日同步制']}]},
+  {id:'d2',title:'Q3 数据中台 · 数据周报',project:'Q3 数据中台',status:'已对齐',icon:'📈',blocks:[
+   {type:'p',text:'本周完成看板图表交互重构方案评审，埋点覆盖率从 71% 提升至 89%，口径对账差异收敛至 0.4% 以内。'},
+   {type:'kpi',items:[{label:'埋点覆盖',val:'89%',sub:'+18pt'},{label:'对账差异',val:'0.4%',sub:'阈值 0.5%'},{label:'报表产出',val:'23 张',sub:'周新增 4'},{label:'查询 P95',val:'2.1s',sub:'-38%'}]},
+   {type:'bullets',items:['核心漏斗已统一为事件级口径，旧报表 9 月第一周下线','增长团队自助取数权限已开通 6 人','下周：实时链路选型 AB 测试结论']}]},
+  {id:'d3',title:'用户增长实验 · A/B 结论',project:'用户增长实验',status:'评审中',icon:'🧪',blocks:[
+   {type:'p',text:'针对注册链路简化与首单激励两个方向的 A/B 实验已结束 14 天观察期，结果如下（样本量各 2.1 万）。'},
+   {type:'table',head:['指标','对照组','实验组 A（注册简化）','实验组 B（首单激励）'],rows:[['注册转化率','31.2%','35.8% ↑','32.0%'],['次日留存','48.1%','49.3%','52.7% ↑'],['7 日 ARPU','¥18.4','¥18.9','¥21.6 ↑'],['投诉率','0.8%','0.8%','1.4% ⚠']]},
+   {type:'bullets',items:['组 A 建议全量：注册步骤 5→3 无负向信号','组 B 待评审：激励有效但投诉率上升，需财务复核 ROI','结项目标：8 月 30 日前定稿']}]},
+  {id:'d4',title:'供应链迁移 · 风险评估',project:'供应链系统迁移',status:'已对齐',icon:'🛡',blocks:[
+   {type:'p',text:'迁移涉及 4 个仓储系统与 217 个接口，本评估给出分批切换策略与回滚预案。'},
+   {type:'table',head:['风险项','等级','影响','缓解措施'],rows:[['接口协议不一致','高','切换窗口延长 3 天','适配层先行，灰度 10% 流量'],['历史数据缺口','中','对账差异','迁移前双跑两周核对'],['峰值期切换','中','履约波动','锁定 10 月低峰窗口'],['人员操作生疏','低','单据差错','迁移前培训 + 双录审核']]},
+   {type:'timeline',items:[{date:'9月1日',txt:'适配层联调完成'},{date:'9月20日',txt:'第一批次切换（华北仓）'},{date:'10月18日',txt:'全量切换完成'}]}]}],
+ metrics:{offline:true,
+  task_series:[7,12,10,14,13,17,11,19,15,22,32,15],
+  help_series:{replied:[180,210,195,240,260,235,280,310,295,330,350,320],pending:[40,55,48,60,45,66,52,70,58,62,75,60]},
+  speed_series:[95,92,88,90,85,86,84,83,84,82,84,84],
+  weekly:[32,41,38,47,52,44,58,61],
+  loads:{1:78,2:92,3:88,4:74,5:91,6:63,7:82,8:57},
+  dept:{tasks_total:187,helps:2940,reply_time:'1h24min',avg_reply:'1h31min',on_time:'86%',overdue:2,week_delta:'+17.2%'},
+  gantt:[{name:'首页视觉稿 v3',owner:2,start:0,span:2,prio:'P0',overdue:0},{name:'组件库迁移',owner:3,start:1,span:4,prio:'P1',overdue:0},{name:'动效开发',owner:3,start:2,span:5,prio:'P0',overdue:0},{name:'规范 v2 评审',owner:5,start:2,span:2,prio:'P0',overdue:1},{name:'多语言方案',owner:4,start:4,span:3,prio:'P2',overdue:0},{name:'响应式适配',owner:7,start:5,span:4,prio:'P1',overdue:0},{name:'回归测试',owner:6,start:8,span:6,prio:'P1',overdue:0},{name:'上线准备',owner:1,start:11,span:2,prio:'P0',overdue:0}],
+  files:[{name:'首页视觉稿-v3.fig',kind:'fig',size:'126 MB',date:'今天 10:24',preview:'首页大图 · 深色 hero · 主 CTA「立即体验」柠檬绿按钮 · 圆角统一 24px'},{name:'首页-hero-2x.png',kind:'png',size:'8.4 MB',date:'昨天 18:02',preview:'2x 切图 · 1920×1080 · 含安全区标注'},{name:'品牌手册-终稿.pdf',kind:'pdf',size:'32 MB',date:'8月14日',preview:'第六章色彩系统已更新 · 柠檬绿 CMYK 62-0-90-0'},{name:'Q3-项目排期表.xlsx',kind:'xls',size:'1.2 MB',date:'8月12日',preview:'42 项任务 · 关键路径标黄 · 逾期 3 项红色高亮'},{name:'用户访谈笔记.pdf',kind:'pdf',size:'4.8 MB',date:'8月10日',preview:'12 位受访者 · 高频痛点：找不到案例入口（7/12）'},{name:'官网案例配图.zip',kind:'zip',size:'210 MB',date:'8月8日',preview:'38 张案例图 · 已压缩 · WebP 双格式'}],
+  activity:[{uid:3,verb:'完成了任务',obj:'「暗色模式样式变量」',time:'20 分钟前'},{uid:2,verb:'上传了文件',obj:'首页视觉稿-v3.fig',time:'45 分钟前'},{uid:5,verb:'发起了评审',obj:'视觉规范 v2',time:'1 小时前'},{uid:4,verb:'评论了文档',obj:'用户增长实验 · A/B 结论',time:'2 小时前'},{uid:6,verb:'完成了任务',obj:'「流失用户归因分析」',time:'3 小时前'},{uid:7,verb:'更新了规范',obj:'组件库 Button 状态表',time:'昨天 19:40'}],
+  notes:[{day:21,text:'官网改版上线评审（里程碑）'},{day:26,text:'品牌官网正式上线（里程碑）'},{day:30,text:'用户增长实验结项'}],
+  notifications:[{icon:'⚠',text:'「视觉规范 v2 评审」已逾期，今天 17:00 预审会',time:'10 分钟前'},{icon:'💬',text:'苏晚给你发来 2 条新留言',time:'38 分钟前'},{icon:'✅',text:'徐柏舟完成了「暗色模式样式变量」',time:'1 小时前'}]},
+ today:18
+};
+
+/* ================= 状态 ================= */
+const S={me:null,members:[],tasks:[],cards:[],projects:[],events:[],messages:[],docs:[],metrics:null,milestones:[21,26],lanes:[['todo','待处理'],['doing','进行中'],['review','待评审'],['done','已完成']],
+ view:'overview',detail:null,tab:'tasks',sideDay:18,conv:2,tourStep:-1,palOpen:false,palQ:'',palSel:0,palHits:[],
+ ui:{compact:false,weekend:true,dark:true,notify_assign:true,notify_overdue:true,notify_daily:true},loading:true};
+const isAdmin=()=>S.me&&S.me.role==='admin';
+const needAdmin=msg=>{toast(msg||'该操作需要部门负责人权限，请联系林哲远',true);};
+const guardFn=fn=>(...a)=>isAdmin()?fn(...a):needAdmin();
+
+/* ================= 网络层（响应统一 {ok,data}） ================= */
+async function api(path,body){
+  const opt=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};
+  const r=await fetch(path,opt);
+  const j=await r.json().catch(()=>({ok:false,error:'bad json'}));
+  if(!j.ok) throw Object.assign(new Error(j.error||('HTTP '+r.status)),{status:r.status});
+  return j.data;
+}
+function track(event,detail){
+  if(S.metrics&&S.metrics.offline)return;
+  api('/api/track',{event,detail:detail||''}).catch(()=>{});
+}
+
+/* ================= 图标 ================= */
+const IC={
+ overview:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="10" rx="2"/><rect x="14" y="3" width="7" height="6" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="8" height="5" rx="2"/></svg>',
+ project:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+ calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+ task:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h8"/></svg>',
+ member:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M17.8 14.6A6.5 6.5 0 0 1 21.5 20"/></svg>',
+ insight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/></svg>',
+ setting:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.14-1.4l2-1.55-2-3.46-2.36.95a7 7 0 0 0-2.42-1.4L13.7 2.5h-3.4l-.38 2.64a7 7 0 0 0-2.42 1.4l-2.36-.95-2 3.46 2 1.55A7 7 0 0 0 5 12c0 .48.05.95.14 1.4l-2 1.55 2 3.46 2.36-.95a7 7 0 0 0 2.42 1.4l.38 2.64h3.4l.38-2.64a7 7 0 0 0 2.42-1.4l2.36.95 2-3.46-2-1.55c.09-.45.14-.92.14-1.4z"/></svg>',
+ admin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3.5V12c0 4.8-3.4 8-8 9.5C7.4 20 4 16.8 4 12V6.5z"/><path d="M9 12l2 2 4-4.5"/></svg>',
+ bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9M10 20a2.2 2.2 0 0 0 4 0"/></svg>',
+ msg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+};
+
+/* ================= SVG 手绘 sparkline ================= */
+function spark(vals,w=92,h=34,stroke='var(--lime)',fill=true){
+  const min=Math.min(...vals),max=Math.max(...vals),rg=(max-min)||1;
+  const pts=vals.map((v,i)=>[i/(vals.length-1)*w,h-2-(v-min)/rg*(h-8)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=fill?`<path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#sg)" opacity=".18"/>`:'';
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${stroke}"/><stop offset="1" stop-color="transparent"/></linearGradient></defs>${area}<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="2.4" fill="${stroke}"/></svg>`;
+}
+function spark2(a,b,w=92,h=34){return spark(a,w,h,'var(--blue)')
+  .replace('</svg>',spark(b,w,h,'rgba(255,255,255,.28)',false).replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')+'</svg>');}
+
+/* ================= 登录页逻辑 ================= */
+function lcTab(t){$('#tab-login').classList.toggle('on',t==='login');$('#tab-reg').classList.toggle('on',t==='reg');$('#form-login').classList.toggle('hide',t!=='login');$('#form-reg').classList.toggle('hide',t!=='reg');}
+const DEMO_IDS=[1,2,3,4,5,6];
+const DEMO_PW={1:'123456',2:'123456',3:'123456',4:'123456',5:'123456',6:'123456'};
+function renderChips(){
+  $('#demo-chips').innerHTML=DEMO_IDS.map(id=>{const u=(MOCK.members.find(m=>m.id===id));return `<button onclick="fillDemo(${id})"><img class="avt sm" style="border:none" src="${u?AVA(id):''}" onerror="this.style.visibility='hidden'">${u?u.name:''}</button>`}).join('');
+}
+function fillDemo(id){const u=MOCK.members.find(m=>m.id===id);$('#li-acc').value=u.account;$('#li-pw').value=DEMO_PW[id];$('#li-acc').focus();}
+async function doLogin(){
+  try{
+    const d=await api('/auth/login',{account:$('#li-acc').value.trim(),password:$('#li-pw').value});
+    enterApp(d,true);
+  }catch(e){toast(e.message,true);}
+}
+async function doRegister(){
+  try{
+    const d=await api('/auth/register',{name:$('#rg-name').value.trim(),account:$('#rg-acc').value.trim(),password:$('#rg-pw').value,title:$('#rg-title').value.trim()});
+    enterApp(d,true);
+  }catch(e){toast(e.message,true);}
+}
+function showLogin(){$('#login').classList.remove('hide');$('#shell').classList.add('hide');}
+
+/* ================= 启动 & bootstrap ================= */
+async function enterApp(me,didLogin){
+  S.me=me;$('#login').classList.add('hide');$('#shell').classList.remove('hide');
+  renderTopbar();renderNav();
+  skeleton();
+  try{const d=await api('/api/bootstrap');Object.assign(S,d);S.cards=d.kanbanCards||[];S.loading=false;}
+  catch(e){Object.assign(S,JSON.parse(JSON.stringify(MOCK)));S.cards=S.kanbanCards;S.me=me;S.loading=false;toast('已离线，展示本地演示数据');}
+  // 保证 members 用于头像解析（离线场景下 AVA 依赖 S.members）
+  if(!S.members||!S.members.length)S.members=MOCK.members;
+  renderTopbar();
+  if(didLogin)track('登录','账号 '+me.account);
+  go(S.me.role==='admin'?'overview':'overview');
+  track('page_view','进入 '+S.view);
+}
+function skeleton(){
+  $('#view').innerHTML=`<div class="grid g3">${'<div class="skl" style="height:120px"></div>'.repeat(3)}<div class="skl" style="height:300px"></div><div class="skl" style="height:300px"></div></div>`;
+}
+async function boot(){
+  renderChips();
+  try{const d=await api('/auth/me');S.me=d.user;enterApp(S.me,false);}
+  catch(e){showLogin();}
+}
+
+/* ================= 导航 & 顶栏 ================= */
+const NAVS=[
+ {id:'overview',name:'总览',ic:'overview'},
+ {id:'project',name:'项目',ic:'project'},
+ {id:'calendar',name:'日历',ic:'calendar'},
+ {id:'task',name:'任务',ic:'task',dot:true},
+ {id:'member',name:'成员',ic:'member'},
+ {id:'insight',name:'数据',ic:'insight',admin:true},
+ {id:'setting',name:'设置',ic:'setting'},
+ {id:'admin',name:'管理后台',ic:'admin',admin:true},
+];
+function renderNav(){
+  $('#nav').innerHTML=`<div class="logo">设</div>`+NAVS.filter(n=>!n.admin||isAdmin()).map(n=>
+    `<button class="nv ${S.view===n.id?'on':''}" data-act="nav" data-view="${n.id}" aria-label="${n.name}">${IC[n.ic]}<span>${n.name==='管理后台'?'后台':n.name}</span>${n.dot&&pendingCount()<5?'<i class="badge"></i>':n.dot?'<i class="badge"></i>':''}<em class="tip">${n.name}</em></button>`).join('');
+}
+function pendingCount(){return S.tasks.filter(t=>!t.done).length;}
+function overdueCount(){return S.tasks.filter(t=>!t.done&&t.overdue).length;}
+function greet(){
+  if(isAdmin())return {t:'下午好，林哲远',s:'本周 12 项待推进，<b class="or">2 项已逾期</b>'};
+  const n=pendingCount(),m=overdueCount();
+  return {t:`你好，${esc(S.me.name)}`,s:`你有 <b class="li num">${n}</b> 项任务待推进${m?`，<b class="or num">${m}</b> 项已逾期`:''}`};
+}
+function renderTopbar(){
+  const g=greet();
+  const online=S.members.filter(m=>m.online);
+  $('#topbar').innerHTML=`
+   <div class="tb-greet"><b>${g.t}</b><p>${g.s}</p></div>
+   <div class="tb-right">
+     <div class="searchbox" data-act="pal"><span>⌘K</span><span>搜索任务、项目、成员…</span><kbd>Ctrl K</kbd></div>
+     ${isAdmin()?`<button class="btn pri sm" data-act="new-project">${IC.plus}新建项目</button>`:''}
+     <div class="stack" title="在线成员">${online.slice(0,4).map(m=>`<img src="${AVA(m.id)}" onerror="this.style.display='none'">`).join('')}${online.length>4?`<span class="more">+${online.length-4}</span>`:''}</div>
+     <button class="icobtn" data-act="msgs" title="留言">${IC.msg}<span class="n">2</span></button>
+     <button class="icobtn" data-act="notif" title="通知">${IC.bell}<span class="n">3</span></button>
+     <button class="icobtn" data-act="tour" title="新手指引" style="font-weight:800">?</button>
+     <img class="avt" style="cursor:pointer" title="设置" src="${AVA(S.me.id)}" onerror="this.style.visibility='hidden'" data-act="nav" data-view="setting">
+   </div>`;
+}
+function go(v){
+  S.view=v;if(v!=='project')S.detail=null;
+  renderNav();
+  const fn={overview:vOverview,project:vProject,calendar:vCalendar,task:vTask,member:vMember,insight:vInsight,setting:vSetting,admin:vAdmin}[v];
+  $('#view').innerHTML=`<div class="fade-in">${fn()}</div>`;
+  $('#view').scrollTop=0;
+  track('page_view',v);
+  if(v==='admin')loadAdmin();
+}
+
+/* ================= 通用小组件 ================= */
+const prioChip=t=>`<span class="chip ${t.prio.toLowerCase()}">${t.prio}</span>`;
+const dueOf=t=>`<span class="due">${esc(t.due||'—')}</span>`;
+const tagsOf=t=>(t.tags||[]).map(x=>`<span class="chip grey">${esc(x)}</span>`).join(' ');
+function taskRow(t,opt={}){
+  return `<div class="task-row ${t.overdue&&!t.done?'od':''} ${t.highlight?'hl':''} ${t.done?'fd':''}">
+   <button class="ckbx ${t.done?'on':''}" data-act="toggle" data-id="${t.id}">${t.done?'✓':''}</button>
+   <div class="t"><b>${esc(t.title)}</b><div class="m">${prioChip(t)}${opt.owner?`<span>· ${esc(user(t.owner_id).name)}</span>`:''}<span>· ${dueOf(t)}</span>${opt.dir&&!t.dir?'':`<span>· ${esc(t.dir||t.project||'')}</span>`}${t.sub&&t.sub!=='0/1'?`<span>· 子任务 ${esc(t.sub)}</span>`:''}</div></div>
+   ${opt.avatar?`<img class="avt sm" src="${AVA(t.owner_id)}" onerror="this.style.visibility='hidden'" title="${esc(user(t.owner_id).name)}">`:''}
+  </div>`;
+}
+function calGrid(dayAttr,big){
+  const first=new Date(YEAR,MONTH-1,1);
+  let off=(first.getDay()+6)%7; // 周一开头
+  const dim=new Date(YEAR,MONTH,0).getDate();
+  let html=`<div class="cal ${big?'cal-lg':''}">${['一','二','三','四','五','六','日'].map(d=>`<div class="wd">${d}</div>`).join('')}`;
+  for(let i=0;i<off;i++)html+=`<div class="cd out"></div>`;
+  for(let d=1;d<=dim;d++){
+    const evs=S.events.filter(e=>e.day===d);
+    const pts=evs.slice(0,3).map(()=>'<i></i>').join('');
+    html+=`<div class="cd ${d===TODAY?'today':''} ${S.sideDay===d?'sel':''}" ${dayAttr} data-day="${d}"><span class="num">${d}</span>${pts?`<span class="pts">${pts}</span>`:''}${S.milestones.includes(d)?'<span class="ms"></span>':''}</div>`;
+  }
+  return html+'</div>';
+}
+function eventsOfDay(d){return S.events.filter(e=>e.day===d).sort((a,b)=>a.time<b.time?-1:1);}
+function evRow(e,adminDel){
+  return `<div class="ev-row"><i class="cl c-${e.color}"></i><span class="tm num">${esc(e.time)}</span><div style="flex:1"><b>${esc(e.title)}</b><div class="mt">${esc(e.meta||'')}</div></div>${adminDel&&isAdmin()?`<button class="btn ghost sm" data-act="del-event" data-id="${e.id}" title="删除">✕</button>`:''}</div>`;
+}
+
+/* ================= 总览 ================= */
+function vOverview(){
+  const m=S.metrics||{};
+  const loads=Object.entries(m.loads||{}).map(([id,v])=>({id:+id,v})).sort((a,b)=>b.v-a.v).slice(0,5);
+  const myTasks=S.tasks.filter(t=>!t.done).concat(S.tasks.filter(t=>t.done)).slice(0,8);
+  return `
+  <div class="pg-h"><h2>团队近况</h2><span class="sub">2026 年 8 月 · 今天是 18 号 · ${S.ui.compact?'紧凑':'标准'}视图</span><span class="grow"></span><span class="chip lime">${m.offline?'离线演示':'实时同步'}</span></div>
+  <div class="grid g3" style="margin-bottom:16px">
+    <div class="card tm-card"><div class="k">完成的任务数</div><div class="v num">187 <span style="font-size:13px;color:var(--dim)">个</span></div><div class="s gr">周目标 180 · 已达成 ✓</div>${spark(m.task_series||[7,12,10,14,13,17,11,19,15,22,32,15])}</div>
+    <div class="card tm-card"><div class="k">大家互相帮忙的次数</div><div class="v num">2,940 <span style="font-size:13px;color:var(--dim)">次</span></div><div class="s" style="color:#8FA5FF">已回复 2,608 · 待回 332</div>${spark2(m.help_series?.replied||[180,210,195,240,260,235,280,310,295,330,350,320],m.help_series?.pending||[40,55,48,60,45,66,52,70,58,62,75,60])}</div>
+    <div class="card tm-card"><div class="k">回复消息的速度</div><div class="v num">1h24<span style="font-size:14px">min</span></div><div class="s gr">快于大家平均的 1h31min ↑</div>${spark(m.speed_series||[95,92,88,90,85,86,84,83,84,82,84,84],92,34,'var(--green)')}</div>
+  </div>
+  <div class="grid g2">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card"><h3>${isAdmin()?'团队任务速览':'我的任务'} <span class="sub">勾选即写库 · ${pendingCount()} 项待推进</span></h3>${myTasks.map(t=>taskRow(t,{owner:isAdmin(),avatar:!isAdmin()})).join('')||'<p class="dim">暂无任务</p>'}
+        <div style="margin-top:10px"><button class="btn sec sm" data-act="new-task">${IC.plus}新建任务</button></div></div>
+      <div class="card"><h3>成员负载排行 <span class="sub">Top 5 · 超过 90% 橙色告警</span></h3>
+        ${loads.map(l=>`<div class="load-row"><img class="avt sm" src="${AVA(l.id)}" onerror="this.style.visibility='hidden'"><span class="nm">${esc(user(l.id).name)}</span><div class="bar"><i class="${l.v>90?'warn':''}" style="width:${l.v}%"></i></div><span class="pv num">${l.v}%</span></div>`).join('')}</div>
+      <div class="card"><h3>今日动态 <span class="sub">部门内实时流</span></h3>
+        ${(m.activity||[]).map(a=>`<div class="feed"><img class="avt sm" src="${AVA(a.uid)}" onerror="this.style.visibility='hidden'"><span><b>${esc(user(a.uid).name)}</b> ${esc(a.verb)} <span class="li">${esc(a.obj)}</span></span><span class="m">${esc(a.time)}</span></div>`).join('')}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card"><h3>2026 年 8 月 <span class="sub">点日期看日程 · 白环为里程碑</span></h3>${calGrid('data-act="pick-day"')}
+        <div style="margin:14px 0 6px;display:flex;align-items:center"><b style="font-size:13px">8月${S.sideDay}日 · ${S.sideDay===TODAY?'今天':''}</b><span class="grow" style="flex:1"></span><button class="btn sec sm" data-act="new-event">＋日程</button></div>
+        <div id="side-agenda">${eventsOfDay(S.sideDay).map(e=>evRow(e,true)).join('')||'<p class="dim" style="font-size:12px">当天暂无日程</p>'}</div></div>
+      <div class="card"><h3>本月备注 <span class="sub">关键节点</span></h3>${(m.notes||[{day:21,text:'官网改版上线评审（里程碑）'},{day:26,text:'品牌官网正式上线（里程碑）'},{day:30,text:'用户增长实验结项'}]).map(n=>`<div class="ev-row"><i class="cl c-lime"></i><span class="tm num">8月${n.day}</span><div style="flex:1"><b>${esc(n.text)}</b></div></div>`).join('')}</div>
+    </div>
+  </div>`;
+}
+
+/* ================= 项目 ================= */
+function vProject(){
+  if(S.detail)return vProjectDetail();
+  const act=S.projects.filter(p=>p.status!=='待启动'),pend=S.projects.filter(p=>p.status==='待启动');
+  return `
+  <div class="pg-h"><h2>项目</h2><span class="sub">${act.length} 个进行中 · ${pend.length} 个待启动</span><span class="grow"></span>
+   ${isAdmin()?`<button class="btn pri sm" data-act="new-project">${IC.plus}新建项目</button>`:''}</div>
+  <div class="pj-grid">${S.projects.map(p=>pjCard(p)).join('')}</div>`;
+}
+function pjCard(p){
+  const codeCls={WEB:'',DATA:'b',GROW:'o',ERP:'g',APP:'st'}[p.code]||'st';
+  return `<div class="card pj ${p.highlight?'hl-card':''}" data-act="open-project" data-id="${p.id}">
+    <div style="display:flex;align-items:center;gap:8px"><span class="code ${codeCls}">${esc(p.code||'PJ')}</span>${p.status==='待启动'?'<span class="chip grey">待启动</span>':p.highlight?'<span class="chip lime">本周重点</span>':'<span class="chip green">'+p.status+'</span>'}</div>
+    <h4>${esc(p.name)}</h4><div class="ddl">截止 ${esc(p.deadline)} · 剩 <b class="num">${p.days_left}</b> 天</div>
+    <div class="row"><div class="bar" style="flex:1"><i style="width:${p.progress}%"></i></div><b class="num" style="font-size:12.5px">${p.progress}%</b></div>
+    <div class="row"><div class="avatars">${(p.members||[]).slice(0,3).map(id=>`<img src="${AVA(id)}" onerror="this.style.display='none'">`).join('')}${p.extra?`<span class="x">+${p.extra}</span>`:''}</div></div>
+    <div class="stats"><span><b class="num">${p.total}</b>任务</span><span><b class="num">${p.done}</b>已完成</span><span><b class="num ${p.overdue>2?'or':''}">${p.overdue}</b>逾期</span><span><b class="num">${p.days_left}d</b>剩余</span></div>
+  </div>`;
+}
+function vProjectDetail(){
+  const p=S.detail;const m=S.metrics||{};
+  const laneCount={todo:6,doing:5,review:4,done:27};
+  const gStart=17,gDays=14;
+  return `
+  <div class="pg-h"><button class="btn ghost" data-act="back-project">← 返回</button><h2>${esc(p.name)}</h2><span class="sub">${esc(p.deadline)} 截止 · 进度 ${p.progress}% · ${p.total} 任务完成 ${p.done}</span></div>
+  <div class="tabs" style="width:max-content;margin-bottom:18px">${[['tasks','任务清单'],['gantt','两周甘特'],['files','文件区'],['board','看板'],['docs','客户演示中心']].map(t=>`<button class="${S.tab===t[0]?'on':''}" data-act="ptab" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
+  ${S.tab==='tasks'?(()=>{
+    const byOwner={};S.cards.filter(c=>c.project===p.name).concat(S.tasks.filter(t=>t.project===p.name)).forEach(t=>{(byOwner[t.owner_id]=byOwner[t.owner_id]||[]).push(t)});
+    return `<div class="grid g22">${Object.entries(byOwner).map(([oid,list])=>`<div class="card"><h3><img class="avt sm" src="${AVA(oid)}" onerror="this.style.visibility='hidden'"> ${esc(user(+oid).name)} <span class="sub">${user(+oid).title} · ${list.length} 项</span></h3>${list.map(t=>taskRow(t,{})).join('')}</div>`).join('')}</div>`;})()
+  :S.tab==='gantt'?`<div class="card"><h3>8月${gStart}日 – 8月${gStart+gDays-1}日 <span class="sub">P0 逾期行标红</span></h3><div class="gantt"><div class="g-head"><span></span><div class="g-days">${Array.from({length:gDays},(_,i)=>`<span>${gStart+i}</span>`).join('')}</div></div>${(m.gantt||[]).map(g=>`<div class="g-row"><div class="g-lab"><img class="avt sm" style="width:17px;height:17px" src="${AVA(g.owner)}" onerror="this.style.visibility='hidden'"><b>${esc(g.name)}</b></div><div class="g-track"><span class="g-bar ${g.overdue&&g.prio==='P0'?'odp0':(g.prio==='P0'?'p0':'')}" style="left:${g.start/gDays*100}%;width:${g.span/gDays*100}%"></span></div></div>`).join('')}</div></div>`
+  :S.tab==='files'?`<div class="card"><h3>文件区 <span class="sub">已用 4.2 / 10 GB</span></h3><div class="bar" style="margin-bottom:16px"><i style="width:42%"></i></div>${(m.files||[]).map((f,i)=>`<div class="file-row" data-act="file-preview" data-i="${i}"><span class="fic ${f.kind}">${f.kind.toUpperCase()}</span><div style="flex:1"><b style="font-size:13px">${esc(f.name)}</b><div class="dim" style="font-size:11.5px">${esc(f.size)} · ${esc(f.date)}</div></div><button class="btn ghost sm">预览 →</button></div>`).join('')}</div>`
+  :S.tab==='board'?`<div class="card" style="overflow:hidden"><h3>看板 <span class="sub">拖动卡片换泳道，落库生效</span></h3><div class="kb-wrap"><div class="kb">${S.lanes.map(([k,name])=>`<div class="lane" data-lane="${k}" data-act-drop><h5>${name}<span class="n num">${k==='done'?p.done:laneCount[k]}</span></h5>${S.cards.filter(c=>c.lane===k).map(c=>kcard(c)).join('')}</div>`).join('')}</div></div></div>`
+  :`<div class="grid g2">${(S.docs.length?S.docs:(m.docs||[])).map((d,i)=>`<div class="doc-card" data-act="open-doc" data-i="${i}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><span class="ic">${d.icon||'📄'}</span><span class="chip ${d.status==='已对齐'?'green':'lime'}">${esc(d.status)}</span></div><h4 style="margin:10px 0 2px;font-size:14.5px">${esc(d.title)}</h4><div class="dim" style="font-size:12px">${esc(d.project)} · 点击查看排版正文</div></div>`).join('')}</div>`}`;
+}
+function kcard(c){
+  return `<div class="kcard ${c.highlight?'hl-k':''} ${c.overdue&&!c.done?'od-k':''}" draggable="true" data-card="${c.id}">
+    <div style="display:flex;justify-content:space-between;align-items:center">${prioChip(c)}${c.overdue&&!c.done?'<span class="chip p0">逾期</span>':c.highlight?'<span class="chip lime">重点</span>':''}</div>
+    <div class="tt">${esc(c.title)}</div><div>${tagsOf(c)}</div>
+    <div class="meta"><span>${esc(c.sub||'')}</span><span>📎${c.files||0}</span><span>💬${c.comments||0}</span><span style="margin-left:auto"><img class="avt sm" style="width:17px;height:17px;border:none" src="${AVA(c.owner_id)}" onerror="this.style.visibility='hidden'"></span><span>${esc(c.due)}</span></div>
+  </div>`;
+}
+
+/* ================= 日历 ================= */
+function vCalendar(){
+  const list=eventsOfDay(S.sideDay);
+  return `
+  <div class="pg-h"><h2>日历 · 2026 年 8 月</h2><span class="sub">周一开头 · 今天 18 号 · 里程碑 21 / 26</span><span class="grow"></span>
+   <button class="btn pri sm" data-act="new-event">＋新建日程</button></div>
+  <div class="grid g2">
+    <div class="card">${calGrid('data-act="pick-day"',true)
+      .replace(/^<div class="cal/,'<div class="cal') }
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card"><h3>8月${S.sideDay}日日程 <span class="sub">${list.length} 项</span></h3>
+        ${list.map(e=>evRow(e,true)).join('')||`<p class="dim" style="font-size:12.5px">当天暂无日程${isAdmin()?'，点右上「＋新建日程」添加':''}</p>`}</div>
+      <div class="card"><h3>月度备注</h3>
+        <div class="ev-row"><i class="cl c-blue"></i><span class="tm num">8月21</span><div style="flex:1"><b>官网改版上线评审</b><div class="mt">里程碑 · 全员准备阶段汇报</div></div></div>
+        <div class="ev-row"><i class="cl c-blue"></i><span class="tm num">8月26</span><div style="flex:1"><b>品牌官网正式上线</b><div class="mt">里程碑 · 上线后 16:00 复盘会</div></div></div>
+        <div class="ev-row"><i class="cl c-orange"></i><span class="tm num">8月30</span><div style="flex:1"><b>用户增长实验结项</b><div class="mt">A/B 结论定稿归档</div></div></div></div>
+      ${isAdmin()?'<p class="hint">提示：作为部门负责人，你可以新建/删除任意日程；成员账号发起同类操作会被服务端 403 拦截。</p>':'<p class="hint">日程的增删由部门负责人林哲远管理。</p>'}
+    </div>
+  </div>`;
+}
+
+/* ================= 任务（个人清单页） ================= */
+function vTask(){
+  const groups={};S.tasks.forEach(t=>{(groups[t.dir||'我的清单']=groups[t.dir||'我的清单']||[]).push(t)});
+  return `
+  <div class="pg-h"><h2>${isAdmin()?'全部个人任务':'我的任务'}</h2><span class="sub">${pendingCount()} 项待推进 · ${overdueCount()} 项逾期 · 数据按负责人${isAdmin()?'（全部门）':'（本人）'}由服务端过滤</span><span class="grow"></span>
+   <button class="btn pri sm" data-act="new-task">${IC.plus}新建任务</button></div>
+  <div class="grid g2">${Object.entries(groups).map(([dir,list])=>`<div class="card"><h3>${esc(dir)} <span class="sub">${list.filter(t=>!t.done).length}/${list.length} 未完成</span></h3>${list.map(t=>taskRow(t,{owner:isAdmin(),avatar:true})).join('')}</div>`).join('')}</div>`;
+}
+
+/* ================= 成员 ================= */
+function vMember(){
+  const m=S.metrics||{};const loads=m.loads||{};
+  const cnt=id=>S.cards.filter(t=>t.owner_id==id).length+S.tasks.filter(t=>t.owner_id==id).length;
+  return `
+  <div class="pg-h"><h2>成员</h2><span class="sub">${S.members.length} 人 · ${S.members.filter(x=>x.online).length} 人在线</span><span class="grow"></span>
+   ${isAdmin()?`<button class="btn pri sm" data-act="invite">＋邀请成员</button>`:''}</div>
+  <div class="mb-grid">${S.members.map(mb=>{const v=loads[mb.id]??50;const mine=isAdmin()?cnt(mb.id):cnt(mb.id);
+   return `<div class="card mb"><div class="top"><span class="pos"><img class="avt big" src="${AVA(mb.id)}" onerror="this.style.visibility='hidden'"><i class="dot-online ${mb.online?'':'dot-off'}"></i></span>
+    <div><h4>${esc(mb.name)} ${mb.role==='admin'?'<span class="chip lime">负责人</span>':''}</h4><div class="rl">${esc(mb.title)} · @${esc(mb.account||'')}</div></div></div>
+   <div class="load-row" style="padding:2px 0"><span class="nm" style="width:auto;color:var(--dim)">负载</span><div class="bar"><i class="${v>90?'warn':''}" style="width:${v}%"></i></div><span class="pv num">${v}%</span></div>
+   <div class="dim" style="font-size:11.5px">${mb.online?'在线':'离线'} · ${mine} 项${isAdmin()?'负责任务':'与你相关'}${v>90?' · <b class="or">负载告警</b>':''}</div></div>`}).join('')}</div>`;
+}
+
+/* ================= 数据（仅 admin） ================= */
+function vInsight(){
+  const m=S.metrics||{},d=m.dept||{};
+  const wk=m.weekly||[32,41,38,47,52,44,58,61],mx=Math.max(...wk);
+  const loads=m.loads||{};
+  return `
+  <div class="pg-h"><h2>数据</h2><span class="sub">部门整体视角 · 仅负责人可见</span></div>
+  <div class="grid g2">
+    <div class="card"><h3>每周完成任务数 <span class="sub">近 8 周 · 本周比上周 +17.2%</span></h3>
+      <div class="wk">${wk.map((v,i)=>`<div class="col ${i===wk.length-1?'last':''}"><b class="num">${v}</b><i style="height:${v/mx*100}%"></i><span>W${i+1}</span></div>`).join('')}</div></div>
+    <div class="card"><h3>成员负载分布 <span class="sub">&gt;90% 橙色告警</span></h3>
+      ${S.members.map(mb=>{const v=loads[mb.id]??50;return `<div class="load-row"><img class="avt sm" src="${AVA(mb.id)}" onerror="this.style.visibility='hidden'"><span class="nm">${esc(mb.name)}</span><div class="bar"><i class="${v>90?'warn':''}" style="width:${v}%"></i></div><span class="pv num">${v}%</span></div>`}).join('')}</div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>部门关键指标</h3>
+    <div class="grid g3" style="grid-template-columns:repeat(5,1fr)">
+      ${[['任务完成',d.tasks_total||187,'个'],['互助次数',d.helps||2940,'次'],['平均回复',d.reply_time||'1h24min',''],['按时交付',d.on_time||'86%',''],['超期项目',d.overdue||2,'项']].map(k=>`<div class="kpi"><span class="v num">${k[1]}</span><span class="k">${k[0]}${k[2]?' '+k[2]:''}</span></div>`).join('')}
+    </div></div>`;
+}
+
+/* ================= 设置 ================= */
+function vSetting(){
+  const u=S.me;
+  const sw=(key,lbl,sub)=>`<div class="set-row"><div><b style="font-size:13.5px">${lbl}</b><div class="dim" style="font-size:11.5px">${sub}</div></div><div class="sw ${S.ui[key]?'on':''}" data-act="ui-sw" data-k="${key}"></div></div>`;
+  return `
+  <div class="pg-h"><h2>设置</h2></div>
+  <div class="grid g22">
+    <div class="card"><h3>账号信息</h3>
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span class="pos" style="position:relative"><img class="avt big" src="${AVA(u.id)}" onerror="this.style.visibility='hidden'"></span>
+      <div><b style="font-size:16px">${esc(u.name)}</b> <span class="chip ${u.role==='admin'?'lime':'grey'}">${u.role==='admin'?'部门负责人':'成员'}</span><div class="dim" style="font-size:12px">${esc(u.title)} · 账号 ${esc(u.account)}</div></div></div>
+      <div style="display:flex;gap:8px"><button class="btn sec sm" data-act="edit-profile">编辑资料</button><button class="btn danger sm" data-act="logout">退出登录</button></div></div>
+    <div class="card"><h3>个人资料</h3>
+      <div class="field"><label>姓名</label><input value="${esc(u.name)}"></div>
+      <div class="field"><label>岗位</label><input value="${esc(u.title)}"></div>
+      <button class="btn pri sm" data-act="save-profile">保存修改</button>
+      <p class="dim" style="font-size:11px;margin-top:8px">演示环境：资料编辑仅前端暂存，正式接入后同步用户表。</p></div>
+    <div class="card"><h3>通知</h3>
+      ${sw('notify_assign','任务指派提醒','有人把任务指派给你时立即提醒')}
+      ${sw('notify_overdue','逾期预警','任务到期前一天与逾期当天提醒')}
+      ${sw('notify_daily','每日站会摘要','每天 09:00 推送昨日完成 / 今日待办')}</div>
+    <div class="card"><h3>工作台偏好</h3>
+      ${sw('compact','紧凑布局','缩小间距，一屏看更多内容')}
+      ${sw('weekend','周末隐藏','日历与动态流跳过周末')}
+      ${sw('dark','深色主题','当前为标准深色视觉体系')}</div>
+  </div>`;
+}
+
+/* ================= 管理后台（仅 admin） ================= */
+function vAdmin(){
+  return `<div class="pg-h"><h2>管理后台</h2><span class="sub">使用概况 · 功能热度 · 数据表</span><span class="grow"></span><button class="btn sec sm" data-act="refresh-admin">↻ 刷新</button></div><div id="admin-body"><div class="grid g3"><div class="skl" style="height:90px"></div><div class="skl" style="height:90px"></div><div class="skl" style="height:90px"></div></div><div class="skl" style="height:260px;margin-top:16px"></div></div>`;
+}
+const EV_NAME={page_view:'页面浏览','登录':'登录','退出':'退出','完成任务':'完成任务','恢复任务':'恢复任务','看板拖拽':'看板拖拽','新建日程':'新建日程','删除日程':'删除日程','新建项目':'新建项目','新建任务':'新建任务','发送留言':'发送留言','打开演示文档':'打开演示文档','文件预览':'文件预览','打开留言面板':'打开留言面板','搜索':'搜索','完成指引':'完成指引'};
+async function loadAdmin(){
+  if(!isAdmin())return;
+  let st;try{st=await api('/api/admin/stats');}catch(e){$('#admin-body').innerHTML=`<p class="dim">${esc(e.message)}</p>`;return;}
+  const mx=Math.max(1,...st.heat.map(h=>h.count)),dmx=Math.max(1,...st.daily.map(d=>d.count));
+  $('#admin-body').innerHTML=`
+   <div class="grid g3" style="grid-template-columns:repeat(4,1fr)">
+     ${[['埋点总数',st.totalEvents],['操作过的成员',st.activeUsers+' / '+S.members.length],['覆盖功能',st.heat.length+' 类'],['近14天活跃',st.daily.filter(d=>d.count).length+' 天']].map(k=>`<div class="card kpi"><span class="v num">${k[1]}</span><span class="k">${k[0]}</span></div>`).join('')}
+   </div>
+   <div class="grid g22" style="margin-top:16px">
+     <div class="card"><h3>功能热度排行 <span class="sub">按埋点事件聚合</span></h3>
+      ${st.heat.length?st.heat.map(h=>`<div class="heat-row"><span>${esc(EV_NAME[h.event]||h.event)}</span><div class="bar"><i style="width:${h.count/mx*100}%"></i></div><b class="num" style="text-align:right">${h.count}</b></div>`).join(''):'<p class="dim" style="font-size:12.5px">暂无埋点数据，去各处点点看～</p>'}</div>
+     <div class="card"><h3>每日操作量 <span class="sub">近 14 天</span></h3>
+      <div class="wk" style="height:130px">${st.daily.map(d=>`<div class="col ${d.count===dmx&&d.count?'last':''}"><b class="num" style="font-size:10px">${d.count||''}</b><i style="height:${d.count/dmx*100}%;background:${d.count?'var(--blue)':'var(--panel3)'}"></i><span>${d.date}</span></div>`).join('')}</div></div>
+   </div>
+   <div class="card" style="margin-top:16px"><h3>最近操作流 <span class="sub">最近 30 条</span></h3>
+     ${st.recent.length?st.recent.slice(0,12).map(r=>`<div class="rec"><img class="avt sm" src="${r.user?AVA(r.user.id):''}" onerror="this.style.visibility='hidden'"><b>${esc(r.user?.name||'')}</b><span class="chip lime">${esc(EV_NAME[r.event]||r.event)}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(r.detail||'')}</span><span class="dim" style="font-size:11px">${esc((r.created_at||'').slice(5,16).replace('T',' '))}</span></div>`).join(''):'<p class="dim" style="font-size:12.5px">暂无</p>'}
+     ${st.recent.length>12?`<details style="margin-top:6px"><summary class="dim" style="font-size:12px;cursor:pointer">展开全部 ${st.recent.length} 条</summary>${st.recent.slice(12).map(r=>`<div class="rec"><img class="avt sm" src="${r.user?AVA(r.user.id):''}"><b>${esc(r.user?.name||'')}</b><span class="chip lime">${esc(EV_NAME[r.event]||r.event)}</span><span class="dim">${esc(r.detail||'')}</span></div>`).join('')}</details>`:''}</div>
+   <div class="card" style="margin-top:16px"><h3>数据管理 <span class="sub">六张业务表 · 全量行浏览</span></h3>
+     <div class="tabs" style="width:max-content;margin-bottom:14px">${['wb_tasks','wb_projects','wb_users','wb_events','wb_messages','wb_tracking'].map((t,i)=>`<button class="${(S.admTab||'wb_tasks')===t?'on':''}" data-act="adm-tab" data-t="${t}">${t}${i===5?'':''}</button>`).join('')}</div>
+     <div id="adm-tbl" class="tbl-wrap" style="max-height:380px"><div class="skl" style="height:200px;border:none"></div></div>
+     <div style="margin-top:10px"><button class="btn sec sm" data-act="adm-export">⬇ 导出当前表 CSV</button></div></div>`;
+  renderAdmTable();
+}
+async function renderAdmTable(){
+  const t=S.admTab||'wb_tasks';
+  try{
+    const rows=await api('/api/admin/table/'+t);S.admRows=rows;
+    if(!rows.length){$('#adm-tbl').innerHTML='<p class="dim" style="padding:16px;font-size:12.5px">表为空（wb_tracking 靠真实操作积累）</p>';return;}
+    const cols=Object.keys(rows[0]);
+    $('#adm-tbl').innerHTML=`<table class="tb"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td title="${esc(String(r[c]??''))}">${esc(String(r[c]??''))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  }catch(e){$('#adm-tbl').innerHTML=`<p class="or" style="padding:16px">${esc(e.message)}</p>`;}
+}
+
+/* ================= 弹窗 ================= */
+function modal(html){$('#modal-root').innerHTML=`<div class="mask" data-act="close-mask"><div class="modal" onclick="event.stopPropagation()">${html}</div></div>`;}
+function closeModal(){$('#modal-root').innerHTML='';}
+function renderDoc(d){
+  const bl=(d.blocks||[]).map(b=>{
+    if(b.type==='p')return `<p style="margin:12px 0;color:var(--mut)">${esc(b.text)}</p>`;
+    if(b.type==='kpi')return `<div class="grid g3" style="grid-template-columns:repeat(4,1fr);margin:14px 0">${b.items.map(k=>`<div style="background:var(--panel2);border-radius:var(--r-in);padding:14px"><div class="dim" style="font-size:11px">${esc(k.label)}</div><div class="v num" style="font-size:22px;font-weight:800">${esc(k.val)}</div><div class="li" style="font-size:11px">${esc(k.sub||'')}</div></div>`).join('')}</div>`;
+    if(b.type==='timeline')return `<div style="margin:14px 0;border-left:2px solid var(--line2);padding-left:16px">${b.items.map(t=>`<div style="margin:8px 0"><b class="li num" style="font-size:12px">${esc(t.date)}</b> <span style="font-size:13px">${esc(t.txt)}</span></div>`).join('')}</div>`;
+    if(b.type==='bullets')return `<ul style="margin:12px 0 12px 18px;color:var(--mut)">${b.items.map(x=>`<li style="margin:5px 0;font-size:13px">${esc(x)}</li>`).join('')}</ul>`;
+    if(b.type==='table')return `<div class="tbl-wrap" style="margin:14px 0"><table class="tb"><thead><tr>${b.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${b.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    return '';
+  }).join('');
+  modal(`<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h2 style="font-size:19px">${d.icon||'📄'} ${esc(d.title)}</h2><p class="dim" style="font-size:12px;margin-top:2px">产品设计部 · 内部对齐资料 · 演示文档</p></div><button class="btn ghost" data-act="close">✕</button></div>${bl}<div style="margin-top:18px;text-align:right"><button class="btn sec sm" data-act="close">关闭</button></div>`);
+  track('打开演示文档',d.title);
+}
+function renderFilePreview(f){
+  modal(`<div style="display:flex;justify-content:space-between"><h2 style="font-size:17px"><span class="fic ${f.kind}" style="display:inline-flex;vertical-align:-10px;margin-right:8px">${f.kind.toUpperCase()}</span>${esc(f.name)}</h2><button class="btn ghost" data-act="close">✕</button></div>
+  <div style="margin:16px 0;height:260px;border-radius:var(--r-card);background:linear-gradient(140deg,var(--panel2),var(--panel3));display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1px solid var(--line)"><div style="font-size:40px">${f.kind==='pdf'?'📕':f.kind==='xls'?'📗':f.kind==='zip'?'🗜':'🖼'}</div><p class="mut" style="max-width:70%;text-align:center;font-size:13px">${esc(f.preview)}</p></div>
+  <p class="dim" style="font-size:12px">${esc(f.size)} · 更新于 ${esc(f.date)} · 演示预览（正式版接入文件服务）</p><div style="margin-top:14px;text-align:right"><button class="btn pri sm" data-act="close">知道了</button></div>`);
+  track('文件预览',f.name);
+}
+function newEventModal(){
+  modal(`<h2 style="font-size:17px;margin-bottom:14px">新建日程 · 8月${S.sideDay}日</h2>
+   <div class="grid g22" style="grid-template-columns:100px 1fr"><div class="field"><label>时间</label><input id="ev-time" type="time" value="10:00" style="width:100%"></div><div class="field"><label>标题</label><input id="ev-title" placeholder="如 设计走查"></div></div>
+   <div class="field"><label>说明</label><input id="ev-meta" placeholder="参与人 · 地点"></div>
+   <div class="field"><label>颜色标记</label><select id="ev-color"><option value="blue">蓝 · 会议</option><option value="lime">绿 · 协作</option><option value="orange">橙 · 风险/截止</option><option value="grey">灰 · 例行</option></select></div>
+   <div style="text-align:right;display:flex;gap:8px;justify-content:flex-end"><button class="btn sec" data-act="close">取消</button><button class="btn pri" data-act="save-event">保存日程</button></div>`);
+}
+function newProjectModal(){
+  modal(`<h2 style="font-size:17px;margin-bottom:14px">新建项目</h2>
+   <div class="field"><label>项目名称</label><input id="pj-name" placeholder="如 官网 2.0 概念验证"></div>
+   <div class="grid g22" style="grid-template-columns:1fr 1fr"><div class="field"><label>代号徽章</label><input id="pj-code" placeholder="POC" maxlength="6"></div><div class="field"><label>截止日期</label><input id="pj-ddl" placeholder="9月30日"></div></div>
+   <div class="field"><label>初始任务数</label><input id="pj-total" type="number" value="12"></div>
+   <div style="text-align:right;display:flex;gap:8px;justify-content:flex-end"><button class="btn sec" data-act="close">取消</button><button class="btn pri" data-act="save-project">创建项目</button></div>`);
+}
+function newTaskModal(){
+  modal(`<h2 style="font-size:17px;margin-bottom:14px">新建任务</h2>
+   <div class="field"><label>标题</label><input id="tk-title" placeholder="要做什么"></div>
+   <div class="grid g22" style="grid-template-columns:1fr 1fr"><div class="field"><label>优先级</label><select id="tk-prio"><option>P1</option><option>P0</option><option>P2</option></select></div><div class="field"><label>截止</label><input id="tk-due" placeholder="8月31日"></div></div>
+   <div class="field"><label>分组（dir）</label><input id="tk-dir" value="${isAdmin()?'设计方向':'我的清单'}"></div>
+   <div style="text-align:right;display:flex;gap:8px;justify-content:flex-end"><button class="btn sec" data-act="close">取消</button><button class="btn pri" data-act="save-task">创建任务</button></div>`);
+}
+function notifModal(){
+  const list=(S.metrics&&S.metrics.notifications)||[{icon:'⚠',text:'「视觉规范 v2 评审」已逾期，今天 17:00 预审会',time:'10 分钟前'},{icon:'💬',text:'苏晚给你发来 2 条新留言',time:'38 分钟前'},{icon:'✅',text:'徐柏舟完成了「暗色模式样式变量」',time:'1 小时前'}];
+  modal(`<h2 style="font-size:17px;margin-bottom:12px">通知 <span class="chip p0" style="vertical-align:3px">3 条未读</span></h2>${list.map(n=>`<div class="ev-row"><span style="font-size:17px">${n.icon}</span><div style="flex:1"><b style="font-size:13px">${esc(n.text)}</b><div class="mt">${esc(n.time)}</div></div></div>`).join('')}<div style="text-align:right;margin-top:8px"><button class="btn sec sm" data-act="close">全部标为已读</button></div>`);
+}
+/* 留言抽屉 */
+function drawerOpen(){$('#drawer-root').innerHTML=`<div class="mask" style="justify-content:flex-end;background:rgba(5,6,8,.45)" data-act="close-drawer"><div class="drawer" onclick="event.stopPropagation()">
+ <div style="display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line)"><b>站内留言</b><span class="grow" style="flex:1"></span><button class="btn ghost" data-act="close-drawer">✕</button></div>
+ <div style="display:flex;flex:1;min-height:0">
+  <div style="width:118px;flex:none;border-right:1px solid var(--line);padding:10px 8px;overflow-y:auto" id="conv-list"></div>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0"><div id="conv-body" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column"></div>
+   <div style="display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)"><input id="msg-inp" placeholder="发消息…" style="flex:1" onkeydown="if(event.key==='Enter')sendMsg()"><button class="btn pri" onclick="sendMsg()">发送</button></div></div></div></div></div>`;
+ renderDrawer();track('打开留言面板','');}
+function renderDrawer(){
+  const others=S.members.filter(m=>m.id!==S.me.id);
+  $('#conv-list').innerHTML=others.map(m=>{const last=(S.messages.filter(x=>x.user_id===m.id).slice(-1)[0]);return `<div class="conv ${S.conv===m.id?'on':''}" onclick="S.conv=${m.id};renderDrawer()"><span style="position:relative;flex:none"><img class="avt sm" src="${AVA(m.id)}" onerror="this.style.visibility='hidden'">${m.online?'<i class="dot-online" style="border-color:var(--panel)"></i>':''}</span><div style="min-width:0"><b style="font-size:12px;display:block">${esc(m.name)}</b><span class="dim" style="font-size:10px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:66px">${esc(last?last.text:'开始对话')}</span></div></div>`}).join('');
+  const list=S.messages.filter(x=>x.user_id===S.conv);
+  $('#conv-body').innerHTML=(list.length?list.map(x=>`<div class="${x.from_me?'msg-me':'msg-them'}">${esc(x.text)}</div>`).join(''):`<p class="dim" style="font-size:12px;margin:auto;text-align:center">和 ${esc(user(S.conv).name)} 还没有留言<br>${S.metrics&&S.metrics.offline?'对方自动回复仅在联网模式生效':'对方会随机自动回复一条'}</p>`) + (list.length?'':'');
+}
+async function sendMsg(){
+  const inp=$('#msg-inp'),txt=inp.value.trim();if(!txt)return;inp.value='';
+  S.messages.push({id:Date.now(),user_id:S.conv,from_me:true,text:txt});renderDrawer();track('发送留言',user(S.conv).name);
+  try{const rows=await api('/api/messages',{user_id:S.conv,text:txt});
+    S.messages=S.messages.filter(x=>x.id!==Date.now());rows.forEach(r=>S.messages.push(r));}
+  catch(e){setTimeout(()=>{S.messages.push({id:Date.now()+1,user_id:S.conv,from_me:false,text:'（离线演示）稍后同步给你'});renderDrawer();},900);}
+  renderDrawer();
+}
+/* ================= 命令面板 ================= */
+function palToggle(){S.palOpen=!S.palOpen;S.palQ='';S.palSel=0;renderPal();if(S.palOpen)$('#pal-inp').focus();}
+function palHits(){
+  const q=S.palQ.trim().toLowerCase();
+  const cmds=[{g:'导航',t:'切换到 总览',run:()=>go('overview')},{g:'导航',t:'切换到 日历',run:()=>go('calendar')},{g:'导航',t:'切换到 成员',run:()=>go('member')},
+   ...(isAdmin()?[{g:'操作',t:'＋ 新建项目',run:()=>newProjectModal()},{g:'操作',t:'＋ 新建日程',run:()=>newEventModal()}]:[]),
+   {g:'操作',t:'打开留言面板',run:()=>drawerOpen()},{g:'操作',t:'重看新手指引',run:()=>tourStart()},{g:'操作',t:'退出登录',run:()=>doLogout()}];
+  const tasks=S.tasks.concat(S.cards).filter(t=>!q||t.title.toLowerCase().includes(q)).slice(0,5).map(t=>({g:'任务',t:'▢ '+t.title+' · '+user(t.owner_id).name,run:()=>{go('task');setTimeout(()=>toast('已定位：'+t.title),300)}}));
+  const pjs=S.projects.filter(p=>!q||p.name.toLowerCase().includes(q)).slice(0,4).map(p=>({g:'项目',t:'◈ '+p.name,run:()=>{S.detail=p;S.tab='tasks';go('project')}}));
+  const mbs=S.members.filter(m=>m.id!==S.me.id&&(!q||m.name.includes(q)||m.account.includes(q))).slice(0,4).map(m=>({g:'成员',t:'☺ '+m.name+' · '+m.title,run:()=>{S.conv=m.id;go('member');drawerOpen()}}));
+  return [...(q?[]:cmds.filter(c=>true).slice(0,0)),...tasks,...pjs,...mbs,...(!q?cmds:cmds.filter(c=>c.t.toLowerCase().includes(q)))];
+}
+function renderPal(){
+  if(!S.palOpen){$('#pal-root').classList.add('hide');return;}
+  const hits=S.palHits=palHits();
+  $('#pal-root').classList.remove('hide');
+  $('#pal-root').innerHTML=`<div class="pal"><input id="pal-inp" placeholder="搜索任务 / 项目 / 成员，或输入命令…" value="${esc(S.palQ)}" oninput="S.palQ=this.value;S.palSel=0;renderPal()" onkeydown="palKey(event)"><div style="max-height:320px;overflow-y:auto;padding-bottom:8px">${hits.map((h,i)=>`<div class="it ${i===S.palSel?'on':''}" onclick="palRun(${i})"><span class="dim" style="width:36px;font-size:10px">${h.g}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(h.t)}</span></div>`).join('')||'<p class="dim" style="padding:14px 16px;font-size:12.5px">没有匹配结果</p>'}</div></div>`;
+}
+function palKey(e){const n=S.palHits.length;if(e.key==='ArrowDown'){S.palSel=(S.palSel+1)%n;renderPal();$('#pal-inp').focus();}else if(e.key==='ArrowUp'){S.palSel=(S.palSel-1+n)%n;renderPal();$('#pal-inp').focus();}else if(e.key==='Enter'){palRun(S.palSel);}else if(e.key==='Escape')palToggle();}
+function palRun(i){const h=S.palHits[i];if(!h)return;track('搜索',h.t);palToggle();h.run();}
+/* ================= 新手指引 Tour ================= */
+const TOUR=[
+ {sel:'.side',t:'左侧导航栏',d:'七个入口：总览 / 项目 / 日历 / 任务 / 成员 / 设置（负责人还有 数据 与 管理后台）。「任务」上的橙点是逾期提醒。'},
+ {sel:'.topbar .searchbox',t:'⌘K 命令面板',d:'按 Ctrl+K（Mac 为 ⌘K）随时唤起，搜任务、项目、成员，也能直达命令。'},
+ {sel:'.tb-right',t:'快捷操作',d:'铃铛是通知，气泡是站内留言（会自动回复语料）；问号可随时重看本指引。'},
+ {sel:'.view .card',t:'数据都来自服务端',d:'勾选任务、拖拽看板卡、新建日程都会写库并按角色记埋点——负责人在「管理后台」可看到全量热度排行。'},
+ {sel:'.tb-right',t:'权限是分角色的',d:'用成员账号登录：任务只返回自己的、数据/管理后台入口隐藏、点管理操作会弹权限提示。试试退出换成 suwan 账号体验。'},
+];
+function tourStart(){S.tourStep=0;renderTour();}
+function renderTour(){
+  if(S.tourStep<0){$('#tour-root').innerHTML='';return;}
+  const st=TOUR[S.tourStep];const el=document.querySelector(st.sel);
+  const r=el?el.getBoundingClientRect():{top:120,left:120,width:200,height:80};
+  const pad=8;
+  $('#tour-root').innerHTML=`
+   <div class="tour-mask" onclick="tourNext()"></div>
+   <div class="tour-hl" style="top:${r.top-pad}px;left:${r.left-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px"></div>
+   <div class="tour-card" style="top:${Math.min(r.bottom+16,innerHeight-190)}px;left:${Math.min(r.left,innerWidth-330)}px" onclick="event.stopPropagation()">
+     <b style="font-size:14px">${st.t}</b><p class="mut" style="font-size:12.5px;margin:8px 0 12px">${st.d}</p>
+     <div style="display:flex;align-items:center"><span class="dim num" style="font-size:11px">${S.tourStep+1} / ${TOUR.length}</span><span style="flex:1"></span>
+     <button class="btn ghost sm" onclick="tourEnd()">跳过</button><button class="btn pri sm" onclick="tourNext()">${S.tourStep===TOUR.length-1?'完成 ✓':'下一步 →'}</button></div></div>`;
+}
+function tourNext(){S.tourStep++;if(S.tourStep>=TOUR.length){tourEnd(true);}else renderTour();}
+function tourEnd(done){S.tourStep=-1;$('#tour-root').innerHTML='';if(done){track('完成指引','走完 '+TOUR.length+' 步');toast('🎉 指引完成，开始协作吧');}}
+
+/* ================= 动作分发 ================= */
+async function doLogout(){track('退出','');try{await api('/auth/logout',{});}catch(e){}location.reload();}
+const ACT={
+ 'nav':el=>go(el.dataset.view),
+ 'pick-day':el=>{S.sideDay=+el.dataset.day;go(S.view);},
+ 'toggle':async el=>{
+   const id=+el.dataset.id,t=[...S.tasks,...S.cards].find(x=>x.id===id);if(!t)return;
+   const nd=!t.done;
+   if(S.metrics&&S.metrics.offline){t.done=nd;t.overdue=nd?false:t.overdue;}
+   else{try{const r=await api('/api/tasks/toggle',{id,done:nd});t.done=r.done;t.overdue=r.done?false:t.overdue;}catch(e){return toast(e.message,true);}}
+   track(nd?'完成任务':'恢复任务',t.title);renderTopbar();go(S.view);
+ },
+ 'new-project':()=>isAdmin()?newProjectModal():needAdmin(),
+ 'new-event':()=>isAdmin()?newEventModal():needAdmin(),
+ 'new-task':()=>newTaskModal(),
+ 'save-event':async()=>{
+   if(!isAdmin())return needAdmin();
+   const body={day:S.sideDay,time:$('#ev-time').value,title:$('#ev-title').value.trim(),meta:$('#ev-meta').value.trim(),color:$('#ev-color').value};
+   if(!body.title)return toast('标题必填',true);
+   try{const r=await api('/api/events',body);S.events.push(r);track('新建日程',body.title);closeModal();go(S.view);toast('日程已创建');}catch(e){toast(e.message,true);}
+ },
+ 'del-event':async el=>{
+   if(!isAdmin())return needAdmin();
+   const id=+el.dataset.id;
+   if(!(S.metrics&&S.metrics.offline)){
+     try{const r=await fetch('/api/events/'+id,{method:'DELETE'});const j=await r.json();if(!j.ok)throw new Error(j.error);}
+     catch(e){return toast(e.message,true);}
+   }
+   S.events=S.events.filter(x=>x.id!==id);track('删除日程','');go(S.view);toast('日程已删除');
+ },
+ 'save-project':async()=>{
+   if(!isAdmin())return needAdmin();
+   const body={name:$('#pj-name').value.trim(),code:$('#pj-code').value.trim()||'PJ',deadline:$('#pj-ddl').value.trim(),total:+$('#pj-total').value||0,members:[]};
+   if(!body.name)return toast('项目名称必填',true);
+   try{const p=await api('/api/projects',body);S.projects.push(p);track('新建项目',body.name);closeModal();go('project');toast('项目已创建');}catch(e){toast(e.message,true);}
+ },
+ 'save-task':async()=>{
+   const body={title:$('#tk-title').value.trim(),prio:$('#tk-prio').value,due:$('#tk-due').value.trim()||'8月31日',dir:$('#tk-dir').value.trim()||'我的清单',tags:[]};
+   if(!body.title)return toast('标题必填',true);
+   try{const t=await api('/api/tasks',body);S.tasks.push(t);track('新建任务',body.title);closeModal();go(S.view);toast('任务已创建');}catch(e){if(S.metrics&&S.metrics.offline){S.tasks.push({id:Date.now(),...body,overdue:false,done:false,lane:null,tags:[],sub:'0/1',files:0,comments:0,highlight:false});closeModal();go(S.view);toast('（离线）已加入本地');}else toast(e.message,true);}
+ },
+ 'open-project':el=>{S.detail=S.projects.find(p=>String(p.id)===el.dataset.id);S.tab='tasks';go('project');},
+ 'back-project':()=>{S.detail=null;go('project');},
+ 'ptab':el=>{S.tab=el.dataset.tab;go('project');},
+ 'open-doc':el=>renderDoc(S.docs[+el.dataset.i]||(S.metrics?.docs||[])[+el.dataset.i]),
+ 'file-preview':el=>renderFilePreview((S.metrics?.files||MOCK.metrics?.files||[])[+el.dataset.i]||{name:'文件',kind:'pdf',size:'-',date:'-',preview:'—'}),
+ 'close':closeModal,'close-mask':e=>{if(e.target.classList.contains('mask'))closeModal();},
+ 'close-drawer':()=>$('#drawer-root').innerHTML='',
+ 'msgs':()=>drawerOpen(),
+ 'notif':()=>notifModal(),
+ 'pal':()=>palToggle(),
+ 'tour':()=>tourStart(),
+ 'logout':doLogout,
+ 'invite':()=>toast('邀请链接已复制（演示）：把链接发给新同事，注册后即为成员角色'),
+ 'edit-profile':()=>toast('演示环境：请在「个人资料」卡片直接修改'),
+ 'save-profile':()=>toast('资料已保存（演示暂存）'),
+ 'ui-sw':el=>{const k=el.dataset.k;S.ui[k]=!S.ui[k];go('setting');},
+ 'refresh-admin':loadAdmin,
+ 'adm-tab':el=>{S.admTab=el.dataset.t;loadAdmin();},
+ 'adm-export':()=>{
+   const rows=S.admRows||[];if(!rows.length)return toast('当前表无数据',true);
+   const cols=Object.keys(rows[0]);
+   const csv=[cols.join(','),...rows.map(r=>cols.map(c=>`"${String(r[c]??'').replace(/"/g,'""')}"`).join(','))].join('\n');
+   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download=(S.admTab||'wb_tasks')+'.csv';a.click();toast('CSV 已导出');
+ },
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');
+  if(el&&el.closest('#pal-root')?.length!==undefined&&el.closest('.pal'))return;
+  if(el){const fn=ACT[el.dataset.act];if(fn){e.preventDefault();fn(el,e);return;}}
+  if(e.target.id==='pal-root'){palToggle();}
+  if(e.target.classList.contains('mask')&&e.target.dataset.act!=='close-drawer'){closeModal();}
+});
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if($('#shell').classList.contains('hide'))return;palToggle();}
+  if(e.key==='Escape'&&!e.repeat){if($('#drawer-root').innerHTML)$('#drawer-root').innerHTML='';else closeModal();}
+});
+
+/* ================= 看板拖拽 ================= */
+let dragId=null;
+document.addEventListener('dragstart',e=>{const c=e.target.closest('.kcard');if(c){dragId=+c.dataset.card;c.classList.add('drag');}});
+document.addEventListener('dragend',e=>{const c=e.target.closest('.kcard');c&&c.classList.remove('drag');document.querySelectorAll('.lane.over').forEach(l=>l.classList.remove('over'));});
+document.addEventListener('dragover',e=>{const l=e.target.closest('.lane');if(l){e.preventDefault();document.querySelectorAll('.lane.over').forEach(x=>x!==l&&x.classList.remove('over'));l.classList.add('over');}});
+document.addEventListener('drop',async e=>{
+  const l=e.target.closest('.lane');if(!l||dragId==null)return;e.preventDefault();l.classList.remove('over');
+  const lane=l.dataset.lane,card=S.cards.find(c=>c.id===dragId);dragId=null;
+  if(!card||card.lane===lane)return;
+  const old=card.lane;card.lane=lane;card.done=lane==='done';if(lane==='done')card.overdue=false;
+  track('看板拖拽',card.title+'：'+old+'→'+lane);
+  if(!(S.metrics&&S.metrics.offline)){try{await api('/api/tasks/move',{id:card.id,lane});}catch(err){card.lane=old;toast(err.message,true);}}
+  go('project');
+});
+
+boot();
+</script>
+</body>
+</html>
