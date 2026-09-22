@@ -1,0 +1,38 @@
+{
+  "task": "M1（令牌与排版）subagent-driven 执行 + 合并 dev",
+  "date": "2026-09-22",
+  "reviewer": "SDD 流程内建 6 轮子 agent 审查：Task 1-4 逐任务审查（spec 合规 + 质量）+ 全分支终审（opus）+ 修复波复审（sonnet）",
+  "execution_summary": "4 个实现任务全部 DONE 且审查通过；分支 feature/restyle-m1-tokens（5 commits）经 --no-ff 合并回 dev（b230f0a）；合并后测试 37/37 绿、npm run build 通过；实机走查 5 项（登录页/订单列表/输入框聚焦/移动端首页/Toast 计算样式）",
+  "findings": [
+    {
+      "错误描述": "【Important·已修复】EP 按钮 focus 环被 EP 自身规则击败（specificity 0,2,0 压过全局 :focus-visible 的 0,1,0），实际渲染为 --el-button-outline-color=#a8be66，对 panel 仅 2.00:1，不达非文本 3:1",
+      "错误细节": "终审发现：全局 :focus-visible 规则只对非 EP 组件生效；EP 在 .el-button 上有直接声明的 --el-button-outline-color（默认 primary-light-5）。修复：在 .el-button 作用域声明 --el-button-outline-color: var(--lime-text) 并加 .el-button:focus-visible{outline-offset:2px}（不能写 :root——直接声明优先于继承）。",
+      "建议解决方案": "已修复并复审 ADDRESSED。教训已记入错题集（CSS 覆盖 EP 的 specificity/注入顺序）。"
+    },
+    {
+      "错误描述": "【Important·已修复】全局 focus 环落到 EP 内层 .el-input__inner 上，画出比字段窄又比字段高的错位环，且加载顺序不定",
+      "错误细节": "终审发现：EP 在 .el-input__inner 上写 outline:none，与全局规则同 specificity 但注入顺序不定。修复：.el-input__inner:focus-visible{outline:none}（0,2,0 稳定胜出）+ .el-input__wrapper:focus-within 加 3px lime-tint 外环；.el-select__wrapper 同构问题一并处理。",
+      "建议解决方案": "已修复并复审 ADDRESSED。残留：实机验证发现 3px 外环被 EP 后注入的 .el-input__wrapper.is-focus 同 specificity 压掉（1px lime 边线仍在，AA 无碍）——已登记 M2 用更高 specificity 修复。"
+    },
+    {
+      "错误描述": "【Important·已修复】注释与测试名声称\"35 个页面依赖旧令牌\"，与事实不符（实为 MainLayout 9 处 + MobileLayout 1 处 = 2 文件 10 处）",
+      "错误细节": "终审发现：全站换肤的真实机制是 EP/Vant 变量映射而非别名层；错误叙述会让 M6 高估清理工作量。",
+      "建议解决方案": "已修复（注释 + 用例名纠正），真实清单已登记 M6。"
+    },
+    {
+      "错误描述": "【构建门禁失败·已修复】测试文件 import node:fs 导致 npm run build（vue-tsc）报 TS2591，vitest 不做类型检查所以潜伏至收尾",
+      "错误细节": "tsconfig.app.json 的 types 数组不含 \"node\"（@types/node 已在 devDependencies）。修复：types 补 \"node\"（不改测试文件，避免使 4 轮审查失效）。",
+      "建议解决方案": "已修复（6f7bfb3），build + 37 测试双绿。教训已记入错题集。"
+    },
+    {
+      "错误描述": "【Minor·10 条】逐条裁决：2 条误报（disabled 对比度实测 4.52 达标、测试正则不会误匹配），其余 8 条登记",
+      "错误细节": "登记去向：M2（disabled 输入框底色撞 panel2、输入框聚焦外环 specificity）、M3（登录页第二光晕仍为旧蓝 rgba(29,78,216,.06)）、M6（别名清理 2 文件 10 处、cascade 盲区浏览器走查、-webkit-backdrop-filter、toast 注释残留）。全部写入《风格重构/M1-实施计划.md》的「M1 遗留项登记」节。",
+      "建议解决方案": "已登记，待各模块认领。"
+    },
+    {
+      "错误描述": "【流程观察】终审与复审均无法发现 cascade 类问题（文本/静态审查的盲区），控制器实机 inspect 才发现输入框外环失效",
+      "错误细节": "复审者基于\"同 specificity + 后加载\"的推理认为修复生效，但实机 computed style 显示外环未渲染（EP 的 is-focus 规则后注入）。",
+      "建议解决方案": "已记入错题集：涉及 cascade 的改动必须实机验证计算样式；M6 补浏览器级 focus 走查。"
+    }
+  ]
+}
