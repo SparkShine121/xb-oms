@@ -19,39 +19,78 @@ body {
 }
 
 /* ============================================================
- * 全局设计令牌（浅色专业企业风）
- * 主色深蓝 / 强调紫 / slate 中性字色 / 8px 圆角 / 柔阴影
+ * 全局设计令牌（浅色版 · 目标站设计语言转译）
+ * 规范见《风格重构/风格拆解清单.md》§1；颜色值由 designTokens.test.ts 锁定（含 AA 对比度）
+ * 双轨制：填充型强调用 --lime（配 --lime-ink 字），文字型强调用 --lime-text
  * ============================================================ */
 :root {
-  /* 品牌色 */
-  --brand-600: #2563eb;
-  --brand-500: #3b82f6;
-  --brand-700: #1d4ed8;
-  --brand-800: #1e3a8a;
-  --accent: #7c3aed;
+  /* 表面（off-white，禁纯白） */
+  --canvas: #f1f2f4;
+  --panel: #fcfcfd;
+  --panel2: #f5f6f8;
+  --panel3: #ecedf0;
 
-  /* 中性色 */
-  --text-900: #0f172a;
-  --text-700: #334155;
-  --text-500: #475569;
-  --text-400: #94a3b8;
-  --border: #e2e8f0;
-  --surface-muted: #f1f5f9;
-  --surface: #ffffff;
-  --bg-page: #f8fafc;
+  /* 边线 */
+  --line: rgba(17, 19, 23, 0.08);
+  --line2: rgba(17, 19, 23, 0.14);
 
-  /* 语义色 */
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --info: #64748b;
+  /* 文字 */
+  --txt: #17191e;
+  --mut: #5b616b;
+  --dim: #666c75;
 
-  /* 形状 */
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-pop: 0 6px 20px rgba(15, 23, 42, 0.1);
+  /* 强调（lime 家族，全站唯一强调色） */
+  --lime: #cbf74e;
+  --lime-ink: #15170a;
+  --lime-text: #5b7600;
+  --lime-hover: #bceb3a;
+  --lime-active: #addc28;
+  --lime-deep: #4a6100;
+  --lime-tint: rgba(163, 209, 26, 0.14);
+
+  /* 语义色（仅状态语义，禁装饰用途） */
+  --success: #17803d;
+  --warning: #c2410c;
+  --danger: #c0352b;
+  --info: #1d4ed8;
+  --success-tint: rgba(23, 128, 61, 0.12);
+  --warning-tint: rgba(194, 65, 12, 0.12);
+  --danger-tint: rgba(192, 53, 43, 0.12);
+  --info-tint: rgba(29, 78, 216, 0.1);
+
+  /* 阴影（带底色调，禁纯黑） */
+  --shadow-card: 0 1px 2px rgba(20, 24, 32, 0.05), 0 1px 3px rgba(20, 24, 32, 0.04);
+  --shadow-pop: 0 12px 32px -8px rgba(20, 24, 32, 0.14);
+  --shadow-overlay: 0 24px 64px -12px rgba(20, 24, 32, 0.22);
+
+  /* 圆角（形状一致性：容器大、内部小） */
+  --r-frame: 32px;
+  --r-card: 24px;
+  --r-in: 16px;
+  --r-nav: 14px;
+  --r-ctl: 12px;
+  --r-sm: 10px;
+
+  /* 缓动（唯一曲线） */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---- 兼容别名：旧令牌名指向新值，35 个页面自动换肤；M6 收尾时清理 ---- */
+  --brand-600: var(--lime-text);
+  --brand-500: var(--lime-text);
+  --brand-700: var(--lime-text);
+  --brand-800: var(--txt);
+  --accent: var(--info);
+  --text-900: var(--txt);
+  --text-700: var(--txt);
+  --text-500: var(--mut);
+  --text-400: var(--dim);
+  --border: var(--line);
+  --surface-muted: var(--panel2);
+  --surface: var(--panel);
+  --bg-page: var(--canvas);
+  --radius-sm: var(--r-ctl);
+  --radius: var(--r-in);
+  --radius-lg: var(--r-card);
 }
 
 /* ============================================================
