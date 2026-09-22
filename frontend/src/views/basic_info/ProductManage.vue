@@ -7,6 +7,11 @@ import {
 } from '../../api/basicInfo'
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhPackage } from '@phosphor-icons/vue'
 
 interface CategoryNode { id: number; name: string; children?: CategoryNode[] }
 
@@ -62,6 +67,11 @@ async function load() {
 async function loadCategories() {
   const resp: any = await categoryTree()
   categories.value = resp.data
+}
+
+function query() {
+  page.value = 1
+  load()
 }
 
 // ---- 新增 / 编辑 ----
@@ -145,57 +155,81 @@ onMounted(() => { loadCategories(); load() })
 
 <template>
   <div class="product-manage">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-input v-model="search" placeholder="搜索编号 / 型号 / 名称" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
-        <el-select v-model="categoryFilter" clearable placeholder="全部类目" style="width: 180px" @change="page = 1; load()">
-          <el-option v-for="c in flatCategories" :key="c.id" :label="c.name" :value="c.id" />
-        </el-select>
-        <el-button type="primary" @click="page = 1; load()">查询</el-button>
-        <div class="toolbar-right">
-          <template v-if="isAdmin">
-            <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
-              <el-button>选择 Excel</el-button>
-            </el-upload>
-            <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
-          </template>
-          <el-button @click="downloadTemplate">下载模板</el-button>
-          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button v-if="isAdmin" type="primary" @click="openCreate">新增产品</el-button>
-        </div>
-      </div>
+    <PageHeader title="产品库" :sub="`共 ${total} 条`">
+      <el-button v-if="isAdmin" type="primary" @click="openCreate">新增产品</el-button>
+    </PageHeader>
 
-      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column prop="product_no" label="产品编号" width="120" />
-        <el-table-column prop="model" label="型号" width="120" />
-        <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
-        <el-table-column label="类目" width="130">
-          <template #default="{ row }">{{ catName(row.category) }}</template>
-        </el-table-column>
-        <el-table-column prop="spec" label="规格" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="default_price" label="默认售价(USD)" width="110" />
-        <el-table-column prop="default_cost_price" label="成本价(CNY)" width="110" />
-        <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-        <el-table-column label="操作" width="130" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="还没有产品"
+      empty-description="可以通过 Excel 批量导入，或手动新增第一条"
+      :empty-action-text="isAdmin ? '新增产品' : ''"
+      :empty-icon="PhPackage"
+      @empty-action="openCreate"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-input
+              v-model="search"
+              placeholder="搜索编号 / 型号 / 名称"
+              clearable
+              style="width: 240px"
+              @keyup.enter="query"
+              @clear="query"
+            />
+            <el-select v-model="categoryFilter" clearable placeholder="全部类目" style="width: 180px" @change="query">
+              <el-option v-for="c in flatCategories" :key="c.id" :label="c.name" :value="c.id" />
+            </el-select>
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-      </el-table>
+          <template #actions>
+            <template v-if="isAdmin">
+              <el-upload
+                ref="uploadRef"
+                :auto-upload="false"
+                :limit="1"
+                accept=".xlsx,.xls"
+                :on-change="onFileChange"
+                :on-remove="() => (importFile = null)"
+                :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')"
+              >
+                <el-button>选择 Excel</el-button>
+              </el-upload>
+              <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
+            </template>
+            <el-button @click="downloadTemplate">下载模板</el-button>
+            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+          </template>
+        </SearchToolbar>
+      </template>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="page = 1; load()"
-      />
-    </el-card>
+      <el-table-column type="selection" width="48" />
+      <el-table-column prop="product_no" label="产品编号" width="120" />
+      <el-table-column prop="model" label="型号" width="120" />
+      <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
+      <el-table-column label="类目" width="130">
+        <template #default="{ row }">{{ catName(row.category) }}</template>
+      </el-table-column>
+      <el-table-column prop="spec" label="规格" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="default_price" label="默认售价(USD)" width="110" />
+      <el-table-column prop="default_cost_price" label="成本价(CNY)" width="110" />
+      <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
+      <el-table-column label="操作" width="130" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
 
     <el-drawer v-model="drawerVisible" :title="editingId ? '编辑产品' : '新增产品'" size="480px">
       <el-form label-width="110px">
@@ -246,38 +280,3 @@ onMounted(() => { loadCategories(); load() })
     </el-dialog>
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-.toolbar .el-upload,
-.toolbar-right .el-upload {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  margin: 0;
-}
-.toolbar .el-upload .el-button,
-.toolbar-right .el-upload .el-button {
-  margin: 0;
-}
-.toolbar-right > div {
-  display: flex;
-  align-items: center;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
-}
-</style>
