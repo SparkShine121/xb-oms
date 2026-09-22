@@ -154,6 +154,9 @@ h3 {
   --el-input-text-color: var(--txt);
   --el-input-placeholder-color: var(--dim);
 
+  --el-mask-color: rgba(252, 252, 253, 0.72);
+  --el-disabled-bg-color: var(--panel3);
+
   --el-border-radius-base: var(--r-ctl);
   --el-border-radius-small: var(--r-sm);
   --el-border-radius-round: 999px;
@@ -237,8 +240,13 @@ h3 {
 .el-select__input:focus-visible {
   outline: none;
 }
-.el-input__wrapper:focus-within,
-.el-select__wrapper:focus-within {
+/* 输入框聚焦：外环用高 specificity 压过 EP 的 .is-focus 规则（同 specificity 会因 EP 后注入而落败） */
+.el-input .el-input__wrapper.is-focus,
+.el-input .el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 1px var(--lime-text) inset, 0 0 0 3px var(--lime-tint);
+}
+.el-select .el-select__wrapper.is-focused,
+.el-select .el-select__wrapper:focus-within {
   box-shadow: 0 0 0 1px var(--lime-text) inset, 0 0 0 3px var(--lime-tint);
 }
 .el-pagination {
