@@ -5,12 +5,14 @@ import { PhTray } from '@phosphor-icons/vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchToolbar from '../components/SearchToolbar.vue'
 import EmptyState from '../components/EmptyState.vue'
+import DataTable from '../components/DataTable.vue'
 
-// el-button 由 unplugin-vue-components 自动引入，附带样式入口 element-plus/es/components/*/style/css；
-// 入口位于 node_modules 会被 vitest 外部化，其内部再 import theme-chalk CSS 时 Node 无法加载 .css
-// → mock 掉样式入口本身（不改 vite.config）
+// EP 自动引入的样式入口 element-plus/es/components/*/style/css：
+// node_modules 被 vitest 外部化后，入口内部再 import theme-chalk .css 时 Node 无法加载 → 统一 mock（不改 vite.config）
 vi.mock('element-plus/es/components/base/style/css', () => ({}))
 vi.mock('element-plus/es/components/button/style/css', () => ({}))
+vi.mock('element-plus/es/components/loading/style/css', () => ({}))
+vi.mock('element-plus/es/components/table/style/css', () => ({}))
 
 describe('Phosphor 图标', () => {
   it('能渲染为 svg 且接受 size/weight', () => {
@@ -58,5 +60,23 @@ describe('EmptyState', () => {
   it('无 actionText 时不渲染按钮', () => {
     const w = mount(EmptyState, { props: { title: '暂无数据' } })
     expect(w.find('button').exists()).toBe(false)
+  })
+})
+
+describe('DataTable', () => {
+  it('空数据时渲染组合式空状态', () => {
+    const w = mount(DataTable, { props: { data: [], emptyTitle: '还没有产品' } })
+    expect(w.find('.es-title').text()).toBe('还没有产品')
+  })
+
+  it('渲染 toolbar/footer 槽并把 attrs 透传给 el-table', () => {
+    const w = mount(DataTable, {
+      props: { data: [{ id: 1 }], border: true },
+      slots: { toolbar: '<div class="tb">TB</div>', footer: '<div class="ft">FT</div>' },
+    })
+    expect(w.find('.tb').exists()).toBe(true)
+    expect(w.find('.ft').exists()).toBe(true)
+    expect(w.find('.el-table').exists()).toBe(true)
+    expect(w.find('.el-table--border').exists()).toBe(true)
   })
 })
