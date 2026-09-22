@@ -84,7 +84,7 @@ onMounted(load)
 <template>
   <div class="logistics-manage">
     <PageHeader title="物流服务商" :sub="`共 ${total} 条`">
-      <el-button v-if="isAdmin" type="primary" @click="openCreate">新增服务商</el-button>
+      <el-button v-if="isAdmin" type="primary" @click="openCreate">新增物流商</el-button>
     </PageHeader>
 
     <DataTable
@@ -94,7 +94,7 @@ onMounted(load)
       stripe
       empty-title="还没有物流服务商"
       empty-description="手动新增第一家物流服务商"
-      :empty-action-text="isAdmin ? '新增服务商' : ''"
+      :empty-action-text="isAdmin ? '新增物流商' : ''"
       :empty-icon="PhTruck"
       @empty-action="openCreate"
       @selection-change="handleSelectionChange"

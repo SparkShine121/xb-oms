@@ -96,7 +96,7 @@ async function handleBatchDelete() {
   <div class="category-manage">
     <PageHeader title="类目">
       <el-button v-if="isAdmin" type="danger" plain @click="handleBatchDelete">批量删除</el-button>
-      <el-button v-if="isAdmin" type="primary" @click="openCreate(null)">新增类目</el-button>
+      <el-button v-if="isAdmin" type="primary" @click="openCreate(null)">新增根类目</el-button>
     </PageHeader>
     <el-card shadow="never">
       <el-tree ref="treeRef" :data="treeData" node-key="id" :props="{ children: 'children', label: 'name' }" default-expand-all show-checkbox>
@@ -114,7 +114,7 @@ async function handleBatchDelete() {
           <EmptyState
             title="还没有类目"
             description="新增类目后可在此管理产品分类层级"
-            :action-text="isAdmin ? '新增类目' : ''"
+            :action-text="isAdmin ? '新增根类目' : ''"
             :icon="PhFolderOpen"
             @action="openCreate(null)"
           />
