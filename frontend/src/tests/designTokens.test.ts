@@ -93,3 +93,45 @@ describe('设计令牌（浅色版）', () => {
     expect(token('bg-page')).toBe('var(--canvas)')
   })
 })
+
+describe('Element Plus 映射（浅色版）', () => {
+  it('primary 双轨制：变量用深橄榄，按钮填充用 lime', () => {
+    expect(token('el-color-primary')).toBe('var(--lime-text)')
+    const btn = css.match(/\.el-button--primary\s*\{([^}]+)\}/)?.[1] ?? ''
+    expect(btn).toContain('--el-button-bg-color: var(--lime)')
+    expect(btn).toContain('--el-button-text-color: var(--lime-ink)')
+    expect(btn).toContain('--el-button-hover-bg-color: var(--lime-hover)')
+  })
+
+  it('表面/文字/边框/圆角映射到位', () => {
+    expect(token('el-bg-color')).toBe('var(--panel)')
+    expect(token('el-bg-color-page')).toBe('var(--canvas)')
+    expect(token('el-text-color-primary')).toBe('var(--txt)')
+    expect(token('el-border-color')).toBe('var(--line)')
+    expect(token('el-border-radius-base')).toBe('var(--r-ctl)')
+    expect(token('el-font-size-base')).toBe('13px')
+    expect(token('el-font-family')).toBe('inherit')
+  })
+
+  it('表格变量与旧品牌蓝清理', () => {
+    expect(token('el-table-header-bg-color')).toBe('var(--panel2)')
+    expect(token('el-table-row-hover-bg-color')).toBe('var(--panel2)')
+    expect(css).not.toContain('#2563eb')  // 旧品牌蓝彻底移除
+    expect(css).toMatch(/\.el-table th\.el-table__cell\s*\{[^}]*font-size:\s*12\.5px/)
+    expect(css).toMatch(/\.el-table th\.el-table__cell\s*\{[^}]*font-weight:\s*600/)
+    expect(css).toMatch(/\.el-table \.el-table__cell\s*\{[^}]*padding:\s*8px 0/)
+  })
+
+  it('EP 语义色与 primary 色阶映射', () => {
+    expect(token('el-color-success')).toBe('var(--success)')
+    expect(token('el-color-warning')).toBe('var(--warning)')
+    expect(token('el-color-danger')).toBe('var(--danger)')
+    expect(token('el-color-error')).toBe('var(--danger)')
+    expect(token('el-color-info')).toBe('var(--info)')
+    expect(token('el-color-primary-light-3')).toBe('#7c9a1f')
+    expect(token('el-color-primary-light-9')).toBe('#f2f6e6')
+    expect(token('el-color-primary-dark-2')).toBe('var(--lime-deep)')
+    expect(token('el-input-bg-color')).toBe('var(--panel2)')
+    expect(token('el-input-focus-border-color')).toBe('var(--lime-text)')
+  })
+})
