@@ -125,10 +125,17 @@ function addItem() {
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
+  syncAmountFromItems() // BUG-SIM-017：删行后金额联动
 }
 
 function calcSubtotal(row: any) {
   row.subtotal = Number(row.qty) * Number(row.unit_price) || 0
+  syncAmountFromItems() // BUG-SIM-017：明细小计变化联动回填订单金额（输入框仍可手改）
+}
+
+// 明细合计 → 订单金额（仅交互层联动；后端/导入的订单金额权威语义不变）
+function syncAmountFromItems() {
+  form.amount_usd = Number(items.value.reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0).toFixed(2))
 }
 
 async function save() {

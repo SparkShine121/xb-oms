@@ -78,7 +78,11 @@ class OrderItem(models.Model):
 
 def calc_order_profit(order):
     order.refresh_from_db()
-    rate_obj = ExchangeRate.get_effective_rate(order.order_date) if order.order_date else ExchangeRate.objects.order_by('-effective_date','-id').first()
+    # BUG-SIM-011 Q1:a：订单日期无适用汇率（早于最早汇率）→ 回退全库最近一条
+    # 近似折算，不再按 1:1 错账；库中完全无汇率时维持 1（无可参照值）
+    rate_obj = ExchangeRate.get_effective_rate(order.order_date) if order.order_date else None
+    if rate_obj is None:
+        rate_obj = ExchangeRate.objects.order_by('-effective_date', '-id').first()
     rate = Decimal(str(rate_obj.rate)) if rate_obj else Decimal('1')
     total = Decimal('0')
     for item in order.items.all():
