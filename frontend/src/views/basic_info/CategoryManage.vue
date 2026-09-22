@@ -3,6 +3,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { categoryTree, createCategory, updateCategory, deleteCategory, bulkDeleteCategories } from '../../api/basicInfo'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import { PhFolderOpen } from '@phosphor-icons/vue'
 
 // 基础信息写操作（新增/编辑/删除）仅 admin；其他角色只读
 const isAdmin = computed(() => useUserStore().roles.includes('admin'))
@@ -91,10 +94,10 @@ async function handleBatchDelete() {
 
 <template>
   <div class="category-manage">
-    <div class="toolbar">
-      <el-button v-if="isAdmin" type="primary" @click="openCreate(null)">新增根类目</el-button>
+    <PageHeader title="类目">
       <el-button v-if="isAdmin" type="danger" plain @click="handleBatchDelete">批量删除</el-button>
-    </div>
+      <el-button v-if="isAdmin" type="primary" @click="openCreate(null)">新增类目</el-button>
+    </PageHeader>
     <el-card shadow="never">
       <el-tree ref="treeRef" :data="treeData" node-key="id" :props="{ children: 'children', label: 'name' }" default-expand-all show-checkbox>
         <template #default="{ data }">
@@ -106,6 +109,15 @@ async function handleBatchDelete() {
               <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(data)">删除</el-button>
             </span>
           </div>
+        </template>
+        <template #empty>
+          <EmptyState
+            title="还没有类目"
+            description="新增类目后可在此管理产品分类层级"
+            :action-text="isAdmin ? '新增类目' : ''"
+            :icon="PhFolderOpen"
+            @action="openCreate(null)"
+          />
         </template>
       </el-tree>
     </el-card>
@@ -133,9 +145,6 @@ async function handleBatchDelete() {
 </template>
 
 <style scoped>
-.toolbar {
-  margin-bottom: 12px;
-}
 .tree-node {
   flex: 1;
   display: flex;
