@@ -176,3 +176,28 @@ describe('排版与细节', () => {
     expect(token('van-tabbar-height')).toBe('52px')
   })
 })
+
+describe('硬编码色清理（第一批）', () => {
+  const read = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8')
+
+  it('Login.vue 不再有旧蓝色渐变', () => {
+    const sfc = read('../views/Login.vue')
+    expect(sfc).not.toContain('#1e3a8a')
+    expect(sfc).not.toContain('#2563eb')
+    expect(sfc).toContain('var(--canvas)')
+    expect(sfc).toContain('var(--lime-tint)')
+  })
+
+  it('MobileHome.vue banner 不再用 Vant 旧蓝', () => {
+    const sfc = read('../views/m/MobileHome.vue')
+    expect(sfc).not.toContain('#1989fa')
+    expect(sfc).toContain('var(--lime)')
+    expect(sfc).not.toContain('#323233')
+  })
+
+  it('favicon 换成 lime 方块', () => {
+    const svg = read('../../public/favicon.svg')
+    expect(svg).not.toContain('#863bff')
+    expect(svg).toContain('#CBF74E')
+  })
+})
