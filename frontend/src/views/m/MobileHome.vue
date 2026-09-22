@@ -48,9 +48,9 @@ onMounted(loadCounts)
 .banner {
   margin: 12px 16px;
   padding: 20px 16px;
-  border-radius: 12px;
-  color: #fff;
-  background: linear-gradient(135deg, #1989fa, #4b8ff5);
+  border-radius: var(--r-in);
+  color: var(--lime-ink);
+  background: linear-gradient(135deg, var(--lime), var(--lime-hover));
 }
 .banner-title {
   margin: 0;
@@ -60,21 +60,21 @@ onMounted(loadCounts)
 .banner-sub {
   margin: 6px 0 0;
   font-size: 13px;
-  opacity: 0.85;
+  opacity: 0.75;
 }
 .entries {
   margin: 0 16px;
-  border-radius: 12px;
+  border-radius: var(--r-in);
   overflow: hidden;
 }
 .entry-name {
   margin-top: 6px;
   font-size: 14px;
-  color: #323233;
+  color: var(--txt);
 }
 .entry-count {
   margin-top: 2px;
   font-size: 12px;
-  color: #969799;
+  color: var(--dim);
 }
 </style>

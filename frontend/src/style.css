@@ -8,8 +8,9 @@ body {
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'HarmonyOS Sans SC',
     'Microsoft YaHei', system-ui, sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  line-height: 1.65;
+  color: var(--txt);
+  background: var(--canvas);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -19,126 +20,241 @@ body {
 }
 
 /* ============================================================
- * 全局设计令牌（浅色专业企业风）
- * 主色深蓝 / 强调紫 / slate 中性字色 / 8px 圆角 / 柔阴影
+ * 全局设计令牌（浅色版 · 目标站设计语言转译）
+ * 规范见《风格重构/风格拆解清单.md》§1；颜色值由 designTokens.test.ts 锁定（含 AA 对比度）
+ * 双轨制：填充型强调用 --lime（配 --lime-ink 字），文字型强调用 --lime-text
  * ============================================================ */
 :root {
-  /* 品牌色 */
-  --brand-600: #2563eb;
-  --brand-500: #3b82f6;
-  --brand-700: #1d4ed8;
-  --brand-800: #1e3a8a;
-  --accent: #7c3aed;
+  /* 表面（off-white，禁纯白） */
+  --canvas: #f1f2f4;
+  --panel: #fcfcfd;
+  --panel2: #f5f6f8;
+  --panel3: #ecedf0;
 
-  /* 中性色 */
-  --text-900: #0f172a;
-  --text-700: #334155;
-  --text-500: #475569;
-  --text-400: #94a3b8;
-  --border: #e2e8f0;
-  --surface-muted: #f1f5f9;
-  --surface: #ffffff;
-  --bg-page: #f8fafc;
+  /* 边线 */
+  --line: rgba(17, 19, 23, 0.08);
+  --line2: rgba(17, 19, 23, 0.14);
 
-  /* 语义色 */
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --info: #64748b;
+  /* 文字 */
+  --txt: #17191e;
+  --mut: #5b616b;
+  --dim: #666c75;
 
-  /* 形状 */
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-pop: 0 6px 20px rgba(15, 23, 42, 0.1);
+  /* 强调（lime 家族，全站唯一强调色） */
+  --lime: #cbf74e;
+  --lime-ink: #15170a;
+  --lime-text: #5b7600;
+  --lime-hover: #bceb3a;
+  --lime-active: #addc28;
+  --lime-deep: #4a6100;
+  --lime-tint: rgba(163, 209, 26, 0.14);
+
+  /* 语义色（仅状态语义，禁装饰用途） */
+  --success: #17803d;
+  --warning: #c2410c;
+  --danger: #c0352b;
+  --info: #1d4ed8;
+  --success-tint: rgba(23, 128, 61, 0.12);
+  --warning-tint: rgba(194, 65, 12, 0.12);
+  --danger-tint: rgba(192, 53, 43, 0.12);
+  --info-tint: rgba(29, 78, 216, 0.1);
+
+  /* 阴影（带底色调，禁纯黑） */
+  --shadow-card: 0 1px 2px rgba(20, 24, 32, 0.05), 0 1px 3px rgba(20, 24, 32, 0.04);
+  --shadow-pop: 0 12px 32px -8px rgba(20, 24, 32, 0.14);
+  --shadow-overlay: 0 24px 64px -12px rgba(20, 24, 32, 0.22);
+
+  /* 圆角（形状一致性：容器大、内部小） */
+  --r-frame: 32px;
+  --r-card: 24px;
+  --r-in: 16px;
+  --r-nav: 14px;
+  --r-ctl: 12px;
+  --r-sm: 10px;
+
+  /* 缓动（唯一曲线） */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---- 兼容别名：旧令牌名指向新值；真实引用仅 MainLayout.vue（9 处）+ MobileLayout.vue（1 处）
+        共 2 文件 10 处——全站换肤靠 EP/Vant 变量映射而非这些别名；M6 收尾时清理 ---- */
+  --brand-600: var(--lime-text);
+  --brand-500: var(--lime-text);
+  --brand-700: var(--lime-text);
+  --brand-800: var(--txt);
+  --accent: var(--info);
+  --text-900: var(--txt);
+  --text-700: var(--txt);
+  --text-500: var(--mut);
+  --text-400: var(--dim);
+  --border: var(--line);
+  --surface-muted: var(--panel2);
+  --surface: var(--panel);
+  --bg-page: var(--canvas);
+  --radius-sm: var(--r-ctl);
+  --radius: var(--r-in);
+  --radius-lg: var(--r-card);
+}
+
+/* 排版工具：标题防孤字 / 数字等宽（表格、金额、KPI 必套 .num） */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+/* 可达性：全局可见 focus 环（规范 §6 强制项，勿删） */
+:focus-visible {
+  outline: 2px solid var(--lime-text);
+  outline-offset: 2px;
 }
 
 /* ============================================================
- * Element Plus 主题覆盖
+ * Element Plus 主题覆盖（浅色版）
+ * primary 双轨制：文字型用法 = --lime-text（可读）；按钮填充单独覆盖为 --lime + ink 字
  * ============================================================ */
 :root {
-  --el-color-primary: var(--brand-600);
-  --el-color-primary-light-3: #6a8bf0;
-  --el-color-primary-light-5: #92b1f5;
-  --el-color-primary-light-7: #bfd2fa;
-  --el-color-primary-light-8: #d5e0fc;
-  --el-color-primary-light-9: #eaf0fe;
-  --el-color-primary-dark-2: var(--brand-700);
+  --el-color-primary: var(--lime-text);
+  --el-color-primary-light-3: #7c9a1f;
+  --el-color-primary-light-5: #a8be66;
+  --el-color-primary-light-7: #d3e0b0;
+  --el-color-primary-light-8: #e5edd0;
+  --el-color-primary-light-9: #f2f6e6;
+  --el-color-primary-dark-2: var(--lime-deep);
   --el-color-success: var(--success);
   --el-color-warning: var(--warning);
   --el-color-danger: var(--danger);
   --el-color-error: var(--danger);
   --el-color-info: var(--info);
-  --el-border-radius-base: var(--radius-sm);
-  --el-border-radius-small: 4px;
-  --el-border-radius-round: 20px;
-  --el-border-color: var(--border);
-  --el-border-color-light: #eaeef3;
-  --el-border-color-lighter: #eef2f6;
-  --el-text-color-primary: var(--text-900);
-  --el-text-color-regular: var(--text-500);
-  --el-text-color-secondary: var(--text-400);
-  --el-fill-color-light: var(--surface-muted);
-  --el-fill-color-lighter: #f6f8fa;
-  --el-bg-color: var(--surface);
-  --el-bg-color-page: var(--bg-page);
+
+  --el-bg-color: var(--panel);
+  --el-bg-color-page: var(--canvas);
+  --el-bg-color-overlay: var(--panel);
+  --el-fill-color: var(--panel2);
+  --el-fill-color-light: var(--panel2);
+  --el-fill-color-lighter: var(--panel2);
+  --el-fill-color-blank: var(--panel);
+
+  --el-text-color-primary: var(--txt);
+  --el-text-color-regular: var(--mut);
+  --el-text-color-secondary: var(--mut);
+  --el-text-color-placeholder: var(--dim);
+
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-color-hover: var(--line2);
+
+  --el-input-bg-color: var(--panel2);
+  --el-input-border-color: var(--line2);
+  --el-input-hover-border-color: var(--line2);
+  --el-input-focus-border-color: var(--lime-text);
+  --el-input-text-color: var(--txt);
+  --el-input-placeholder-color: var(--dim);
+
+  --el-border-radius-base: var(--r-ctl);
+  --el-border-radius-small: var(--r-sm);
+  --el-border-radius-round: 999px;
   --el-box-shadow: var(--shadow-pop);
+  --el-box-shadow-light: var(--shadow-card);
+  --el-box-shadow-dark: var(--shadow-overlay);
   --el-font-family: inherit;
+  --el-font-size-base: 13px;
+  --el-message-bg-color: var(--panel);
+  --el-message-border-color: var(--line2);
+  --el-message-text-color: var(--txt);
+}
+
+/* 主按钮填充 = lime + ink（唯一允许的 primary 填充覆盖，规范 §8.1） */
+.el-button--primary {
+  --el-button-bg-color: var(--lime);
+  --el-button-border-color: var(--lime);
+  --el-button-text-color: var(--lime-ink);
+  --el-button-hover-bg-color: var(--lime-hover);
+  --el-button-hover-border-color: var(--lime-hover);
+  --el-button-hover-text-color: var(--lime-ink);
+  --el-button-active-bg-color: var(--lime-active);
+  --el-button-active-border-color: var(--lime-active);
+  --el-button-active-text-color: var(--lime-ink);
+  --el-button-disabled-bg-color: var(--panel3);
+  --el-button-disabled-border-color: var(--panel3);
+  --el-button-disabled-text-color: var(--dim);
 }
 
 /* 卡片 */
 .el-card {
-  border-radius: var(--radius);
-  border-color: var(--border);
+  border-radius: var(--r-card);
+  border-color: var(--line);
   box-shadow: var(--shadow-card);
 }
 .el-card__header {
   font-weight: 600;
-  color: var(--text-900);
-  border-bottom: 1px solid var(--border);
+  color: var(--txt);
+  border-bottom: 1px solid var(--line);
 }
 
 /* 表格 */
 .el-table {
-  --el-table-header-bg-color: #f8fafc;
-  --el-table-border-color: var(--border);
-  --el-table-row-hover-bg-color: #f1f5f9;
-  --el-table-header-text-color: var(--text-500);
-  border-radius: var(--radius-sm);
+  --el-table-bg-color: var(--panel);
+  --el-table-tr-bg-color: var(--panel);
+  --el-table-header-bg-color: var(--panel2);
+  --el-table-border-color: var(--line);
+  --el-table-row-hover-bg-color: var(--panel2);
+  --el-table-header-text-color: var(--mut);
+  --el-table-text-color: var(--txt);
+  border-radius: var(--r-card);
 }
 .el-table th.el-table__cell {
   font-weight: 600;
-  color: var(--text-500);
-  font-size: 13px;
+  color: var(--mut);
+  font-size: 12.5px;
 }
 .el-table .el-table__cell {
-  padding: 10px 0;
+  padding: 8px 0;
 }
 
 /* 按钮 / 输入 / 分页（统一圆角） */
 .el-button {
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-ctl);
+  /* EP 用 --el-button-outline-color 画 focus-visible 环（默认 primary-light-5，对 --panel 仅 2:1 不达 3:1）。
+     必须在 .el-button 作用域直接覆盖：自定义属性"直接声明优先于继承"，写 :root 会被 EP 的直接声明压过 */
+  --el-button-outline-color: var(--lime-text);
+}
+.el-button:focus-visible {
+  outline-offset: 2px;
 }
 .el-input__wrapper,
 .el-select__wrapper,
 .el-textarea__inner {
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-ctl);
+}
+/* 输入聚焦几何：全局 focus 环不能落在 EP 内层原生 input 上（比字段窄又比字段高，且 EP 已对内层写
+   outline:none）。关掉内层环，由 wrapper focus-within 承担（规范 §5：边线 lime-text + 3px lime-tint 外环）；
+   select 同构（.el-select__wrapper + 内层 .el-select__input），一并处理 */
+.el-input__inner:focus-visible,
+.el-select__input:focus-visible {
+  outline: none;
+}
+.el-input__wrapper:focus-within,
+.el-select__wrapper:focus-within {
+  box-shadow: 0 0 0 1px var(--lime-text) inset, 0 0 0 3px var(--lime-tint);
 }
 .el-pagination {
-  --el-pagination-button-bg-color: var(--surface);
+  --el-pagination-button-bg-color: var(--panel);
 }
 .el-pagination.is-background .el-pager li {
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
 }
 
 /* 表单标签 */
 .el-form-item__label {
-  color: var(--text-700);
+  color: var(--txt);
   font-weight: 500;
 }
 
-/* 侧边栏菜单（MainLayout 内） */
+/* 侧边栏菜单（MainLayout 内；M3 壳层重构前的过渡态） */
 .el-menu {
   border-right: none;
 }
@@ -147,38 +263,44 @@ body {
 }
 .el-menu-item,
 .el-sub-menu__title {
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
   margin: 2px 10px;
-  color: var(--text-500);
+  color: var(--mut);
 }
 .el-menu-item:hover,
 .el-sub-menu__title:hover {
-  background: var(--brand-600);
-  color: #fff;
+  background: var(--panel2);
+  color: var(--txt);
 }
 .el-menu-item.is-active {
-  background: var(--brand-600) !important;
-  color: #fff !important;
+  background: var(--panel3) !important;
+  color: var(--lime-deep) !important;
   font-weight: 500;
 }
 
 /* ============================================================
- * Vant 主题覆盖
+ * Vant 主题覆盖（浅色版；完整移动端调校在 M5）
  * ============================================================ */
 :root {
-  --van-primary-color: var(--brand-600);
+  --van-primary-color: var(--lime-text);
   --van-success-color: var(--success);
   --van-danger-color: var(--danger);
   --van-warning-color: var(--warning);
-  --van-background: var(--bg-page);
-  --van-background-2: var(--surface);
-  --van-text-color: var(--text-900);
-  --van-text-color-2: var(--text-500);
-  --van-text-color-3: var(--text-400);
-  --van-border-color: var(--border);
-  --van-radius-md: var(--radius-sm);
-  --van-radius-lg: var(--radius);
+  --van-background: var(--canvas);
+  --van-background-2: var(--panel);
+  --van-text-color: var(--txt);
+  --van-text-color-2: var(--mut);
+  --van-text-color-3: var(--dim);
+  --van-border-color: var(--line);
+  --van-radius-md: var(--r-ctl);
+  --van-radius-lg: var(--r-in);
   --van-tabbar-height: 52px;
+}
+/* Vant 主按钮同样走 lime 填充 + ink 字（与 EP 双轨制一致） */
+:root {
+  --van-button-primary-background: var(--lime);
+  --van-button-primary-border-color: var(--lime);
+  --van-button-primary-color: var(--lime-ink);
 }
 
 /* ============================================================
@@ -210,23 +332,23 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #c9cdd3;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a8adb5;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
 ::selection {
-  background: var(--brand-600);
-  color: #fff;
+  background: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* ============================================================
- * 全局 Toast 统一样式：居中 + 白底黑字（类似 alert）+ 遮罩
+ * 全局 Toast 统一样式：居中 + 浅色卡底（--panel）+ 近黑字（--txt）+ 遮罩
  * 覆盖 Element Plus 的 ElMessage 与 Vant 的 toast
  * ============================================================ */
 
@@ -234,7 +356,9 @@ body {
 .global-toast-mask {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(23, 25, 30, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 2400;
   pointer-events: auto;
 }
@@ -246,10 +370,11 @@ body {
   left: 50% !important;
   right: auto !important;
   transform: translate(-50%, -50%) !important;
-  background: #fff !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text-900) !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  background: var(--panel) !important;
+  border: 1px solid var(--line2) !important;
+  color: var(--txt) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  border-radius: var(--r-card) !important;
   padding: 12px 20px !important;
   z-index: 2500 !important;
 }
@@ -260,10 +385,10 @@ body {
 
 /* Vant toast：白底黑字（Vant 默认已居中） */
 .van-toast {
-  background: #fff !important;
-  color: var(--text-900) !important;
+  background: var(--panel) !important;
+  color: var(--txt) !important;
   border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  box-shadow: var(--shadow-overlay) !important;
   z-index: 2500 !important;
 }
 .van-toast .van-toast__text {
