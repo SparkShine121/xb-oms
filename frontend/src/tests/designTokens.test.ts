@@ -67,6 +67,25 @@ describe('设计令牌（浅色版）', () => {
     expect(contrast(token('success'), panel)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(token('warning'), panel)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(token('danger'), panel)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(token('dim'), token('panel3'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('语义 tint 与其余兼容别名锁定', () => {
+    expect(token('success-tint')).toBe('rgba(23, 128, 61, 0.12)')
+    expect(token('warning-tint')).toBe('rgba(194, 65, 12, 0.12)')
+    expect(token('danger-tint')).toBe('rgba(192, 53, 43, 0.12)')
+    expect(token('info-tint')).toBe('rgba(29, 78, 216, 0.1)')
+    expect(token('brand-500')).toBe('var(--lime-text)')
+    expect(token('brand-700')).toBe('var(--lime-text)')
+    expect(token('brand-800')).toBe('var(--txt)')
+    expect(token('accent')).toBe('var(--info)')
+    expect(token('text-700')).toBe('var(--txt)')
+    expect(token('text-500')).toBe('var(--mut)')
+    expect(token('text-400')).toBe('var(--dim)')
+    expect(token('surface-muted')).toBe('var(--panel2)')
+    expect(token('radius-sm')).toBe('var(--r-ctl)')
+    expect(token('radius')).toBe('var(--r-in)')
+    expect(token('radius-lg')).toBe('var(--r-card)')
   })
 
   it('边线/圆角/阴影/缓动为规范值', () => {
@@ -85,7 +104,7 @@ describe('设计令牌（浅色版）', () => {
     expect(token('shadow-overlay')).toBe('0 24px 64px -12px rgba(20, 24, 32, 0.22)')
   })
 
-  it('旧令牌名保留为兼容别名（35 个页面依赖）', () => {
+  it('旧令牌名保留为兼容别名（仅 2 个布局文件仍引用，M6 清理）', () => {
     expect(token('brand-600')).toBe('var(--lime-text)')
     expect(token('text-900')).toBe('var(--txt)')
     expect(token('border')).toBe('var(--line)')
@@ -191,7 +210,7 @@ describe('硬编码色清理（第一批）', () => {
   it('MobileHome.vue banner 不再用 Vant 旧蓝', () => {
     const sfc = read('../views/m/MobileHome.vue')
     expect(sfc).not.toContain('#1989fa')
-    expect(sfc).toContain('var(--lime)')
+    expect(sfc).toContain('linear-gradient(135deg, var(--lime)')
     expect(sfc).not.toContain('#323233')
   })
 

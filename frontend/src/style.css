@@ -75,7 +75,8 @@ body {
   /* 缓动（唯一曲线） */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* ---- 兼容别名：旧令牌名指向新值，35 个页面自动换肤；M6 收尾时清理 ---- */
+  /* ---- 兼容别名：旧令牌名指向新值；真实引用仅 MainLayout.vue（9 处）+ MobileLayout.vue（1 处）
+        共 2 文件 10 处——全站换肤靠 EP/Vant 变量映射而非这些别名；M6 收尾时清理 ---- */
   --brand-600: var(--lime-text);
   --brand-500: var(--lime-text);
   --brand-700: var(--lime-text);
@@ -217,11 +218,28 @@ h3 {
 /* 按钮 / 输入 / 分页（统一圆角） */
 .el-button {
   border-radius: var(--r-ctl);
+  /* EP 用 --el-button-outline-color 画 focus-visible 环（默认 primary-light-5，对 --panel 仅 2:1 不达 3:1）。
+     必须在 .el-button 作用域直接覆盖：自定义属性"直接声明优先于继承"，写 :root 会被 EP 的直接声明压过 */
+  --el-button-outline-color: var(--lime-text);
+}
+.el-button:focus-visible {
+  outline-offset: 2px;
 }
 .el-input__wrapper,
 .el-select__wrapper,
 .el-textarea__inner {
   border-radius: var(--r-ctl);
+}
+/* 输入聚焦几何：全局 focus 环不能落在 EP 内层原生 input 上（比字段窄又比字段高，且 EP 已对内层写
+   outline:none）。关掉内层环，由 wrapper focus-within 承担（规范 §5：边线 lime-text + 3px lime-tint 外环）；
+   select 同构（.el-select__wrapper + 内层 .el-select__input），一并处理 */
+.el-input__inner:focus-visible,
+.el-select__input:focus-visible {
+  outline: none;
+}
+.el-input__wrapper:focus-within,
+.el-select__wrapper:focus-within {
+  box-shadow: 0 0 0 1px var(--lime-text) inset, 0 0 0 3px var(--lime-tint);
 }
 .el-pagination {
   --el-pagination-button-bg-color: var(--panel);
@@ -330,7 +348,7 @@ h3 {
 }
 
 /* ============================================================
- * 全局 Toast 统一样式：居中 + 白底黑字（类似 alert）+ 遮罩
+ * 全局 Toast 统一样式：居中 + 浅色卡底（--panel）+ 近黑字（--txt）+ 遮罩
  * 覆盖 Element Plus 的 ElMessage 与 Vant 的 toast
  * ============================================================ */
 
@@ -340,6 +358,7 @@ h3 {
   inset: 0;
   background: rgba(23, 25, 30, 0.42);
   backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 2400;
   pointer-events: auto;
 }
@@ -352,7 +371,7 @@ h3 {
   right: auto !important;
   transform: translate(-50%, -50%) !important;
   background: var(--panel) !important;
-  border: 1px solid var(--border) !important;
+  border: 1px solid var(--line2) !important;
   color: var(--txt) !important;
   box-shadow: var(--shadow-overlay) !important;
   border-radius: var(--r-card) !important;

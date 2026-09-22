@@ -50,7 +50,7 @@ onMounted(loadCounts)
   padding: 20px 16px;
   border-radius: var(--r-in);
   color: var(--lime-ink);
-  background: linear-gradient(135deg, var(--lime), #d9fa7a);
+  background: linear-gradient(135deg, var(--lime), var(--lime-hover));
 }
 .banner-title {
   margin: 0;
