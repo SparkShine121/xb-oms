@@ -2,7 +2,7 @@ import pytest
 from datetime import date
 from django.contrib.auth.models import User
 from apps.basic_info.models import Customer
-from apps.orders.models import ExchangeRate
+from apps.orders.models import ExchangeRate, Order
 
 def test_customer_tracker(db):
     u = User.objects.create_user('tracker1', password='pw123456')
@@ -35,3 +35,25 @@ def test_order_with_items_profit(db, rate):
     item = o.items.first()
     assert str(item.profit_usd) == '0.00'
     assert str(item.profit_rate) == '0.0000'
+# ---- BUG-SIM-011: 无适用汇率时回退最近汇率 ----
+
+def test_profit_falls_back_to_latest_rate(db):
+    """订单日期早于最早汇率 → 回退全库最近一条折算（不再按 1:1 错账）"""
+    from datetime import date as d
+    from apps.orders.models import OrderItem, calc_order_profit
+    ExchangeRate.objects.create(currency_pair='USD/CNY', rate='7.2', effective_date=d(2026, 1, 1))
+    o = Order.objects.create(order_no='O11', order_date=d(2025, 1, 1))
+    OrderItem.objects.create(order=o, qty=100, unit_price='10', subtotal='1000', cost_price='7.2')
+    calc_order_profit(o)
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '900.00'  # 1000 - 7.2*100/7.2（错账时为 280）
+
+def test_profit_no_rate_at_all_unchanged(db):
+    """回归锁：库中完全无汇率时维持 1:1 兜底（无可参照值）"""
+    from datetime import date as d
+    from apps.orders.models import OrderItem, calc_order_profit
+    o = Order.objects.create(order_no='O11B', order_date=d(2025, 1, 1))
+    OrderItem.objects.create(order=o, qty=100, unit_price='10', subtotal='1000', cost_price='7.2')
+    calc_order_profit(o)
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '280.00'
