@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { PhTray } from '@phosphor-icons/vue'
 import PageHeader from '../components/PageHeader.vue'
+import SearchToolbar from '../components/SearchToolbar.vue'
 
 describe('Phosphor 图标', () => {
   it('能渲染为 svg 且接受 size/weight', () => {
@@ -26,5 +27,15 @@ describe('PageHeader', () => {
   it('无 sub 时不渲染说明', () => {
     const w = mount(PageHeader, { props: { title: '订单列表' } })
     expect(w.find('.ph-sub').exists()).toBe(false)
+  })
+})
+
+describe('SearchToolbar', () => {
+  it('渲染筛选与操作两个槽', () => {
+    const w = mount(SearchToolbar, {
+      slots: { filters: '<input class="f" />', actions: '<button class="a">查询</button>' },
+    })
+    expect(w.find('.st-filters .f').exists()).toBe(true)
+    expect(w.find('.st-actions .a').exists()).toBe(true)
   })
 })
