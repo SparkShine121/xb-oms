@@ -1,9 +1,16 @@
 // 组件层测试：需要真实 DOM（jsdom），不使用 node 环境
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { PhTray } from '@phosphor-icons/vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchToolbar from '../components/SearchToolbar.vue'
+import EmptyState from '../components/EmptyState.vue'
+
+// el-button 由 unplugin-vue-components 自动引入，附带样式入口 element-plus/es/components/*/style/css；
+// 入口位于 node_modules 会被 vitest 外部化，其内部再 import theme-chalk CSS 时 Node 无法加载 .css
+// → mock 掉样式入口本身（不改 vite.config）
+vi.mock('element-plus/es/components/base/style/css', () => ({}))
+vi.mock('element-plus/es/components/button/style/css', () => ({}))
 
 describe('Phosphor 图标', () => {
   it('能渲染为 svg 且接受 size/weight', () => {
@@ -37,5 +44,19 @@ describe('SearchToolbar', () => {
     })
     expect(w.find('.st-filters .f').exists()).toBe(true)
     expect(w.find('.st-actions .a').exists()).toBe(true)
+  })
+})
+
+describe('EmptyState', () => {
+  it('渲染标题与操作按钮，点击 emit action', async () => {
+    const w = mount(EmptyState, { props: { title: '还没有产品', actionText: '新增产品' } })
+    expect(w.find('.es-title').text()).toBe('还没有产品')
+    await w.find('button').trigger('click')
+    expect(w.emitted('action')).toHaveLength(1)
+  })
+
+  it('无 actionText 时不渲染按钮', () => {
+    const w = mount(EmptyState, { props: { title: '暂无数据' } })
+    expect(w.find('button').exists()).toBe(false)
   })
 })
