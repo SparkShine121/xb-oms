@@ -13,3 +13,13 @@ function makeStorage(): Storage {
 }
 if (typeof globalThis.localStorage === 'undefined') globalThis.localStorage = makeStorage()
 if (typeof globalThis.sessionStorage === 'undefined') globalThis.sessionStorage = makeStorage()
+
+// Element Plus 的 el-table 等组件依赖 ResizeObserver，jsdom 未实现 → 提供空实现
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+}
