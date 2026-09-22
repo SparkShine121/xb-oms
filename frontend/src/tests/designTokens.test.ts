@@ -135,3 +135,44 @@ describe('Element Plus 映射（浅色版）', () => {
     expect(token('el-input-focus-border-color')).toBe('var(--lime-text)')
   })
 })
+
+describe('排版与细节', () => {
+  it('基础排版：行高、.num 数字类、标题防孤字', () => {
+    expect(css).toMatch(/html,\s*body\s*\{[^}]*line-height:\s*1\.65/)
+    expect(css).toMatch(/\.num\s*\{[^}]*tabular-nums/)
+    expect(css).toMatch(/h1,\s*h2,\s*h3\s*\{[^}]*text-wrap:\s*balance/)
+  })
+
+  it('focus 可见环（可达性强制项）', () => {
+    expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--lime-text\)/)
+    expect(css).toMatch(/:focus-visible\s*\{[^}]*outline-offset:\s*2px/)
+  })
+
+  it('toast 保持 alert 交互（居中+遮罩），仅换配色', () => {
+    expect(css).toContain('top: 50% !important')
+    expect(css).toContain('.global-toast-mask')
+    expect(css).toMatch(/--el-message-bg-color:\s*var\(--panel\)/)
+    expect(css).not.toMatch(/\.el-message\s*\{[^}]*background:\s*#fff/)
+  })
+
+  it('侧栏菜单激活态用 lime-deep（M3 前保持可用）', () => {
+    const active = css.match(/\.el-menu-item\.is-active\s*\{([^}]+)\}/)?.[1] ?? ''
+    expect(active).toContain('var(--lime-deep)')
+    expect(css).not.toContain('var(--brand-600)')  // Task 3 后旧名零残留（别名定义处也不含该串）
+  })
+
+  it('深底强调对比度：lime-deep 对 panel3 达 AA', () => {
+    expect(contrast(token('lime-deep'), token('panel3'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('Vant 映射：primary 深橄榄 + 表面令牌 + 按钮 lime 填充', () => {
+    expect(token('van-primary-color')).toBe('var(--lime-text)')
+    expect(token('van-background')).toBe('var(--canvas)')
+    expect(token('van-background-2')).toBe('var(--panel)')
+    expect(token('van-text-color')).toBe('var(--txt)')
+    expect(token('van-border-color')).toBe('var(--line)')
+    expect(token('van-button-primary-background')).toBe('var(--lime)')
+    expect(token('van-button-primary-color')).toBe('var(--lime-ink)')
+    expect(token('van-tabbar-height')).toBe('52px')
+  })
+})

@@ -8,8 +8,9 @@ body {
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'HarmonyOS Sans SC',
     'Microsoft YaHei', system-ui, sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  line-height: 1.65;
+  color: var(--txt);
+  background: var(--canvas);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -93,6 +94,22 @@ body {
   --radius-lg: var(--r-card);
 }
 
+/* 排版工具：标题防孤字 / 数字等宽（表格、金额、KPI 必套 .num） */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+/* 可达性：全局可见 focus 环（规范 §6 强制项，勿删） */
+:focus-visible {
+  outline: 2px solid var(--lime-text);
+  outline-offset: 2px;
+}
+
 /* ============================================================
  * Element Plus 主题覆盖（浅色版）
  * primary 双轨制：文字型用法 = --lime-text（可读）；按钮填充单独覆盖为 --lime + ink 字
@@ -144,6 +161,9 @@ body {
   --el-box-shadow-dark: var(--shadow-overlay);
   --el-font-family: inherit;
   --el-font-size-base: 13px;
+  --el-message-bg-color: var(--panel);
+  --el-message-border-color: var(--line2);
+  --el-message-text-color: var(--txt);
 }
 
 /* 主按钮填充 = lime + ink（唯一允许的 primary 填充覆盖，规范 §8.1） */
@@ -216,7 +236,7 @@ body {
   font-weight: 500;
 }
 
-/* 侧边栏菜单（MainLayout 内） */
+/* 侧边栏菜单（MainLayout 内；M3 壳层重构前的过渡态） */
 .el-menu {
   border-right: none;
 }
@@ -225,38 +245,44 @@ body {
 }
 .el-menu-item,
 .el-sub-menu__title {
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
   margin: 2px 10px;
-  color: var(--text-500);
+  color: var(--mut);
 }
 .el-menu-item:hover,
 .el-sub-menu__title:hover {
-  background: var(--brand-600);
-  color: #fff;
+  background: var(--panel2);
+  color: var(--txt);
 }
 .el-menu-item.is-active {
-  background: var(--brand-600) !important;
-  color: #fff !important;
+  background: var(--panel3) !important;
+  color: var(--lime-deep) !important;
   font-weight: 500;
 }
 
 /* ============================================================
- * Vant 主题覆盖
+ * Vant 主题覆盖（浅色版；完整移动端调校在 M5）
  * ============================================================ */
 :root {
-  --van-primary-color: var(--brand-600);
+  --van-primary-color: var(--lime-text);
   --van-success-color: var(--success);
   --van-danger-color: var(--danger);
   --van-warning-color: var(--warning);
-  --van-background: var(--bg-page);
-  --van-background-2: var(--surface);
-  --van-text-color: var(--text-900);
-  --van-text-color-2: var(--text-500);
-  --van-text-color-3: var(--text-400);
-  --van-border-color: var(--border);
-  --van-radius-md: var(--radius-sm);
-  --van-radius-lg: var(--radius);
+  --van-background: var(--canvas);
+  --van-background-2: var(--panel);
+  --van-text-color: var(--txt);
+  --van-text-color-2: var(--mut);
+  --van-text-color-3: var(--dim);
+  --van-border-color: var(--line);
+  --van-radius-md: var(--r-ctl);
+  --van-radius-lg: var(--r-in);
   --van-tabbar-height: 52px;
+}
+/* Vant 主按钮同样走 lime 填充 + ink 字（与 EP 双轨制一致） */
+:root {
+  --van-button-primary-background: var(--lime);
+  --van-button-primary-border-color: var(--lime);
+  --van-button-primary-color: var(--lime-ink);
 }
 
 /* ============================================================
@@ -288,19 +314,19 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #c9cdd3;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a8adb5;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
 ::selection {
-  background: var(--brand-600);
-  color: #fff;
+  background: var(--lime);
+  color: var(--lime-ink);
 }
 
 /* ============================================================
@@ -312,7 +338,8 @@ body {
 .global-toast-mask {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(23, 25, 30, 0.42);
+  backdrop-filter: blur(3px);
   z-index: 2400;
   pointer-events: auto;
 }
@@ -324,10 +351,11 @@ body {
   left: 50% !important;
   right: auto !important;
   transform: translate(-50%, -50%) !important;
-  background: #fff !important;
+  background: var(--panel) !important;
   border: 1px solid var(--border) !important;
-  color: var(--text-900) !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  color: var(--txt) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  border-radius: var(--r-card) !important;
   padding: 12px 20px !important;
   z-index: 2500 !important;
 }
@@ -338,10 +366,10 @@ body {
 
 /* Vant toast：白底黑字（Vant 默认已居中） */
 .van-toast {
-  background: #fff !important;
-  color: var(--text-900) !important;
+  background: var(--panel) !important;
+  color: var(--txt) !important;
   border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18) !important;
+  box-shadow: var(--shadow-overlay) !important;
   z-index: 2500 !important;
 }
 .van-toast .van-toast__text {
