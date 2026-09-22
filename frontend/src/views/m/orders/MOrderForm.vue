@@ -134,10 +134,17 @@ function addItem() {
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
+  syncAmountFromItems() // BUG-SIM-017：删行联动
 }
 
 function calcSubtotal(row: any) {
   row.subtotal = (Number(row.qty) * Number(row.unit_price)) || 0
+  syncAmountFromItems() // BUG-SIM-017：数量/单价变化联动
+}
+
+// BUG-SIM-017：明细合计 → 订单金额（可手改；显式触发避免载入覆写导入语义）
+function syncAmountFromItems() {
+  form.amount_usd = Number(items.value.reduce((sum: number, it: any) => sum + (Number(it.subtotal) || 0), 0).toFixed(2))
 }
 
 function openDatePicker() {

@@ -57,3 +57,26 @@ def test_profit_no_rate_at_all_unchanged(db):
     calc_order_profit(o)
     o.refresh_from_db()
     assert str(o.order_profit_usd) == '280.00'
+
+def test_profit_fallback_prefers_latest_among_multiple(db):
+    """多条汇率时回退取最近一条"""
+    from datetime import date as d
+    from apps.orders.models import OrderItem, calc_order_profit
+    ExchangeRate.objects.create(currency_pair='USD/CNY', rate='7.0', effective_date=d(2026, 1, 1))
+    ExchangeRate.objects.create(currency_pair='USD/CNY', rate='7.2', effective_date=d(2026, 6, 1))
+    o = Order.objects.create(order_no='O11C')  # 无订单日期 → 全库最近一条
+    OrderItem.objects.create(order=o, qty=100, unit_price='10', subtotal='1000', cost_price='7.2')
+    calc_order_profit(o)
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '900.00'  # 用 7.2 而非 7.0
+
+def test_profit_ignores_other_currency_pairs(db):
+    """非 USD/CNY 币对记录不参与毛利折算"""
+    from datetime import date as d
+    from apps.orders.models import OrderItem, calc_order_profit
+    ExchangeRate.objects.create(currency_pair='EUR/CNY', rate='8.0', effective_date=d(2026, 1, 1))
+    o = Order.objects.create(order_no='O11D', order_date=d(2026, 3, 1))
+    OrderItem.objects.create(order=o, qty=100, unit_price='10', subtotal='1000', cost_price='7.2')
+    calc_order_profit(o)
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '280.00'  # 无 USD/CNY 汇率 → 维持 1:1 兜底（EUR 被过滤）

@@ -125,15 +125,16 @@ function addItem() {
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
-  syncAmountFromItems() // BUG-SIM-017：删行后金额联动
+  syncAmountFromItems() // BUG-SIM-017：删行联动
 }
 
 function calcSubtotal(row: any) {
   row.subtotal = Number(row.qty) * Number(row.unit_price) || 0
-  syncAmountFromItems() // BUG-SIM-017：明细小计变化联动回填订单金额（输入框仍可手改）
+  syncAmountFromItems() // BUG-SIM-017：数量/单价变化联动
 }
 
-// 明细合计 → 订单金额（仅交互层联动；后端/导入的订单金额权威语义不变）
+// BUG-SIM-017：明细合计 → 订单金额（可手改；显式触发而非深度 watch，
+// 避免 loadOrder 载入时覆写"订单金额≠明细和"的导入语义）
 function syncAmountFromItems() {
   form.amount_usd = Number(items.value.reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0).toFixed(2))
 }
@@ -369,7 +370,7 @@ onMounted(async () => {
         </el-table-column>
         <el-table-column label="小计(USD)" width="120">
           <template #default="{ row }">
-            <el-input-number v-model="row.subtotal" :controls="false" :precision="2" style="width: 100%" />
+            <el-input-number v-model="row.subtotal" :controls="false" :precision="2" style="width: 100%" @change="syncAmountFromItems" />
           </template>
         </el-table-column>
         <el-table-column label="成本价(CNY)" width="120">

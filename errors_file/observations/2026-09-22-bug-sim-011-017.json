@@ -1,0 +1,11 @@
+{
+  "task": "BUG-SIM-011/017 毛利折算与金额联动",
+  "date": "2026-09-22",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "coverage", "severity": "medium", "observation": "017 联动只落在 PC，移动端 MOrderForm 漏改", "suggestion": "已修：移动端同款联动"},
+    {"dimension": "interaction", "severity": "low", "observation": "小计直改不触发联动", "suggestion": "已修：PC 小计 @change；曾试深度 watch 因 loadOrder 覆写导入金额语义而改回显式触发"},
+    {"dimension": "robustness", "severity": "low", "observation": "汇率查询未按币对过滤，非 USD/CNY 记录可被误取", "suggestion": "已修：两处查询加 currency_pair 过滤"},
+    {"dimension": "staleness", "severity": "low", "observation": "补录历史汇率后既有订单毛利不刷新", "suggestion": "待办：汇率变更后批量重算（后续批次）"}
+  ]
+}
