@@ -69,9 +69,10 @@ Vue3 + Vite，按端分流：
 - **PC/平板**（`/`）：Element Plus，`views/basic_info/`、`views/orders/`、`views/tracking/`、`views/factory_payment/`、`views/system/`
 - **移动端**（`/m/`）：Vant，`views/m/`（基础信息只读 + 订单完整 + 跟单完整 + 工厂结算完整）
 - **API 封装**：`src/api/{request,auth,basicInfo,orders,tracking,factoryPayment}.ts`——`request.ts` 是 axios 实例（baseURL=/api、Bearer 注入、401 跳转、非 401 全局 ElMessage.error、返回 res.data）
-- **状态**：Pinia `stores/user.ts`（token/roles/username，localStorage 持久化）
+- **状态**：Pinia `stores/user.ts`（token/roles/username，**sessionStorage** 持久化——关标签页/新标签页需重新登录）
 - **路由**：`router/index.ts`，MainLayout（菜单）+ MobileLayout（tabbar），路由守卫登录校验
 - **测试**：`src/tests/*.test.ts`（首行 `// @vitest-environment node` + `vi.mock('element-plus')` 避免 ARM jsdom 慢）
+- **设计规范**：《风格重构/风格拆解清单.md》——浅色版令牌/组件/布局的**唯一依据**（改任何样式前先读；令牌值由 `src/tests/designTokens.test.ts` 锁定，改值必须同步改规范与测试）
 
 ### 关键模式
 
