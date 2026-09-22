@@ -6,6 +6,7 @@ import PageHeader from '../components/PageHeader.vue'
 import SearchToolbar from '../components/SearchToolbar.vue'
 import EmptyState from '../components/EmptyState.vue'
 import DataTable from '../components/DataTable.vue'
+import AppPagination from '../components/AppPagination.vue'
 
 // EP 自动引入的样式入口 element-plus/es/components/*/style/css：
 // node_modules 被 vitest 外部化后，入口内部再 import theme-chalk .css 时 Node 无法加载 → 统一 mock（不改 vite.config）
@@ -13,6 +14,7 @@ vi.mock('element-plus/es/components/base/style/css', () => ({}))
 vi.mock('element-plus/es/components/button/style/css', () => ({}))
 vi.mock('element-plus/es/components/loading/style/css', () => ({}))
 vi.mock('element-plus/es/components/table/style/css', () => ({}))
+vi.mock('element-plus/es/components/pagination/style/css', () => ({}))
 
 describe('Phosphor 图标', () => {
   it('能渲染为 svg 且接受 size/weight', () => {
@@ -78,5 +80,14 @@ describe('DataTable', () => {
     expect(w.find('.ft').exists()).toBe(true)
     expect(w.find('.el-table').exists()).toBe(true)
     expect(w.find('.el-table--border').exists()).toBe(true)
+  })
+})
+
+describe('AppPagination', () => {
+  it('翻页时 emit update:page 与 change', async () => {
+    const w = mount(AppPagination, { props: { page: 1, pageSize: 20, total: 100 } })
+    await w.find('.btn-next').trigger('click')
+    expect(w.emitted('update:page')?.[0]).toEqual([2])
+    expect(w.emitted('change')).toHaveLength(1)
   })
 })
