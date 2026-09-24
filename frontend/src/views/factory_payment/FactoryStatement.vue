@@ -4,6 +4,7 @@ import { listPayments, getStatement } from '../../api/factoryPayment'
 import { listFactories } from '../../api/basicInfo'
 import PageHeader from '../../components/PageHeader.vue'
 import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
 import { PhChartBar } from '@phosphor-icons/vue'
 
 function statusTagType(s: string) {
@@ -142,16 +143,7 @@ onMounted(() => { loadFactories(); load() })
       </el-table-column>
 
       <template #footer>
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          class="pager"
-          @current-change="load"
-          @size-change="query"
-        />
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
       </template>
     </DataTable>
   </div>
@@ -194,10 +186,6 @@ onMounted(() => { loadFactories(); load() })
 }
 .summary-value.unpaid {
   color: var(--el-color-danger);
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .action-link {
   color: var(--el-color-primary);
