@@ -5,6 +5,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { listShipments, deleteShipment, bulkDeleteShipments } from '../../api/logistics'
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhTruck } from '@phosphor-icons/vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -86,82 +91,78 @@ onMounted(load)
 
 <template>
   <div class="logistics-list">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-input
-          v-model="search"
-          placeholder="搜索物流单号 / 订单号"
-          clearable
-          style="width: 220px"
-          @keyup.enter="query"
-          @clear="query"
-        />
-        <el-select v-model="payerFilter" clearable placeholder="费用归属" style="width: 130px" @change="query">
-          <el-option v-for="o in PAYER_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-        <el-select v-model="currencyFilter" clearable placeholder="币种" style="width: 110px" @change="query">
-          <el-option v-for="c in CURRENCY_OPTIONS" :key="c" :label="c" :value="c" />
-        </el-select>
-        <el-button type="primary" @click="query">查询</el-button>
-        <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-      </div>
+    <PageHeader title="发货单" :sub="`共 ${total} 条`" />
 
-      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column label="订单号" min-width="140">
-          <template #default="{ row }">
-            <router-link :to="`/orders/${row.order}`" class="order-link">{{ row.order_no }}</router-link>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="还没有发货单"
+      :empty-icon="PhTruck"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-input
+              v-model="search"
+              placeholder="搜索物流单号 / 订单号"
+              clearable
+              style="width: 220px"
+              @keyup.enter="query"
+              @clear="query"
+            />
+            <el-select v-model="payerFilter" clearable placeholder="费用归属" style="width: 130px" @change="query">
+              <el-option v-for="o in PAYER_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+            <el-select v-model="currencyFilter" clearable placeholder="币种" style="width: 110px" @change="query">
+              <el-option v-for="c in CURRENCY_OPTIONS" :key="c" :label="c" :value="c" />
+            </el-select>
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-        <el-table-column prop="seq" label="批次" width="70" align="center" />
-        <el-table-column prop="carrier_name" label="国内承运商" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="intl_name" label="国际物流" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="tracking_no" label="物流单号" min-width="150" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.tracking_no || '—' }}</template>
-        </el-table-column>
-        <el-table-column label="费用" width="110" align="right">
-          <template #default="{ row }">{{ fmtMoney(row.cost) }}</template>
-        </el-table-column>
-        <el-table-column prop="cost_currency" label="币种" width="70" align="center" />
-        <el-table-column label="归属" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag :type="payerTagType(row.payer)" size="small">{{ payerLabel(row.payer) }}</el-tag>
+          <template #actions>
+            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="canEdit" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
-            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </SearchToolbar>
+      </template>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="query"
-      />
-    </el-card>
+      <el-table-column type="selection" width="48" />
+      <el-table-column label="订单号" min-width="140">
+        <template #default="{ row }">
+          <router-link :to="`/orders/${row.order}`" class="order-link">{{ row.order_no }}</router-link>
+        </template>
+      </el-table-column>
+      <el-table-column prop="seq" label="批次" width="70" align="center" />
+      <el-table-column prop="carrier_name" label="国内承运商" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="intl_name" label="国际物流" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="tracking_no" label="物流单号" min-width="150" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.tracking_no || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="费用" width="110" align="right">
+        <template #default="{ row }">{{ fmtMoney(row.cost) }}</template>
+      </el-table-column>
+      <el-table-column prop="cost_currency" label="币种" width="70" align="center" />
+      <el-table-column label="归属" width="80" align="center">
+        <template #default="{ row }">
+          <el-tag :type="payerTagType(row.payer)" size="small">{{ payerLabel(row.payer) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="130" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="canEdit" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
+          <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
-}
 .order-link {
   color: var(--el-color-primary);
   text-decoration: none;
