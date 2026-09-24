@@ -3,6 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listApprovals, approveRequest, rejectRequest } from '../../api/systemMgmt'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhListChecks } from '@phosphor-icons/vue'
 
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.roles.includes('admin'))
@@ -83,80 +88,71 @@ async function doReject(row: any) {
   load()
 }
 
-function onPageChange(p: number) {
-  page.value = p
-  load()
-}
-
 onMounted(load)
 </script>
 
 <template>
   <div class="approval-list">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-select v-model="typeFilter" clearable placeholder="类型" style="width: 150px" @change="query">
-          <el-option v-for="o in TYPE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-        <el-select v-model="statusFilter" clearable placeholder="状态" style="width: 130px" @change="query">
-          <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-        <el-button type="primary" @click="query">查询</el-button>
-      </div>
+    <PageHeader title="待审批" />
 
-      <el-table v-loading="loading" :data="rows" border stripe>
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column label="类型" width="110">
-          <template #default="{ row }">{{ typeLabel(row.approval_type) }}</template>
-        </el-table-column>
-        <el-table-column label="目标对象" min-width="150">
-          <template #default="{ row }">{{ row.target_model }} #{{ row.target_id }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="没有待审批项"
+      :empty-icon="PhListChecks"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-select v-model="typeFilter" clearable placeholder="类型" style="width: 150px" @change="query">
+              <el-option v-for="o in TYPE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+            <el-select v-model="statusFilter" clearable placeholder="状态" style="width: 130px" @change="query">
+              <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-        <el-table-column prop="submitted_by_name" label="提交人" width="110" />
-        <el-table-column prop="reviewed_by_name" label="审批人" width="110" />
-        <el-table-column prop="note" label="备注" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="created_at" label="申请时间" min-width="170">
-          <template #default="{ row }">{{ row.created_at?.slice(0, 19).replace('T', ' ') }}</template>
-        </el-table-column>
-        <el-table-column v-if="isAdmin" label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <template v-if="row.status === 'pending'">
-              <el-button link type="success" size="small" @click="doApprove(row)">通过</el-button>
-              <el-button link type="danger" size="small" @click="doReject(row)">驳回</el-button>
-            </template>
-            <span v-else class="done-text">已处理</span>
-          </template>
-        </el-table-column>
-      </el-table>
+        </SearchToolbar>
+      </template>
 
-      <div class="pager">
-        <el-pagination
-          background layout="total, prev, pager, next"
-          :total="total" :page-size="pageSize" :current-page="page"
-          @current-change="onPageChange"
-        />
-      </div>
-    </el-card>
+      <el-table-column prop="id" label="ID" width="70" />
+      <el-table-column label="类型" width="110">
+        <template #default="{ row }">{{ typeLabel(row.approval_type) }}</template>
+      </el-table-column>
+      <el-table-column label="目标对象" min-width="150">
+        <template #default="{ row }">{{ row.target_model }} #{{ row.target_id }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="submitted_by_name" label="提交人" width="110" />
+      <el-table-column prop="reviewed_by_name" label="审批人" width="110" />
+      <el-table-column prop="note" label="备注" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="created_at" label="申请时间" min-width="170">
+        <template #default="{ row }">{{ row.created_at?.slice(0, 19).replace('T', ' ') }}</template>
+      </el-table-column>
+      <el-table-column v-if="isAdmin" label="操作" width="150" fixed="right">
+        <template #default="{ row }">
+          <template v-if="row.status === 'pending'">
+            <el-button link type="success" size="small" @click="doApprove(row)">通过</el-button>
+            <el-button link type="danger" size="small" @click="doReject(row)">驳回</el-button>
+          </template>
+          <span v-else class="done-text">已处理</span>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.pager {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
-}
 .done-text {
   color: var(--el-text-color-secondary);
   font-size: 12px;
