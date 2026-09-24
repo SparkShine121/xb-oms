@@ -3,6 +3,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listUsers, createUser, updateUser, deleteUser, bulkDeleteUsers } from '../../api/auth'
 import { useBulkDelete } from '../../composables/useBulkDelete'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhUsersThree } from '@phosphor-icons/vue'
 
 interface UserItem {
   id: number
@@ -92,48 +97,53 @@ function roleLabel(name: string) {
   return ROLE_OPTIONS.find(r => r.name === name)?.label ?? name
 }
 
-function onPageChange(p: number) {
-  page.value = p
-  load()
-}
-
 onMounted(load)
 </script>
 
 <template>
   <div class="user-manage">
-    <div class="toolbar">
+    <PageHeader title="用户管理">
       <el-button type="primary" @click="openCreate">新增用户</el-button>
-      <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-    </div>
-    <el-card shadow="never">
-      <el-table :data="users" v-loading="loading" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="username" label="用户名" min-width="140" />
-        <el-table-column prop="email" label="邮箱" min-width="180" />
-        <el-table-column label="角色" min-width="200">
-          <template #default="{ row }">
-            <el-tag v-for="g in row.groups" :key="g" class="role-tag" size="small">{{ roleLabel(g) }}</el-tag>
-            <span v-if="!row.groups.length" class="no-role">无角色</span>
+    </PageHeader>
+
+    <DataTable
+      :loading="loading"
+      :data="users"
+      border
+      stripe
+      empty-title="还没有用户"
+      :empty-icon="PhUsersThree"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #actions>
+            <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-pagination
-        class="pager"
-        layout="total, prev, pager, next"
-        :total="total"
-        :page-size="pageSize"
-        :current-page="page"
-        @current-change="onPageChange"
-      />
-    </el-card>
+        </SearchToolbar>
+      </template>
+
+      <el-table-column type="selection" width="48" />
+      <el-table-column prop="id" label="ID" width="70" />
+      <el-table-column prop="username" label="用户名" min-width="140" />
+      <el-table-column prop="email" label="邮箱" min-width="180" />
+      <el-table-column label="角色" min-width="200">
+        <template #default="{ row }">
+          <el-tag v-for="g in row.groups" :key="g" class="role-tag" size="small">{{ roleLabel(g) }}</el-tag>
+          <span v-if="!row.groups.length" class="no-role">无角色</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑用户' : '新增用户'" width="440px">
       <el-form label-width="80px">
@@ -161,18 +171,11 @@ onMounted(load)
 </template>
 
 <style scoped>
-.toolbar {
-  margin-bottom: 12px;
-}
 .role-tag {
   margin-right: 6px;
 }
 .no-role {
   color: #909399;
   font-size: 13px;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 </style>
