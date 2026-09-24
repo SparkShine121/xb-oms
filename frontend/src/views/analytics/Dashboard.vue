@@ -189,7 +189,7 @@ function fmtMoney(v: number): string {
 
 <template>
   <div class="analytics-dashboard">
-    <div class="toolbar">
+    <div class="dashboard-filters">
       <h2>数据分析</h2>
       <el-select v-model="year" placeholder="全部年份" clearable style="width: 140px" @change="onYearChange">
         <el-option v-for="y in years" :key="y" :label="`${y} 年`" :value="y" />
@@ -256,13 +256,13 @@ function fmtMoney(v: number): string {
   padding: 16px;
   border-radius: 8px;
 }
-.toolbar {
+.dashboard-filters {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
-.toolbar h2 {
+.dashboard-filters h2 {
   margin: 0;
   font-size: 18px;
 }

@@ -93,7 +93,7 @@ onMounted(load)
       border
       stripe
       empty-title="还没有物流服务商"
-      empty-description="手动新增第一家物流服务商"
+      :empty-description="isAdmin ? '手动新增第一家物流服务商' : ''"
       :empty-action-text="isAdmin ? '新增物流商' : ''"
       :empty-icon="PhTruck"
       @empty-action="openCreate"

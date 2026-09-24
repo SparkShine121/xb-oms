@@ -105,7 +105,7 @@ onMounted(() => { loadSalesmen(); load() })
       border
       stripe
       empty-title="还没有客户"
-      empty-description="手动新增第一个客户"
+      :empty-description="isAdmin ? '手动新增第一个客户' : ''"
       :empty-action-text="isAdmin ? '新增客户' : ''"
       :empty-icon="PhUsersThree"
       @empty-action="openCreate"

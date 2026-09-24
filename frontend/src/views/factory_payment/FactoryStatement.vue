@@ -82,7 +82,7 @@ onMounted(() => { loadFactories(); load() })
       :empty-icon="PhChartBar"
     >
       <template #toolbar>
-        <div class="toolbar">
+        <div class="statement-filters">
           <el-select v-model="factoryFilter" clearable filterable placeholder="工厂" style="width: 200px" @change="query">
             <el-option v-for="f in factories" :key="f.id" :label="f.name" :value="f.id" />
           </el-select>
@@ -150,7 +150,7 @@ onMounted(() => { loadFactories(); load() })
 </template>
 
 <style scoped>
-.toolbar {
+.statement-filters {
   display: flex;
   align-items: center;
   gap: 8px;

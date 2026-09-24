@@ -1,5 +1,6 @@
 // 组件层测试：需要真实 DOM（jsdom），不使用 node 环境
 import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { PhTray } from '@phosphor-icons/vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -63,6 +64,11 @@ describe('EmptyState', () => {
     const w = mount(EmptyState, { props: { title: '暂无数据' } })
     expect(w.find('button').exists()).toBe(false)
   })
+
+  it("actionText 为空串（非 admin 的权限条件写法）时不渲染按钮", () => {
+    const w = mount(EmptyState, { props: { title: '还没有产品', actionText: '' } })
+    expect(w.find('button').exists()).toBe(false)
+  })
 })
 
 describe('DataTable', () => {
@@ -81,6 +87,11 @@ describe('DataTable', () => {
     expect(w.find('.el-table').exists()).toBe(true)
     expect(w.find('.el-table--border').exists()).toBe(true)
   })
+
+  it('data 真的透传到 el-table（非空数据渲染出对应行数）', () => {
+    const w = mount(DataTable, { props: { data: [{ id: 1 }, { id: 2 }, { id: 3 }] } })
+    expect(w.findAll('.el-table__row')).toHaveLength(3)
+  })
 })
 
 describe('AppPagination', () => {
@@ -88,6 +99,16 @@ describe('AppPagination', () => {
     const w = mount(AppPagination, { props: { page: 1, pageSize: 20, total: 100 } })
     await w.find('.btn-next').trigger('click')
     expect(w.emitted('update:page')?.[0]).toEqual([2])
+    expect(w.emitted('change')).toHaveLength(1)
+  })
+
+  it('改每页条数时页码归 1（update:page 载荷为 [1]）', async () => {
+    const w = mount(AppPagination, { props: { page: 3, pageSize: 10, total: 100 } })
+    const pager = w.findComponent({ name: 'ElPagination' })
+    pager.vm.$emit('size-change', 50)
+    await nextTick()
+    expect(w.emitted('update:pageSize')).toEqual([[50]])
+    expect(w.emitted('update:page')).toEqual([[1]])
     expect(w.emitted('change')).toHaveLength(1)
   })
 })

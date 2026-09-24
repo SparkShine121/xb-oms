@@ -120,7 +120,7 @@ onMounted(load)
       border
       stripe
       empty-title="还没有工厂"
-      empty-description="可以通过 Excel 批量导入，或手动新增第一家"
+      :empty-description="isAdmin ? '可以通过 Excel 批量导入，或手动新增第一家' : ''"
       :empty-action-text="isAdmin ? '新增工厂' : ''"
       :empty-icon="PhFactory"
       @empty-action="openCreate"

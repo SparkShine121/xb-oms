@@ -154,6 +154,7 @@ h3 {
   --el-input-text-color: var(--txt);
   --el-input-placeholder-color: var(--dim);
 
+  /* 等价于 --panel（#fcfcfd）加 72% alpha；designTokens.test.ts 锁定此字面量，改 --panel 时需同步 */
   --el-mask-color: rgba(252, 252, 253, 0.72);
   --el-disabled-bg-color: var(--panel3);
 
@@ -240,9 +241,13 @@ h3 {
 .el-select__input:focus-visible {
   outline: none;
 }
-/* 输入框聚焦：外环用高 specificity 压过 EP 的 .is-focus 规则（同 specificity 会因 EP 后注入而落败） */
+/* 输入框聚焦：外环用高 specificity 压过 EP 的 .is-focus 规则（同 specificity 会因 EP 后注入而落败）。
+   range 选择器（daterange 等）的根元素本身就是 .el-input__wrapper（无 .el-input 父节点），必须单独列出，
+   否则"聚焦但面板未展开"时完全失去聚焦指示 */
 .el-input .el-input__wrapper.is-focus,
-.el-input .el-input__wrapper:focus-within {
+.el-input .el-input__wrapper:focus-within,
+.el-range-editor.el-input__wrapper.is-focus,
+.el-range-editor.el-input__wrapper:focus-within {
   box-shadow: 0 0 0 1px var(--lime-text) inset, 0 0 0 3px var(--lime-tint);
 }
 .el-select .el-select__wrapper.is-focused,

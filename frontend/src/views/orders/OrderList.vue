@@ -192,7 +192,7 @@ onMounted(() => { loadUsers(); load() })
       border
       stripe
       empty-title="还没有订单"
-      empty-description="手动新建，或用 Excel 批量导入"
+      :empty-description="canCreate ? '手动新建，或用 Excel 批量导入' : ''"
       :empty-action-text="canCreate ? '新增订单' : ''"
       :empty-icon="PhReceipt"
       @empty-action="router.push('/orders/new')"

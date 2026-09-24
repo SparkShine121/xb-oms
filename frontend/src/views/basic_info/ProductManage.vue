@@ -165,7 +165,7 @@ onMounted(() => { loadCategories(); load() })
       border
       stripe
       empty-title="还没有产品"
-      empty-description="可以通过 Excel 批量导入，或手动新增第一条"
+      :empty-description="isAdmin ? '可以通过 Excel 批量导入，或手动新增第一条' : ''"
       :empty-action-text="isAdmin ? '新增产品' : ''"
       :empty-icon="PhPackage"
       @empty-action="openCreate"
