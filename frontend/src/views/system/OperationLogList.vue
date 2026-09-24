@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { listLogs } from '../../api/systemMgmt'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhClockCounterClockwise } from '@phosphor-icons/vue'
 
 const ACTION_OPTIONS = [
   { value: 'POST', label: '新增' },
@@ -52,69 +57,56 @@ function query() {
   load()
 }
 
-function onPageChange(p: number) {
-  page.value = p
-  load()
-}
-
 onMounted(load)
 </script>
 
 <template>
   <div class="operation-log-list">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-select v-model="actionFilter" clearable placeholder="操作类型" style="width: 130px" @change="query">
-          <el-option v-for="o in ACTION_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-        <el-input
-          v-model="search" clearable placeholder="搜索路径 / 用户名"
-          style="width: 220px" @keyup.enter="query" @clear="query"
-        />
-        <el-date-picker
-          v-model="dateRange" type="daterange" value-format="YYYY-MM-DD"
-          range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"
-          style="width: 260px" @change="query"
-        />
-        <el-button type="primary" @click="query">查询</el-button>
-      </div>
+    <PageHeader title="操作日志" />
 
-      <el-table v-loading="loading" :data="rows" border stripe>
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="created_at" label="时间" min-width="170">
-          <template #default="{ row }">{{ row.created_at?.slice(0, 19).replace('T', ' ') }}</template>
-        </el-table-column>
-        <el-table-column prop="username" label="用户" width="130" />
-        <el-table-column label="动作" width="110">
-          <template #default="{ row }">
-            <el-tag :type="actionTagType(row.action)" size="small">{{ actionLabel(row.action) }}</el-tag>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="暂无日志"
+      :empty-icon="PhClockCounterClockwise"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-select v-model="actionFilter" clearable placeholder="操作类型" style="width: 130px" @change="query">
+              <el-option v-for="o in ACTION_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+            <el-input
+              v-model="search" clearable placeholder="搜索路径 / 用户名"
+              style="width: 220px" @keyup.enter="query" @clear="query"
+            />
+            <el-date-picker
+              v-model="dateRange" type="daterange" value-format="YYYY-MM-DD"
+              range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期"
+              style="width: 260px" @change="query"
+            />
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-        <el-table-column prop="path" label="请求路径" min-width="280" show-overflow-tooltip />
-      </el-table>
+        </SearchToolbar>
+      </template>
 
-      <div class="pager">
-        <el-pagination
-          background layout="total, prev, pager, next"
-          :total="total" :page-size="pageSize" :current-page="page"
-          @current-change="onPageChange"
-        />
-      </div>
-    </el-card>
+      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="created_at" label="时间" min-width="170">
+        <template #default="{ row }">{{ row.created_at?.slice(0, 19).replace('T', ' ') }}</template>
+      </el-table-column>
+      <el-table-column prop="username" label="用户" width="130" />
+      <el-table-column label="动作" width="110">
+        <template #default="{ row }">
+          <el-tag :type="actionTagType(row.action)" size="small">{{ actionLabel(row.action) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="path" label="请求路径" min-width="280" show-overflow-tooltip />
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.pager {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
-}
-</style>
