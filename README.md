@@ -111,17 +111,18 @@ npm run dev                             # http://localhost:5173（Vite 代理 /a
 
 ```bash
 cd backend && python -m pytest -v        # 163 passed
-cd frontend && npx vitest run --test-timeout=30000   # 37 个测试全绿（ARM64 需加长超时）
+cd frontend && npx vitest run --test-timeout=30000   # 54 个测试全绿（ARM64 需加长超时）
 npm run build                            # 构建（vue-tsc 类型检查 + vite build）
 ```
 
 ## 当前状态
 
-全部 9 个模块开发完成：后端 163 个测试全绿、前端 37 个测试全绿、`npm run build` 通过。开发用 SQLite（ARM64 无原生 MySQL），生产部署计划用 MySQL 8 + Windows 绿色安装包（待部署阶段）。
+全部 9 个模块开发完成：后端 163 个测试全绿、前端 54 个测试全绿、`npm run build` 通过。开发用 SQLite（ARM64 无原生 MySQL），生产部署计划用 MySQL 8 + Windows 绿色安装包（待部署阶段）。
 
 近期 UI/UX 增强：
 
-- **浅色版设计系统（M1 已完成）**：按《风格重构/风格拆解清单.md》统一换肤——off-white 面板 + lime 三档强调色（填充 lime / 文字深橄榄）、圆角 12–32px 阶梯、带色阴影、13px 密集排版、focus 可见环；令牌与 WCAG AA 对比度由 `src/tests/designTokens.test.ts` 锁定。壳层/组件/移动端重构见 M2–M6
+- **浅色版设计系统（M1 已完成）**：按《风格重构/风格拆解清单.md》统一换肤——off-white 面板 + lime 三档强调色（填充 lime / 文字深橄榄）、圆角 12–32px 阶梯、带色阴影、13px 密集排版、focus 可见环；令牌与 WCAG AA 对比度由 `src/tests/designTokens.test.ts` 锁定
+- **公共组件层（M2 已完成）**：`src/components/` 五件套（PageHeader / SearchToolbar / DataTable / EmptyState / AppPagination）+ 15 个 PC 页面迁移到统一结构（页头 + 工具栏 + 表格容器 + 分页），删除各页复制的工具栏/分页样式；组合式空状态替代裸「暂无数据」；Element Plus 已配中文 locale。壳层/图表/移动端重构见 M3–M6
 - **登录体验优化**：登录失败弹居中 toast；token 改用 `sessionStorage`（关标签页/新标签页需重新登录）
 - **列表多选/全选 + 批量删除**：类目/产品/工厂/物流服务商/客户/订单/工厂结算/物流/用户 9 个列表支持多选与批量删除（后端 `BaseModelViewSet` 新增 `bulk-delete`，逐个做对象级权限校验）
 - **客户业务员指派限制**：客户仅能被指派给 **salesman 角色且非 admin** 的业务员（前端下拉过滤 + 后端校验，防止把客户派给管理员/跟单/财务）
