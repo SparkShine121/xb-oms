@@ -2,6 +2,10 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listMyOrders, advanceOrder, rejectOrder, getTimeline } from '../../api/tracking'
+import PageHeader from '../../components/PageHeader.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhListChecks } from '@phosphor-icons/vue'
 
 const STATUS_OPTIONS = ['接单', '排产', '生产中', '质检', '发货', '签收', '结算', '回款']
 
@@ -119,53 +123,53 @@ onMounted(load)
 
 <template>
   <div class="tracking-workbench">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-select v-model="statusFilter" clearable placeholder="跟踪状态" style="width: 140px" @change="query">
-          <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
-        </el-select>
-        <el-button type="primary" @click="query">查询</el-button>
-      </div>
+    <PageHeader title="跟单工作台" :sub="`共 ${total} 条`" />
 
-      <el-table v-loading="loading" :data="rows" border stripe>
-        <el-table-column label="订单号" min-width="150">
-          <template #default="{ row }">
-            <router-link :to="`/orders/${row.id}`" class="order-link">{{ row.order_no }}</router-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="customer_name" label="客户" min-width="140" show-overflow-tooltip />
-        <el-table-column label="跟踪状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.tracking_status)" size="small">{{ row.tracking_status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="当前节点停留" width="140">
-          <template #default="{ row }">{{ fmtStay(row.stay_seconds) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="row.can_advance" link type="primary" size="small" @click="openDrawer(row, 'advance')">
-              推进
-            </el-button>
-            <el-button v-if="row.can_reject" link type="warning" size="small" @click="openDrawer(row, 'reject')">
-              驳回
-            </el-button>
-            <el-button link type="info" size="small" @click="openTimeline(row)">时间线</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="tracking-toolbar">
+      <el-select v-model="statusFilter" clearable placeholder="跟踪状态" style="width: 140px" @change="query">
+        <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
+      </el-select>
+      <el-button type="primary" @click="query">查询</el-button>
+    </div>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="query"
-      />
-    </el-card>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="没有待处理的跟单"
+      :empty-icon="PhListChecks"
+    >
+      <el-table-column label="订单号" min-width="150">
+        <template #default="{ row }">
+          <router-link :to="`/orders/${row.id}`" class="order-link">{{ row.order_no }}</router-link>
+        </template>
+      </el-table-column>
+      <el-table-column prop="customer_name" label="客户" min-width="140" show-overflow-tooltip />
+      <el-table-column label="跟踪状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.tracking_status)" size="small">{{ row.tracking_status }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="当前节点停留" width="140">
+        <template #default="{ row }">{{ fmtStay(row.stay_seconds) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="200" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="row.can_advance" link type="primary" size="small" @click="openDrawer(row, 'advance')">
+            推进
+          </el-button>
+          <el-button v-if="row.can_reject" link type="warning" size="small" @click="openDrawer(row, 'reject')">
+            驳回
+          </el-button>
+          <el-button link type="info" size="small" @click="openTimeline(row)">时间线</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
 
     <!-- 推进 / 驳回抽屉 -->
     <el-drawer
@@ -242,15 +246,11 @@ onMounted(load)
 </template>
 
 <style scoped>
-.toolbar {
+.tracking-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .order-link {
   color: var(--el-color-primary);
