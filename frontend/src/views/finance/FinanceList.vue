@@ -5,6 +5,10 @@ import { ElMessage } from 'element-plus'
 import { listLedger, exportLedger } from '../../api/finance'
 import PaymentInForm from './PaymentInForm.vue'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import { PhReceipt } from '@phosphor-icons/vue'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -100,60 +104,63 @@ onMounted(() => {
 
 <template>
   <div class="finance-ledger">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-date-picker
-          v-model="dateRange"
-          type="daterange"
-          value-format="YYYY-MM-DD"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          style="width: 260px"
-          @change="query"
-        />
-        <el-select v-model="typeFilter" clearable placeholder="类型" style="width: 150px" @change="query">
-          <el-option v-for="o in TYPE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-        <el-button type="primary" @click="query">查询</el-button>
-        <el-button @click="doExport">导出 Excel</el-button>
-        <el-button v-if="canRegister" type="success" class="register-btn" @click="openRegister()">
-          登记回款
-        </el-button>
-      </div>
+    <PageHeader title="收支流水" />
 
-      <el-table v-loading="loading" :data="rows" border stripe>
-        <el-table-column prop="date" label="日期" width="120" />
-        <el-table-column label="类型" width="130">
-          <template #default="{ row }">
-            <el-tag :type="typeTagType(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="暂无流水记录"
+      :empty-icon="PhReceipt"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              value-format="YYYY-MM-DD"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 260px"
+              @change="query"
+            />
+            <el-select v-model="typeFilter" clearable placeholder="类型" style="width: 150px" @change="query">
+              <el-option v-for="o in TYPE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-        <el-table-column label="金额" width="120" align="right">
-          <template #default="{ row }">
-            <span :class="amountClass(row.amount)">{{ fmtMoney(row.amount) }}</span>
+          <template #actions>
+            <el-button @click="doExport">导出 Excel</el-button>
+            <el-button v-if="canRegister" type="success" @click="openRegister()">
+              登记回款
+            </el-button>
           </template>
-        </el-table-column>
-        <el-table-column prop="currency" label="币种" width="80" align="center" />
-        <el-table-column prop="description" label="说明" min-width="220" show-overflow-tooltip />
-      </el-table>
-    </el-card>
+        </SearchToolbar>
+      </template>
+
+      <el-table-column prop="date" label="日期" width="120" />
+      <el-table-column label="类型" width="130">
+        <template #default="{ row }">
+          <el-tag :type="typeTagType(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="金额" width="120" align="right">
+        <template #default="{ row }">
+          <span :class="amountClass(row.amount)">{{ fmtMoney(row.amount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="currency" label="币种" width="80" align="center" />
+      <el-table-column prop="description" label="说明" min-width="220" show-overflow-tooltip />
+    </DataTable>
 
     <PaymentInForm v-model="showForm" :preset-order-id="presetOrderId" @saved="load" />
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.register-btn {
-  margin-left: auto;
-}
 .amount-in {
   color: var(--el-color-success);
 }
