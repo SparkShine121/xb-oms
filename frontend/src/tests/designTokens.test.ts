@@ -220,3 +220,21 @@ describe('硬编码色清理（第一批）', () => {
     expect(svg).toContain('#CBF74E')
   })
 })
+
+describe('M2 全局 EP 微调', () => {
+  it('loading 遮罩与 disabled 底色走令牌', () => {
+    expect(token('el-mask-color')).toBe('rgba(252, 252, 253, 0.72)')
+    expect(token('el-disabled-bg-color')).toBe('var(--panel3)')
+  })
+
+  it('输入框聚焦外环用高 specificity 压过 EP 的 is-focus 规则', () => {
+    expect(css).toMatch(/\.el-input \.el-input__wrapper\.is-focus[\s\S]{0,200}?box-shadow:\s*0 0 0 1px var\(--lime-text\) inset,\s*0 0 0 3px var\(--lime-tint\)/)
+    expect(css).toMatch(/\.el-select \.el-select__wrapper\.is-focused[\s\S]{0,200}?box-shadow:\s*0 0 0 1px var\(--lime-text\) inset,\s*0 0 0 3px var\(--lime-tint\)/)
+  })
+
+  it('range 选择器（daterange 根元素即 .el-input__wrapper）不丢聚焦环', () => {
+    // daterange 的根元素本身就是 .el-input__wrapper（无 .el-input 父节点），必须单独列出
+    expect(css).toMatch(/\.el-range-editor\.el-input__wrapper\.is-focus[\s\S]{0,200}?box-shadow:\s*0 0 0 1px var\(--lime-text\) inset,\s*0 0 0 3px var\(--lime-tint\)/)
+    expect(css).toMatch(/\.el-range-editor\.el-input__wrapper:focus-within[\s\S]{0,200}?box-shadow:\s*0 0 0 1px var\(--lime-text\) inset,\s*0 0 0 3px var\(--lime-tint\)/)
+  })
+})

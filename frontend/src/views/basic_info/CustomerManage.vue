@@ -5,6 +5,11 @@ import { listCustomers, createCustomer, updateCustomer, deleteCustomer, bulkDele
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import request from '../../api/request'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhUsersThree } from '@phosphor-icons/vue'
 
 const rows = ref<any[]>([])
 
@@ -90,48 +95,57 @@ onMounted(() => { loadSalesmen(); load() })
 
 <template>
   <div class="customer-manage">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-input v-model="search" placeholder="搜索名称 / 联系人 / 电话" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
-        <el-select v-if="isAdmin" v-model="salesmanFilter" clearable placeholder="全部业务员" style="width: 160px" @change="page = 1; load()">
-          <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
-        </el-select>
-        <el-button type="primary" @click="page = 1; load()">查询</el-button>
-        <div class="toolbar-right">
-          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button v-if="isAdmin" type="primary" @click="openCreate">新增客户</el-button>
-        </div>
-      </div>
+    <PageHeader title="客户" :sub="`共 ${total} 条`">
+      <el-button v-if="isAdmin" type="primary" @click="openCreate">新增客户</el-button>
+    </PageHeader>
 
-      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column prop="name" label="客户名称" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="contact_person" label="联系人" width="110" />
-        <el-table-column prop="phone" label="电话" width="130" />
-        <el-table-column prop="email" label="邮箱" min-width="150" show-overflow-tooltip />
-        <el-table-column label="业务员" width="110">
-          <template #default="{ row }">{{ row.salesman_name || salesmanName(row.salesman) }}</template>
-        </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-        <el-table-column label="操作" width="130" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="还没有客户"
+      :empty-description="isAdmin ? '手动新增第一个客户' : ''"
+      :empty-action-text="isAdmin ? '新增客户' : ''"
+      :empty-icon="PhUsersThree"
+      @empty-action="openCreate"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-input v-model="search" placeholder="搜索名称 / 联系人 / 电话" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
+            <el-select v-if="isAdmin" v-model="salesmanFilter" clearable placeholder="全部业务员" style="width: 160px" @change="page = 1; load()">
+              <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
+            </el-select>
+            <el-button type="primary" @click="page = 1; load()">查询</el-button>
           </template>
-        </el-table-column>
-      </el-table>
+          <template #actions>
+            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+          </template>
+        </SearchToolbar>
+      </template>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="page = 1; load()"
-      />
-    </el-card>
+      <el-table-column type="selection" width="48" />
+      <el-table-column prop="name" label="客户名称" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="contact_person" label="联系人" width="110" />
+      <el-table-column prop="phone" label="电话" width="130" />
+      <el-table-column prop="email" label="邮箱" min-width="150" show-overflow-tooltip />
+      <el-table-column label="业务员" width="110">
+        <template #default="{ row }">{{ row.salesman_name || salesmanName(row.salesman) }}</template>
+      </el-table-column>
+      <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
+      <el-table-column label="操作" width="130" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
 
     <el-drawer v-model="drawerVisible" :title="editingId ? '编辑客户' : '新增客户'" size="480px">
       <el-form label-width="100px">
@@ -163,23 +177,3 @@ onMounted(() => { loadSalesmen(); load() })
     </el-drawer>
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
-}
-</style>

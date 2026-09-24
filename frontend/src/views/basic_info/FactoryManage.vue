@@ -7,6 +7,11 @@ import {
 } from '../../api/basicInfo'
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhFactory } from '@phosphor-icons/vue'
 
 // 基础信息写操作（新增/编辑/删除/导入）仅 admin；其他角色只读
 const isAdmin = computed(() => useUserStore().roles.includes('admin'))
@@ -105,50 +110,59 @@ onMounted(load)
 
 <template>
   <div class="factory-manage">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-input v-model="search" placeholder="搜索名称 / 别名 / 联系人" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
-        <el-button type="primary" @click="page = 1; load()">查询</el-button>
-        <div class="toolbar-right">
-          <template v-if="isAdmin">
-            <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
-              <el-button>选择 Excel</el-button>
-            </el-upload>
-            <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
-          </template>
-          <el-button @click="downloadTemplate">下载模板</el-button>
-          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button v-if="isAdmin" type="primary" @click="openCreate">新增工厂</el-button>
-        </div>
-      </div>
+    <PageHeader title="工厂库" :sub="`共 ${total} 条`">
+      <el-button v-if="isAdmin" type="primary" @click="openCreate">新增工厂</el-button>
+    </PageHeader>
 
-      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column prop="name" label="工厂名称" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="alias" label="别名" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="contact" label="联系人" width="110" />
-        <el-table-column prop="phone" label="电话" width="130" />
-        <el-table-column prop="settle_currency" label="结算币种" width="100" />
-        <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-        <el-table-column label="操作" width="130" fixed="right">
-          <template #default="{ row }">
-            <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="还没有工厂"
+      :empty-description="isAdmin ? '可以通过 Excel 批量导入，或手动新增第一家' : ''"
+      :empty-action-text="isAdmin ? '新增工厂' : ''"
+      :empty-icon="PhFactory"
+      @empty-action="openCreate"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-input v-model="search" placeholder="搜索名称 / 别名 / 联系人" clearable style="width: 240px" @keyup.enter="page = 1; load()" @clear="page = 1; load()" />
+            <el-button type="primary" @click="page = 1; load()">查询</el-button>
           </template>
-        </el-table-column>
-      </el-table>
+          <template #actions>
+            <template v-if="isAdmin">
+              <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="onFileChange" :on-remove="() => (importFile = null)" :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')">
+                <el-button>选择 Excel</el-button>
+              </el-upload>
+              <el-button type="primary" plain :disabled="!importFile" @click="doImport">批量导入</el-button>
+            </template>
+            <el-button @click="downloadTemplate">下载模板</el-button>
+            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+          </template>
+        </SearchToolbar>
+      </template>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="page = 1; load()"
-      />
-    </el-card>
+      <el-table-column type="selection" width="48" />
+      <el-table-column prop="name" label="工厂名称" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="alias" label="别名" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="contact" label="联系人" width="110" />
+      <el-table-column prop="phone" label="电话" width="130" />
+      <el-table-column prop="settle_currency" label="结算币种" width="100" />
+      <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
+      <el-table-column label="操作" width="130" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="isAdmin" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
 
     <el-drawer v-model="drawerVisible" :title="editingId ? '编辑工厂' : '新增工厂'" size="480px">
       <el-form label-width="110px">
@@ -193,38 +207,3 @@ onMounted(load)
     </el-dialog>
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-.toolbar .el-upload,
-.toolbar-right .el-upload {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  margin: 0;
-}
-.toolbar .el-upload .el-button,
-.toolbar-right .el-upload .el-button {
-  margin: 0;
-}
-.toolbar-right > div {
-  display: flex;
-  align-items: center;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
-}
-</style>

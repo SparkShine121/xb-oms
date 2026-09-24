@@ -6,6 +6,11 @@ import { listPayments, deletePayment, bulkDeletePayments } from '../../api/facto
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import { listFactories } from '../../api/basicInfo'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhReceipt } from '@phosphor-icons/vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -78,77 +83,65 @@ onMounted(() => { loadFactories(); load() })
 
 <template>
   <div class="payment-list">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-select v-model="factoryFilter" clearable filterable placeholder="工厂" style="width: 200px" @change="query">
-          <el-option v-for="f in factories" :key="f.id" :label="f.name" :value="f.id" />
-        </el-select>
-        <el-select v-model="statusFilter" clearable placeholder="结算状态" style="width: 130px" @change="query">
-          <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
-        </el-select>
-        <el-button type="primary" @click="query">查询</el-button>
-        <div class="toolbar-right">
-          <el-button v-if="canManage" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button @click="router.push('/factory-payment/statement')">对账单</el-button>
-        </div>
-      </div>
+    <PageHeader title="工厂结算" :sub="`共 ${total} 条`" />
 
-      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column prop="order_no" label="订单号" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="product_no" label="产品编号" width="120" show-overflow-tooltip />
-        <el-table-column prop="factory_name" label="工厂" min-width="140" show-overflow-tooltip />
-        <el-table-column label="应付(CNY)" width="120" align="right">
-          <template #default="{ row }">{{ fmtMoney(row.amount_cny) }}</template>
-        </el-table-column>
-        <el-table-column label="已付(CNY)" width="120" align="right">
-          <template #default="{ row }">{{ fmtMoney(row.paid_amount) }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" size="small">{{ row.status }}</el-tag>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="还没有结算单"
+      :empty-icon="PhReceipt"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-select v-model="factoryFilter" clearable filterable placeholder="工厂" style="width: 200px" @change="query">
+              <el-option v-for="f in factories" :key="f.id" :label="f.name" :value="f.id" />
+            </el-select>
+            <el-select v-model="statusFilter" clearable placeholder="结算状态" style="width: 130px" @change="query">
+              <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
+            </el-select>
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <router-link :to="`/factory-payment/${row.id}`" class="action-link">详情</router-link>
-            <el-button v-if="canManage" link type="danger" size="small" @click="remove(row)">删除</el-button>
+          <template #actions>
+            <el-button v-if="canManage" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+            <el-button @click="router.push('/factory-payment/statement')">对账单</el-button>
           </template>
-        </el-table-column>
-      </el-table>
+        </SearchToolbar>
+      </template>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="query"
-      />
-    </el-card>
+      <el-table-column type="selection" width="48" />
+      <el-table-column prop="order_no" label="订单号" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="product_no" label="产品编号" width="120" show-overflow-tooltip />
+      <el-table-column prop="factory_name" label="工厂" min-width="140" show-overflow-tooltip />
+      <el-table-column label="应付(CNY)" width="120" align="right">
+        <template #default="{ row }">{{ fmtMoney(row.amount_cny) }}</template>
+      </el-table-column>
+      <el-table-column label="已付(CNY)" width="120" align="right">
+        <template #default="{ row }">{{ fmtMoney(row.paid_amount) }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="90" align="center">
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.status)" size="small">{{ row.status }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="150" fixed="right">
+        <template #default="{ row }">
+          <router-link :to="`/factory-payment/${row.id}`" class="action-link">详情</router-link>
+          <el-button v-if="canManage" link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
-}
 .action-link {
   color: var(--el-color-primary);
   text-decoration: none;

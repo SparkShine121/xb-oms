@@ -2,6 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listBackups, manualBackup, downloadBackup } from '../../api/systemMgmt'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhDatabase } from '@phosphor-icons/vue'
 
 const rows = ref<any[]>([])
 const total = ref(0)
@@ -60,70 +65,62 @@ async function doDownload(row: any) {
   URL.revokeObjectURL(url)
 }
 
-function onPageChange(p: number) {
-  page.value = p
-  load()
-}
-
 onMounted(load)
 </script>
 
 <template>
   <div class="backup-manage">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-button type="primary" :loading="backingUp" @click="doBackup">手动备份</el-button>
-        <span class="tip">系统滚动保留最近 1000 份备份</span>
-      </div>
+    <PageHeader title="备份管理">
+      <el-button type="primary" :loading="backingUp" @click="doBackup">手动备份</el-button>
+    </PageHeader>
 
-      <el-table v-loading="loading" :data="rows" border stripe>
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column label="文件名" min-width="260" show-overflow-tooltip>
-          <template #default="{ row }">{{ fileName(row.file_path) }}</template>
-        </el-table-column>
-        <el-table-column label="大小" width="110" align="right">
-          <template #default="{ row }">{{ fmtSize(row.file_size) }}</template>
-        </el-table-column>
-        <el-table-column label="触发方式" width="110">
-          <template #default="{ row }">
-            <el-tag :type="triggerTagType(row.trigger)" size="small">{{ triggerLabel(row.trigger) }}</el-tag>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="暂无备份记录"
+      :empty-icon="PhDatabase"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <span class="tip">系统滚动保留最近 1000 份备份</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="备份时间" min-width="170">
-          <template #default="{ row }">{{ row.created_at?.slice(0, 19).replace('T', ' ') }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="doDownload(row)">下载</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </SearchToolbar>
+      </template>
 
-      <div class="pager">
-        <el-pagination
-          background layout="total, prev, pager, next"
-          :total="total" :page-size="pageSize" :current-page="page"
-          @current-change="onPageChange"
-        />
-      </div>
-    </el-card>
+      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column label="文件名" min-width="260" show-overflow-tooltip>
+        <template #default="{ row }">{{ fileName(row.file_path) }}</template>
+      </el-table-column>
+      <el-table-column label="大小" width="110" align="right">
+        <template #default="{ row }">{{ fmtSize(row.file_size) }}</template>
+      </el-table-column>
+      <el-table-column label="触发方式" width="110">
+        <template #default="{ row }">
+          <el-tag :type="triggerTagType(row.trigger)" size="small">{{ triggerLabel(row.trigger) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="备份时间" min-width="170">
+        <template #default="{ row }">{{ row.created_at?.slice(0, 19).replace('T', ' ') }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="doDownload(row)">下载</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
 .tip {
   color: var(--el-text-color-secondary);
   font-size: 12px;
-}
-.pager {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

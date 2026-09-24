@@ -8,6 +8,11 @@ import {
 import { useBulkDelete } from '../../composables/useBulkDelete'
 import { listUsers } from '../../api/auth'
 import { useUserStore } from '../../stores/user'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchToolbar from '../../components/SearchToolbar.vue'
+import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
+import { PhReceipt } from '@phosphor-icons/vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -177,100 +182,102 @@ onMounted(() => { loadUsers(); load() })
 
 <template>
   <div class="order-list">
-    <el-card shadow="never">
-      <div class="toolbar">
-        <el-input
-          v-model="search"
-          placeholder="搜索订单号 / 客户名"
-          clearable
-          style="width: 220px"
-          @keyup.enter="query"
-          @clear="query"
-        />
-        <el-select v-model="statusFilter" clearable placeholder="跟踪状态" style="width: 130px" @change="query">
-          <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
-        </el-select>
-        <el-select v-if="isAdmin" v-model="salesmanFilter" clearable placeholder="业务员" style="width: 140px" @change="query">
-          <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
-        </el-select>
-        <el-select v-if="isAdmin" v-model="trackerFilter" clearable placeholder="跟单员" style="width: 140px" @change="query">
-          <el-option v-for="t in trackers" :key="t.id" :label="t.username" :value="t.id" />
-        </el-select>
-        <el-select v-model="cancelledFilter" clearable placeholder="订单状态" style="width: 120px" @change="query">
-          <el-option label="正常" value="false" />
-          <el-option label="已取消" value="true" />
-        </el-select>
-        <el-button type="primary" @click="query">查询</el-button>
-        <div class="toolbar-right">
-          <template v-if="canImport">
-            <el-upload
-              ref="uploadRef"
-              :auto-upload="false"
-              :limit="1"
-              accept=".xlsx,.xls"
-              :on-change="onFileChange"
-              :on-remove="() => (importFile = null)"
-              :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')"
-            >
-              <el-button>选择 Excel</el-button>
-            </el-upload>
-            <el-button type="primary" plain :disabled="!importFile" :loading="importing" @click="doImport">批量导入</el-button>
-          </template>
-          <el-button @click="downloadTemplate">下载模板</el-button>
-          <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          <el-button v-if="canCreate" type="primary" @click="router.push('/orders/new')">新增订单</el-button>
-        </div>
-      </div>
+    <PageHeader title="订单列表" :sub="`共 ${total} 条`">
+      <el-button v-if="canCreate" type="primary" @click="router.push('/orders/new')">新增订单</el-button>
+    </PageHeader>
 
-      <el-table v-loading="loading" :data="rows" border stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" />
-        <el-table-column label="订单号" min-width="140">
-          <template #default="{ row }">
-            <router-link :to="`/orders/${row.id}`" class="order-link">{{ row.order_no }}</router-link>
+    <DataTable
+      :loading="loading"
+      :data="rows"
+      border
+      stripe
+      empty-title="还没有订单"
+      :empty-description="canCreate ? '手动新建，或用 Excel 批量导入' : ''"
+      :empty-action-text="canCreate ? '新增订单' : ''"
+      :empty-icon="PhReceipt"
+      @empty-action="router.push('/orders/new')"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <SearchToolbar>
+          <template #filters>
+            <el-input v-model="search" placeholder="搜索订单号 / 客户名" clearable style="width: 220px" @keyup.enter="query" @clear="query" />
+            <el-select v-model="statusFilter" clearable placeholder="跟踪状态" style="width: 130px" @change="query">
+              <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s" :value="s" />
+            </el-select>
+            <el-select v-if="isAdmin" v-model="salesmanFilter" clearable placeholder="业务员" style="width: 140px" @change="query">
+              <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
+            </el-select>
+            <el-select v-if="isAdmin" v-model="trackerFilter" clearable placeholder="跟单员" style="width: 140px" @change="query">
+              <el-option v-for="t in trackers" :key="t.id" :label="t.username" :value="t.id" />
+            </el-select>
+            <el-select v-model="cancelledFilter" clearable placeholder="订单状态" style="width: 120px" @change="query">
+              <el-option label="正常" value="false" />
+              <el-option label="已取消" value="true" />
+            </el-select>
+            <el-button type="primary" @click="query">查询</el-button>
           </template>
-        </el-table-column>
-        <el-table-column label="跟踪状态" width="100">
-          <template #default="{ row }">
-            <el-tag v-if="row.tracking_status" :type="statusTagType(row.tracking_status)" size="small">
-              {{ row.tracking_status }}
-            </el-tag>
-            <span v-else>—</span>
+          <template #actions>
+            <template v-if="canImport">
+              <el-upload
+                ref="uploadRef"
+                :auto-upload="false"
+                :limit="1"
+                accept=".xlsx,.xls"
+                :on-change="onFileChange"
+                :on-remove="() => (importFile = null)"
+                :on-exceed="() => ElMessage.warning('仅支持导入 1 个文件')"
+              >
+                <el-button>选择 Excel</el-button>
+              </el-upload>
+              <el-button type="primary" plain :disabled="!importFile" :loading="importing" @click="doImport">批量导入</el-button>
+            </template>
+            <el-button @click="downloadTemplate">下载模板</el-button>
+            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
           </template>
-        </el-table-column>
-        <el-table-column prop="order_date" label="订单日期" width="120" />
-        <el-table-column prop="customer_name" label="客户" min-width="140" show-overflow-tooltip />
-        <el-table-column label="金额(USD)" width="120" align="right">
-          <template #default="{ row }">{{ fmtMoney(row.amount_usd) }}</template>
-        </el-table-column>
-        <el-table-column prop="salesman_name" label="业务员" width="100" />
-        <el-table-column prop="tracker_name" label="跟单员" width="100" />
-        <el-table-column label="毛利(USD)" width="120" align="right">
-          <template #default="{ row }">
-            <span :class="profitClass(row.order_profit_usd)">{{ fmtMoney(row.order_profit_usd) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
-          <template #default="{ row }">
-            <router-link :to="`/orders/${row.id}`" class="action-link">详情</router-link>
-            <el-button v-if="canEdit" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
-            <el-button v-if="isAdmin" link type="warning" size="small" @click="openDispatch(row)">派单</el-button>
-            <el-button v-if="isAdmin && !row.is_cancelled" link type="warning" size="small" @click="handleCancelOrder(row)">取消</el-button>
-            <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </SearchToolbar>
+      </template>
 
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pager"
-        @current-change="load"
-        @size-change="query"
-      />
-    </el-card>
+      <el-table-column type="selection" width="48" />
+      <el-table-column label="订单号" min-width="140">
+        <template #default="{ row }">
+          <router-link :to="`/orders/${row.id}`" class="order-link">{{ row.order_no }}</router-link>
+        </template>
+      </el-table-column>
+      <el-table-column label="跟踪状态" width="100">
+        <template #default="{ row }">
+          <el-tag v-if="row.tracking_status" :type="statusTagType(row.tracking_status)" size="small">
+            {{ row.tracking_status }}
+          </el-tag>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="order_date" label="订单日期" width="120" />
+      <el-table-column prop="customer_name" label="客户" min-width="140" show-overflow-tooltip />
+      <el-table-column label="金额(USD)" width="120" align="right">
+        <template #default="{ row }">{{ fmtMoney(row.amount_usd) }}</template>
+      </el-table-column>
+      <el-table-column prop="salesman_name" label="业务员" width="100" />
+      <el-table-column prop="tracker_name" label="跟单员" width="100" />
+      <el-table-column label="毛利(USD)" width="120" align="right">
+        <template #default="{ row }">
+          <span :class="profitClass(row.order_profit_usd)">{{ fmtMoney(row.order_profit_usd) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="250" fixed="right">
+        <template #default="{ row }">
+          <router-link :to="`/orders/${row.id}`" class="action-link">详情</router-link>
+          <el-button v-if="canEdit" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
+          <el-button v-if="isAdmin" link type="warning" size="small" @click="openDispatch(row)">派单</el-button>
+          <el-button v-if="isAdmin && !row.is_cancelled" link type="warning" size="small" @click="handleCancelOrder(row)">取消</el-button>
+          <el-button v-if="isAdmin" link type="danger" size="small" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+
+      <template #footer>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
+    </DataTable>
 
     <!-- 派单弹窗 -->
     <el-dialog v-model="dispatchVisible" title="派单 - 指定跟单员" width="420px">
@@ -320,23 +327,6 @@ onMounted(() => { loadUsers(); load() })
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
-}
 .order-link {
   color: var(--el-color-primary);
   text-decoration: none;
