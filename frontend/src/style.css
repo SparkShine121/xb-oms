@@ -171,8 +171,9 @@ h3 {
   --el-message-text-color: var(--txt);
 }
 
-/* 主按钮填充 = lime + ink（唯一允许的 primary 填充覆盖，规范 §8.1） */
-.el-button--primary {
+/* 主按钮填充 = lime + ink（唯一允许的 primary 填充覆盖，规范 §8.1）
+   双类选择器 (0,2,0)：无论 EP theme-chalk 的同名 0,1,0 规则以何种顺序加载都被压过 */
+.el-button.el-button--primary {
   --el-button-bg-color: var(--lime);
   --el-button-border-color: var(--lime);
   --el-button-text-color: var(--lime-ink);
@@ -199,8 +200,8 @@ h3 {
   border-bottom: 1px solid var(--line);
 }
 
-/* 表格 */
-.el-table {
+/* 表格（双类选择器压过 EP theme-chalk 同名 0,1,0 规则，与主按钮同机制） */
+.el-table.el-table {
   --el-table-bg-color: var(--panel);
   --el-table-tr-bg-color: var(--panel);
   --el-table-header-bg-color: var(--panel2);
