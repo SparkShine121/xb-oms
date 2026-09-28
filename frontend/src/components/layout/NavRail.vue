@@ -18,11 +18,10 @@ const activeKey = computed(() => groupOfPath(route.path)?.key ?? '')
 const openKey = ref<string | null>(null)
 let hoverTimer: ReturnType<typeof setTimeout> | null = null
 
-/** Q1-a：children 为 0 或 1 的分组点击直达目标页；多页分组点击切换 flyout */
-function toggleOrGo(key: string) {
+/** Q1-a：children 为 0 或 1 的分组点击直达目标页；多页分组点击始终打开（只开不关，不 toggle） */
+function openGroupFlyout(key: string) {
   const g = MENU_GROUPS.find((x) => x.key === key)!
   if (g.children.length <= 1) return go(g)
-  if (openKey.value === key) return closeFlyout()
   openKey.value = key
 }
 
@@ -56,10 +55,10 @@ function go(g: (typeof MENU_GROUPS)[number]) {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') openKey.value = null
+  if (e.key === 'Escape') closeFlyout()
 }
 function onDocClick(e: MouseEvent) {
-  if (!(e.target as HTMLElement).closest('.nav-rail')) openKey.value = null
+  if (!(e.target as HTMLElement).closest('.nav-rail')) closeFlyout()
 }
 onMounted(() => { document.addEventListener('click', onDocClick) })
 onBeforeUnmount(() => { document.removeEventListener('click', onDocClick) })
@@ -85,7 +84,7 @@ function onLogout() {
       class="rail-item"
       :class="{ on: activeKey === g.key }"
       :aria-label="g.label"
-      @click="toggleOrGo(g.key)"
+      @click="openGroupFlyout(g.key)"
       @mouseenter="hoverOpen(g.key)"
       @focusin="focusOpen(g.key)"
       @mouseleave="hoverLeave"
