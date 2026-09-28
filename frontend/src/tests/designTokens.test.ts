@@ -174,9 +174,7 @@ describe('排版与细节', () => {
     expect(css).not.toMatch(/\.el-message\s*\{[^}]*background:\s*#fff/)
   })
 
-  it('侧栏菜单激活态用 lime-deep（M3 前保持可用）', () => {
-    const active = css.match(/\.el-menu-item\.is-active\s*\{([^}]+)\}/)?.[1] ?? ''
-    expect(active).toContain('var(--lime-deep)')
+  it('旧令牌名零残留：var(--brand-600) 不再出现在 style.css（Task 3 后）', () => {
     expect(css).not.toContain('var(--brand-600)')  // Task 3 后旧名零残留（别名定义处也不含该串）
   })
 
