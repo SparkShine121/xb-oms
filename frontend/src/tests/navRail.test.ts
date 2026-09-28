@@ -65,4 +65,14 @@ describe('NavRail', () => {
     await w.find('.nav-rail').trigger('keydown', { key: 'Escape' })
     expect(w.find('.rail-flyout').exists()).toBe(false)
   })
+
+  it('键盘聚焦分组打开 flyout（focus-within），Esc 关闭', async () => {
+    const w = await mountRail('/basic-info/product')
+    const basic = w.findAll('.rail-item').find((i) => i.find('.rail-label').text() === '基础信息')!
+    basic.element.focus()
+    await basic.trigger('focusin')
+    expect(w.find('.rail-flyout').exists()).toBe(true)
+    await w.find('.nav-rail').trigger('keydown', { key: 'Escape' })
+    expect(w.find('.rail-flyout').exists()).toBe(false)
+  })
 })

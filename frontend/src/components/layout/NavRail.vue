@@ -38,6 +38,13 @@ function hoverOpen(key: string) {
   hoverTimer = setTimeout(() => { openKey.value = key }, 120)
 }
 
+/** 键盘聚焦打开（规范 §4.3 focus-within）：与 hover 同守卫，仅多页分组生效 */
+function focusOpen(key: string) {
+  const g = MENU_GROUPS.find((x) => x.key === key)!
+  if (!g.children.length || g.children.length === 1) return
+  openKey.value = key
+}
+
 function hoverLeave() {
   if (hoverTimer) clearTimeout(hoverTimer)
 }
@@ -80,6 +87,7 @@ function onLogout() {
       :aria-label="g.label"
       @click="toggleOrGo(g.key)"
       @mouseenter="hoverOpen(g.key)"
+      @focusin="focusOpen(g.key)"
       @mouseleave="hoverLeave"
     >
       <component :is="g.icon" :size="20" weight="regular" />
