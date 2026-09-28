@@ -236,3 +236,29 @@ describe('M2 全局 EP 微调', () => {
     expect(css).toMatch(/\.el-range-editor\.el-input__wrapper:focus-within[\s\S]{0,200}?box-shadow:\s*0 0 0 1px var\(--lime-text\) inset,\s*0 0 0 3px var\(--lime-tint\)/)
   })
 })
+
+describe('门禁：EP 覆盖必须双类（防同 specificity 被后加载反超）', () => {
+  it('style.css 中针对 .el-* 组件的覆盖不得是单类选择器', () => {
+    // 错题集 2026-09-22/2026-09-24：完整包 import 或任何加载顺序变化，都会让同 specificity 的
+    // 覆盖被 EP 后加载的样式静默反超（按钮/表格/聚焦环三次踩坑）。
+    // 门禁：凡选择器引用 .el-*（或声明 --el-* 变量）的规则，选择器必须含 ≥2 个类
+    //（双类 .el-x.el-x、祖先限定、复合均可）；:root 与 .van-* 不在本门禁范围。
+    const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const ruleRe = /([^{}]+)\{([^{}]*)\}/g
+    const offenders: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = ruleRe.exec(cssNoComments)) !== null) {
+      const selectorText = m[1].trim().replace(/\s+/g, ' ')
+      const body = m[2]
+      const touchesEp = selectorText.includes('.el-') || /--el-[a-z-]/.test(body)
+      if (!touchesEp) continue
+      for (const part of selectorText.split(',')) {
+        const sel = part.trim()
+        if (sel === ':root' || !sel.includes('.el-')) continue
+        const classCount = (sel.match(/\.[a-z][a-z0-9_-]*/gi) || []).length
+        if (classCount < 2) offenders.push(sel)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})

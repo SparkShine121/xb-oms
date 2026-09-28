@@ -189,12 +189,12 @@ h3 {
 }
 
 /* 卡片 */
-.el-card {
+.el-card.el-card {
   border-radius: var(--r-card);
   border-color: var(--line);
   box-shadow: var(--shadow-card);
 }
-.el-card__header {
+.el-card__header.el-card__header {
   font-weight: 600;
   color: var(--txt);
   border-bottom: 1px solid var(--line);
@@ -221,25 +221,25 @@ h3 {
 }
 
 /* 按钮 / 输入 / 分页（统一圆角） */
-.el-button {
+.el-button.el-button {
   border-radius: var(--r-ctl);
   /* EP 用 --el-button-outline-color 画 focus-visible 环（默认 primary-light-5，对 --panel 仅 2:1 不达 3:1）。
      必须在 .el-button 作用域直接覆盖：自定义属性"直接声明优先于继承"，写 :root 会被 EP 的直接声明压过 */
   --el-button-outline-color: var(--lime-text);
 }
-.el-button:focus-visible {
+.el-button.el-button:focus-visible {
   outline-offset: 2px;
 }
-.el-input__wrapper,
-.el-select__wrapper,
-.el-textarea__inner {
+.el-input__wrapper.el-input__wrapper,
+.el-select__wrapper.el-select__wrapper,
+.el-textarea__inner.el-textarea__inner {
   border-radius: var(--r-ctl);
 }
 /* 输入聚焦几何：全局 focus 环不能落在 EP 内层原生 input 上（比字段窄又比字段高，且 EP 已对内层写
    outline:none）。关掉内层环，由 wrapper focus-within 承担（规范 §5：边线 lime-text + 3px lime-tint 外环）；
    select 同构（.el-select__wrapper + 内层 .el-select__input），一并处理 */
-.el-input__inner:focus-visible,
-.el-select__input:focus-visible {
+.el-input__inner.el-input__inner:focus-visible,
+.el-select__input.el-select__input:focus-visible {
   outline: none;
 }
 /* 输入框聚焦：外环用高 specificity 压过 EP 的 .is-focus 规则（同 specificity 会因 EP 后注入而落败）。
@@ -255,7 +255,7 @@ h3 {
 .el-select .el-select__wrapper:focus-within {
   box-shadow: 0 0 0 1px var(--lime-text) inset, 0 0 0 3px var(--lime-tint);
 }
-.el-pagination {
+.el-pagination.el-pagination {
   --el-pagination-button-bg-color: var(--panel);
 }
 .el-pagination.is-background .el-pager li {
@@ -263,7 +263,7 @@ h3 {
 }
 
 /* 表单标签 */
-.el-form-item__label {
+.el-form-item__label.el-form-item__label {
   color: var(--txt);
   font-weight: 500;
 }
@@ -333,7 +333,7 @@ h3 {
 }
 
 /* Element Plus ElMessage：页面中间、白底黑字 */
-.el-message {
+.el-message.el-message {
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
