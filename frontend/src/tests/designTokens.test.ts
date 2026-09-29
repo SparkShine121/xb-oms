@@ -8,6 +8,14 @@ import { THEME_NAME, CHART_COLORS, XBB_LIGHT_THEME } from '../analytics/chartThe
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
 
+const pcSources: Record<string, string> = {
+  ...(import.meta.glob('../views/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../components/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../layouts/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+}
+// 豁免：M3 登录页 lime 渐晕（渐变透明度 .10 是设计参数，不同于 --lime-tint .14）；M6 扫尾复议
+const HARDCODED_COLOR_ALLOW = ['/views/Login.vue']
+
 function token(name: string): string {
   const m = css.match(new RegExp(`--${name}\\s*:\\s*([^;]+);`))
   if (!m) throw new Error(`缺少令牌 --${name}`)
@@ -303,5 +311,21 @@ describe('仪表盘 M4 改造', () => {
     for (const label of ['订单总数', '总销售额（USD）', '总毛利（USD）']) {
       expect(dashboardSrc).toContain(label)
     }
+  })
+})
+
+describe('门禁：PC 端零硬编码色（M6 全站扫描的 PC 前置卡）', () => {
+  it('views/components/layouts（排除 views/m/，移动端属 M5）源码无硬编码色', () => {
+    const offenders: string[] = []
+    for (const [path, src] of Object.entries(pcSources)) {
+      if (path.includes('/views/m/')) continue
+      if (HARDCODED_COLOR_ALLOW.some(a => path.includes(a))) continue
+      const s = src
+        .replace(/<!--[\s\S]*?-->/g, '')   // HTML 注释
+        .replace(/\/\*[\s\S]*?\*\//g, '')  // CSS 块注释
+        .replace(/\/\/[^\n]*/g, '')        // 行注释
+      if (/#[0-9a-fA-F]{3,8}\b/.test(s) || /\brgba?\(/.test(s)) offenders.push(path)
+    }
+    expect(offenders).toEqual([])
   })
 })

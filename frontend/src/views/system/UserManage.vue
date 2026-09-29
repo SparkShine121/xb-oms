@@ -175,7 +175,7 @@ onMounted(load)
   margin-right: 6px;
 }
 .no-role {
-  color: #909399;
+  color: var(--dim);
   font-size: 13px;
 }
 </style>
