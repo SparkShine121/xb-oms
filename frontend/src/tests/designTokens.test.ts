@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import { THEME_NAME, CHART_COLORS, XBB_LIGHT_THEME } from '../analytics/chartTheme'
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
+const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
 
 function token(name: string): string {
   const m = css.match(new RegExp(`--${name}\\s*:\\s*([^;]+);`))
@@ -280,5 +281,27 @@ describe('ECharts 浅色主题（chartTheme.ts ↔ style.css 令牌一致性）'
     expect(XBB_LIGHT_THEME.tooltip.backgroundColor).toBe(token('panel'))
     expect(XBB_LIGHT_THEME.tooltip.borderColor).toBe(token('line2'))
     expect(XBB_LIGHT_THEME.tooltip.textStyle).toMatchObject({ color: token('txt') })
+  })
+})
+
+describe('仪表盘 M4 改造', () => {
+  it('KPI 区不套卡（无 el-card / el-row），改无卡指标行', () => {
+    expect(dashboardSrc).not.toContain('<el-card')
+    expect(dashboardSrc).not.toContain('<el-row')
+    expect(dashboardSrc).not.toContain('el-col')
+    expect(dashboardSrc).toContain('kpi-row')
+  })
+
+  it('六图统一启用 xbb-light 主题', () => {
+    expect(dashboardSrc).toContain('echarts.init(el, THEME_NAME)')
+    expect(dashboardSrc).toContain("echarts.registerTheme(THEME_NAME, XBB_LIGHT_THEME)")
+  })
+
+  it('页头复用 PageHeader 且文案零改动，KPI 标签原文保留', () => {
+    expect(dashboardSrc).toContain('<PageHeader title="数据分析">')
+    expect(dashboardSrc).not.toContain('dashboard-filters')
+    for (const label of ['订单总数', '总销售额（USD）', '总毛利（USD）']) {
+      expect(dashboardSrc).toContain(label)
+    }
   })
 })

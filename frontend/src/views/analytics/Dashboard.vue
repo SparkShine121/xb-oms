@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
+import { THEME_NAME, XBB_LIGHT_THEME } from '../../analytics/chartTheme'
+import PageHeader from '../../components/PageHeader.vue'
 import {
   getFactorySummary,
   getOverview,
   getSalesSummary,
   getTrackingSummary,
 } from '../../api/analytics'
+
+// 模块加载即注册，先于任何 init
+echarts.registerTheme(THEME_NAME, XBB_LIGHT_THEME)
 
 // ---------- 年度筛选 ----------
 const years = [2024, 2025, 2026, 2027]
@@ -26,7 +31,7 @@ const charts: Record<string, Chart | null> = {
 }
 function bindChart(key: string, el: HTMLElement | undefined) {
   if (!el) return
-  if (!charts[key]) charts[key] = echarts.init(el)
+  if (!charts[key]) charts[key] = echarts.init(el, THEME_NAME)
 }
 const unbindAll = () => {
   Object.keys(charts).forEach(k => { charts[k]?.dispose(); charts[k] = null })
@@ -189,12 +194,11 @@ function fmtMoney(v: number): string {
 
 <template>
   <div class="analytics-dashboard">
-    <div class="dashboard-filters">
-      <h2>数据分析</h2>
+    <PageHeader title="数据分析">
       <el-select v-model="year" placeholder="全部年份" clearable style="width: 140px" @change="onYearChange">
         <el-option v-for="y in years" :key="y" :label="`${y} 年`" :value="y" />
       </el-select>
-    </div>
+    </PageHeader>
 
     <el-tabs v-model="activeTab" @tab-change="onTabChange">
       <!-- 销售结算表 -->
@@ -237,11 +241,20 @@ function fmtMoney(v: number): string {
 
       <!-- 总览 -->
       <el-tab-pane label="总览" name="overview">
-        <el-row :gutter="16">
-          <el-col :span="8"><el-card shadow="hover"><div class="stat-label">订单总数</div><div class="stat-value">{{ ov.total_orders }}</div></el-card></el-col>
-          <el-col :span="8"><el-card shadow="hover"><div class="stat-label">总销售额（USD）</div><div class="stat-value">{{ fmtMoney(ov.total_sales) }}</div></el-card></el-col>
-          <el-col :span="8"><el-card shadow="hover"><div class="stat-label">总毛利（USD）</div><div class="stat-value">{{ fmtMoney(ov.total_profit) }}</div></el-card></el-col>
-        </el-row>
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">订单总数</div>
+            <div class="kpi-value num">{{ ov.total_orders }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">总销售额（USD）</div>
+            <div class="kpi-value num">{{ fmtMoney(ov.total_sales) }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">总毛利（USD）</div>
+            <div class="kpi-value num">{{ fmtMoney(ov.total_profit) }}</div>
+          </div>
+        </div>
         <div class="chart-box wide">
           <div ref="overviewLineEl" class="chart tall-chart" />
         </div>
@@ -251,29 +264,39 @@ function fmtMoney(v: number): string {
 </template>
 
 <style scoped>
-.analytics-dashboard {
-  background: #fff;
-  padding: 16px;
-  border-radius: 8px;
-}
-.dashboard-filters {
+/* KPI 无卡指标行（规范 §7：数字 22-24px/700 + 1px 分隔线，不套卡片） */
+.kpi-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  padding: 2px 0 16px;
 }
-.dashboard-filters h2 {
-  margin: 0;
-  font-size: 18px;
+.kpi {
+  flex: 1;
+  padding: 2px 24px;
+  border-left: 1px solid var(--line);
 }
+.kpi:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+.kpi-label {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+.kpi-value {
+  font-size: 23px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--txt);
+}
+/* 图表容器=内部块（规范 §1.5 --r-in）；内容区本身是 --panel 面板，根容器不再套卡 */
 .chart-row {
   display: flex;
-  gap: 16px;
+  gap: 14px;
 }
 .chart-box {
   flex: 1;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-in);
   padding: 8px;
 }
 .chart-box.wide {
@@ -285,14 +308,5 @@ function fmtMoney(v: number): string {
 }
 .chart.tall-chart {
   height: 380px;
-}
-.stat-label {
-  color: #909399;
-  font-size: 13px;
-}
-.stat-value {
-  font-size: 26px;
-  font-weight: 600;
-  margin-top: 6px;
 }
 </style>
