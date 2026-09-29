@@ -267,7 +267,7 @@ function fmtMoney(v: number): string {
 /* KPI 无卡指标行（规范 §7：数字 22-24px/700 + 1px 分隔线，不套卡片） */
 .kpi-row {
   display: flex;
-  padding: 2px 0 16px;
+  padding: 2px 0 0;
 }
 .kpi {
   flex: 1;

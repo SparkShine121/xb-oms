@@ -10,6 +10,10 @@ export const CHART_COLORS = ['#5b7600', '#1d4ed8', '#17803d', '#c2410c']
 export const XBB_LIGHT_THEME = {
   backgroundColor: 'transparent',
   color: CHART_COLORS,
+  textStyle: {
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', system-ui, sans-serif",
+  },
   title: {
     textStyle: { color: '#17191e', fontSize: 14, fontWeight: 600 },
   },

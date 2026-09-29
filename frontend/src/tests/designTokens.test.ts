@@ -290,6 +290,13 @@ describe('ECharts 浅色主题（chartTheme.ts ↔ style.css 令牌一致性）'
     expect(XBB_LIGHT_THEME.tooltip.borderColor).toBe(token('line2'))
     expect(XBB_LIGHT_THEME.tooltip.textStyle).toMatchObject({ color: token('txt') })
   })
+
+  it('主题字体栈与 style.css 一致（canvas 不继承页面 font-family）', () => {
+    // style.css 的 font-family 跨行书写，先折叠空白再比较
+    const pageFont = css.match(/font-family:\s*([^;]+);/)?.[1]?.replace(/\s+/g, ' ').trim()
+    expect(pageFont).toBeTruthy()
+    expect(XBB_LIGHT_THEME.textStyle?.fontFamily).toBe(pageFont)
+  })
 })
 
 describe('仪表盘 M4 改造', () => {
@@ -316,6 +323,7 @@ describe('仪表盘 M4 改造', () => {
 
 describe('门禁：PC 端零硬编码色（M6 全站扫描的 PC 前置卡）', () => {
   it('views/components/layouts（排除 views/m/，移动端属 M5）源码无硬编码色', () => {
+    expect(Object.keys(pcSources).length).toBeGreaterThan(20)
     const offenders: string[] = []
     for (const [path, src] of Object.entries(pcSources)) {
       if (path.includes('/views/m/')) continue
