@@ -3,6 +3,7 @@
 // 规范来源：《风格重构/风格拆解清单.md》§1；颜色值变更必须先改规范再改这里
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { THEME_NAME, CHART_COLORS, XBB_LIGHT_THEME } from '../analytics/chartTheme'
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 
@@ -260,5 +261,24 @@ describe('门禁：EP 覆盖必须双类（防同 specificity 被后加载反超
       }
     }
     expect(offenders).toEqual([])
+  })
+})
+
+describe('ECharts 浅色主题（chartTheme.ts ↔ style.css 令牌一致性）', () => {
+  it('主题名与序列色为规范值（lime-text/info/success/warning 四档）', () => {
+    expect(THEME_NAME).toBe('xbb-light')
+    expect(CHART_COLORS).toEqual([token('lime-text'), token('info'), token('success'), token('warning')])
+  })
+
+  it('主题色值与 style.css 令牌逐值一致（canvas 不能用 CSS 变量）', () => {
+    expect(XBB_LIGHT_THEME.backgroundColor).toBe('transparent')
+    expect(XBB_LIGHT_THEME.color).toBe(CHART_COLORS)
+    expect(XBB_LIGHT_THEME.title.textStyle).toMatchObject({ color: token('txt'), fontSize: 14, fontWeight: 600 })
+    expect(XBB_LIGHT_THEME.legend.textStyle).toMatchObject({ color: token('mut') })
+    expect(XBB_LIGHT_THEME.categoryAxis.axisLine.lineStyle.color).toBe(token('line'))
+    expect(XBB_LIGHT_THEME.valueAxis.splitLine.lineStyle.color).toBe(token('line'))
+    expect(XBB_LIGHT_THEME.tooltip.backgroundColor).toBe(token('panel'))
+    expect(XBB_LIGHT_THEME.tooltip.borderColor).toBe(token('line2'))
+    expect(XBB_LIGHT_THEME.tooltip.textStyle).toMatchObject({ color: token('txt') })
   })
 })
