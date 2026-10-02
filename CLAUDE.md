@@ -73,7 +73,7 @@ Vue3 + Vite，按端分流：
 - **路由**：`router/index.ts`，MainLayout（三面板悬浮壳：`NavRail` 图标栏 + 分组级面包屑 + 圆角内容区，菜单数据源 `layouts/menuConfig.ts`）+ MobileLayout（tabbar），路由守卫登录校验
 - **测试**：`src/tests/*.test.ts`（逻辑测试首行 `// @vitest-environment node` + `vi.mock('element-plus')` 避免 ARM jsdom 慢；组件测试 `components.test.ts` 用默认 jsdom 环境，需 mock EP 的 `*/style/css` 样式入口）
 - **公共组件层**：`src/components/` 五件套（PageHeader / SearchToolbar / DataTable / EmptyState / AppPagination）——列表页一律「PageHeader + DataTable（内含 SearchToolbar 与 AppPagination）」；**视图层不得再自带工具栏/分页样式**（由 `src/tests/componentMigration.test.ts` 不变量锁定）
-- **设计规范**：《风格重构/风格拆解清单.md》——浅色版令牌/组件/布局的**唯一依据**（改任何样式前先读；令牌值由 `src/tests/designTokens.test.ts` 锁定，改值必须同步改规范与测试）
+- **设计规范**：《风格重构/风格拆解清单.md》——浅色版令牌/组件/布局的**唯一依据**（改任何样式前先读；令牌值由 `src/tests/designTokens.test.ts` 锁定，ECharts 主题常量 `src/analytics/chartTheme.ts` 也由同一测试锁定与令牌逐值一致——改令牌必须同步改规范、测试与 chartTheme.ts；style.css 中 `.el-*` 覆盖必须双类、禁止 import element-plus 完整包）
 
 ### 关键模式
 
