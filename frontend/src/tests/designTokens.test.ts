@@ -3,8 +3,18 @@
 // 规范来源：《风格重构/风格拆解清单.md》§1；颜色值变更必须先改规范再改这里
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { THEME_NAME, CHART_COLORS, XBB_LIGHT_THEME } from '../analytics/chartTheme'
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
+const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
+
+const pcSources: Record<string, string> = {
+  ...(import.meta.glob('../views/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../components/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../layouts/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+}
+// 豁免：M3 登录页 lime 渐晕（渐变透明度 .10 是设计参数，不同于 --lime-tint .14）；M6 扫尾复议
+const HARDCODED_COLOR_ALLOW = ['/views/Login.vue']
 
 function token(name: string): string {
   const m = css.match(new RegExp(`--${name}\\s*:\\s*([^;]+);`))
@@ -258,6 +268,71 @@ describe('门禁：EP 覆盖必须双类（防同 specificity 被后加载反超
         const classCount = (sel.match(/\.[a-z][a-z0-9_-]*/gi) || []).length
         if (classCount < 2) offenders.push(sel)
       }
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('ECharts 浅色主题（chartTheme.ts ↔ style.css 令牌一致性）', () => {
+  it('主题名与序列色为规范值（lime-text/info/success/warning 四档）', () => {
+    expect(THEME_NAME).toBe('xbb-light')
+    expect(CHART_COLORS).toEqual([token('lime-text'), token('info'), token('success'), token('warning')])
+  })
+
+  it('主题色值与 style.css 令牌逐值一致（canvas 不能用 CSS 变量）', () => {
+    expect(XBB_LIGHT_THEME.backgroundColor).toBe('transparent')
+    expect(XBB_LIGHT_THEME.color).toBe(CHART_COLORS)
+    expect(XBB_LIGHT_THEME.title.textStyle).toMatchObject({ color: token('txt'), fontSize: 14, fontWeight: 600 })
+    expect(XBB_LIGHT_THEME.legend.textStyle).toMatchObject({ color: token('mut') })
+    expect(XBB_LIGHT_THEME.categoryAxis.axisLine.lineStyle.color).toBe(token('line'))
+    expect(XBB_LIGHT_THEME.valueAxis.splitLine.lineStyle.color).toBe(token('line'))
+    expect(XBB_LIGHT_THEME.tooltip.backgroundColor).toBe(token('panel'))
+    expect(XBB_LIGHT_THEME.tooltip.borderColor).toBe(token('line2'))
+    expect(XBB_LIGHT_THEME.tooltip.textStyle).toMatchObject({ color: token('txt') })
+  })
+
+  it('主题字体栈与 style.css 一致（canvas 不继承页面 font-family）', () => {
+    // style.css 的 font-family 跨行书写，先折叠空白再比较
+    const pageFont = css.match(/font-family:\s*([^;]+);/)?.[1]?.replace(/\s+/g, ' ').trim()
+    expect(pageFont).toBeTruthy()
+    expect(XBB_LIGHT_THEME.textStyle?.fontFamily).toBe(pageFont)
+  })
+})
+
+describe('仪表盘 M4 改造', () => {
+  it('KPI 区不套卡（无 el-card / el-row），改无卡指标行', () => {
+    expect(dashboardSrc).not.toContain('<el-card')
+    expect(dashboardSrc).not.toContain('<el-row')
+    expect(dashboardSrc).not.toContain('el-col')
+    expect(dashboardSrc).toContain('kpi-row')
+  })
+
+  it('六图统一启用 xbb-light 主题', () => {
+    expect(dashboardSrc).toContain('echarts.init(el, THEME_NAME)')
+    expect(dashboardSrc).toContain("echarts.registerTheme(THEME_NAME, XBB_LIGHT_THEME)")
+  })
+
+  it('页头复用 PageHeader 且文案零改动，KPI 标签原文保留', () => {
+    expect(dashboardSrc).toContain('<PageHeader title="数据分析">')
+    expect(dashboardSrc).not.toContain('dashboard-filters')
+    for (const label of ['订单总数', '总销售额（USD）', '总毛利（USD）']) {
+      expect(dashboardSrc).toContain(label)
+    }
+  })
+})
+
+describe('门禁：PC 端零硬编码色（M6 全站扫描的 PC 前置卡）', () => {
+  it('views/components/layouts（排除 views/m/，移动端属 M5）源码无硬编码色', () => {
+    expect(Object.keys(pcSources).length).toBeGreaterThan(20)
+    const offenders: string[] = []
+    for (const [path, src] of Object.entries(pcSources)) {
+      if (path.includes('/views/m/')) continue
+      if (HARDCODED_COLOR_ALLOW.some(a => path.includes(a))) continue
+      const s = src
+        .replace(/<!--[\s\S]*?-->/g, '')   // HTML 注释
+        .replace(/\/\*[\s\S]*?\*\//g, '')  // CSS 块注释
+        .replace(/\/\/[^\n]*/g, '')        // 行注释
+      if (/#[0-9a-fA-F]{3,8}\b/.test(s) || /\brgba?\(/.test(s)) offenders.push(path)
     }
     expect(offenders).toEqual([])
   })
