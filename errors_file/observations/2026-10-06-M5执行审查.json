@@ -1,0 +1,28 @@
+{
+  "task": "M5（移动端换肤：43 处硬编码令牌化 + tabbar 换行修复 + 全站硬编码色门禁扩展到移动端）SDD 执行 + 合并 dev @ c927f8a",
+  "date": "2026-10-06",
+  "reviewer": "旁观者审查（agent-evolution-review）：核实 designTokens.test.ts 全量门禁 describe（含非空守卫）、MobileLayout.vue tabbar 规则（10.5px+nowrap+9.5px 降级注释）、grep views/m/ 硬编码色清零（实测 0）、M5-实施计划.md 存在",
+  "execution_summary": "grilling 3 问全选 a（Vant 蓝→lime-text 双轨制 / tabbar 10.5px+nowrap / 门禁扩展全量）→ writing-plans 6 任务，色值映射表进 Global Constraints、逐行 file:line 清单 → SDD Task 1-5 全部一次通过（haiku 实现 + sonnet 审查，每任务一轮；tabbar 修复含 RED→GREEN；三个清理任务以 grep 清零验证；门禁扩展 GREEN 前置，RED 证据为清理前记录的 43 计数）→ 预览面板持续被平台分类器故障阻塞（跨多日），两次走查均降级为用户本机浏览器（M4 桌面 / M5 375px DevTools 模拟）→ opus 终审可合并，0 Critical/Important，4 Minor 全部记账 M6 → merge c927f8a",
+  "findings": [
+    {
+      "错误描述": "【Minor·流程】GREEN 前置门禁的 RED 证据链依赖「清理前记录的 43 计数」这一口头/文档事实，未固化为可重放证据",
+      "错误细节": "门禁扩展任务采用 GREEN 前置（清理完成后扩展即绿），跳过了标准 RED→GREEN。其 RED 依据是清理任务执行前 grep 的 43 计数，该计数存在于过程记录而非测试断言中——若清理有遗漏导致门禁恰好恒绿，此链路无法自证。已核实 designTokens.test.ts:325 门禁带 toBeGreaterThan(20) 非空守卫且 glob 实覆盖 views/m/，实际风险低，但流程上 RED 证据应随手存档（如 RED 状态的测试输出截图/日志路径写入计划文档）。",
+      "建议解决方案": "GREEN 前置类任务（测试与实现分离两个任务）应在计划中显式声明 RED 证据的留存方式：清理任务完成时同时提交一份失败断言或计数日志入档，使门禁的「曾经红过」可追溯。"
+    },
+    {
+      "错误描述": "【正面·流程】纯转录任务的计划质量决定了一次通过率：色值映射表 + 逐行 file:line 清单使 haiku 实现近乎零自由度，Task 1-5 每任务一轮审查即过",
+      "错误细节": "已核实 views/m/ 硬编码色 grep 为 0、tabbar 10.5px+nowrap 与降级注释（重叠则降 9.5px 兜底）与计划一致。对比 M4 的实现波返工，M5 证明「计划即代码」的粒度（映射表进 Global Constraints + 行号级清单）可将低复杂度转录任务的成本压缩到接近机械执行。",
+      "建议解决方案": "无需修复。可沉淀为模式：凡可枚举的机械替换任务，计划阶段产出完整映射表与行号清单，实现者（可用低配模型）只做转录，审查降为一轮 diff 比对。"
+    },
+    {
+      "错误描述": "【Minor·技术】终审 4 Minor（320px tabbar 余量紧 / App.vue 不在 pcSources glob / 命名 pcSources 已含移动端 / 既有 paid 色差异）记账 M6 属实但暴露 glob 覆盖盲区曾在 M4 门禁设计中漏检",
+      "错误细节": "已核实 pcSources 由 views/components/layouts 三个 glob 组成，App.vue 位于 ../App.vue 确实不被扫描——即根组件存在硬编码色豁免盲区。该盲区未被 M4 门禁设计的非空守卫覆盖（守卫只防 glob 落空，不防 glob 范围缺口）。记账延后处理合理，但「扫描范围缺口」与「扫描落空」是两类不同失效模式，前者的检查应在门禁设计模板中并列。",
+      "建议解决方案": "M6 处理 App.vue 覆盖时，顺带在门禁设计模板中把「glob 范围核对（根组件/入口文件）」列为与非空守卫并列的检查项。"
+    }
+  ],
+  "lessons": [
+    "可枚举的机械替换任务（色值令牌化等）应采用「映射表 + 逐行 file:line 清单」的计划粒度：实现近乎纯转录、低配模型一次通过率 100%、审查降为一轮 diff 比对，SDD 成本显著低于需要实现者做设计的任务。",
+    "GREEN 前置的门禁扩展任务（测试与清理分两任务）必须显式留存 RED 证据（失败断言或计数日志入档），且「扫描范围缺口」（如 App.vue 不在 glob）与「扫描落空」是两类独立失效模式，门禁设计模板应并列检查。",
+    "预览分类器平台故障跨日复现时，走查降级路径（Bash 拉服务 + 用户本机浏览器）已验证可复用：M4 桌面、M5 375px DevTools 模拟均走此路径，后续会话遇同类故障应直接启用，不再多渠道重试。"
+  ]
+}
