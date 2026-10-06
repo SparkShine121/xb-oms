@@ -279,7 +279,7 @@ function previewPhotos(log: any, index: string | number) {
 <style scoped>
 .m-tracking-workbench {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: var(--panel2);
 }
 .cell-title {
   display: flex;
@@ -288,13 +288,13 @@ function previewPhotos(log: any, index: string | number) {
 }
 .order-no {
   font-weight: 600;
-  color: #323233;
+  color: var(--txt);
 }
 .cell-label {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  color: #969799;
+  color: var(--mut);
   font-size: 13px;
 }
 .stay {
@@ -331,19 +331,19 @@ function previewPhotos(log: any, index: string | number) {
 }
 .tl-operator {
   font-size: 13px;
-  color: #969799;
+  color: var(--mut);
 }
 .tl-body {
   width: 100%;
 }
 .tl-time {
   font-size: 12px;
-  color: #969799;
+  color: var(--mut);
 }
 .tl-note {
   margin: 8px 0;
   font-size: 14px;
-  color: #323233;
+  color: var(--txt);
   white-space: pre-wrap;
 }
 .tl-photos {

@@ -461,7 +461,7 @@ onMounted(async () => {
 <style scoped>
 .m-order-form {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: var(--panel2);
 }
 .loading-wrap {
   display: flex;
@@ -473,7 +473,7 @@ onMounted(async () => {
 }
 .product-row + .product-row {
   margin-top: 8px;
-  border-top: 8px solid #f7f8fa;
+  border-top: 8px solid var(--panel2);
 }
 .add-item-wrap {
   padding: 12px 16px;
