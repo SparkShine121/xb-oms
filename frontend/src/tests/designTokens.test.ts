@@ -7,6 +7,7 @@ import { THEME_NAME, CHART_COLORS, XBB_LIGHT_THEME } from '../analytics/chartThe
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
+const mobileLayoutSrc = readFileSync(new URL('../layouts/MobileLayout.vue', import.meta.url), 'utf8')
 
 const pcSources: Record<string, string> = {
   ...(import.meta.glob('../views/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
@@ -335,5 +336,13 @@ describe('门禁：PC 端零硬编码色（M6 全站扫描的 PC 前置卡）', 
       if (/#[0-9a-fA-F]{3,8}\b/.test(s) || /\brgba?\(/.test(s)) offenders.push(path)
     }
     expect(offenders).toEqual([])
+  })
+})
+
+describe('移动端 tabbar（M5）', () => {
+  it('tabbar 标签 10.5px + 不换行（"工厂结算"4 字标签在 375px 不折行）', () => {
+    expect(mobileLayoutSrc).toContain('van-tabbar-item__text')
+    expect(mobileLayoutSrc).toMatch(/van-tabbar-item__text[\s\S]{0,200}?font-size:\s*10\.5px/)
+    expect(mobileLayoutSrc).toMatch(/van-tabbar-item__text[\s\S]{0,200}?white-space:\s*nowrap/)
   })
 })
