@@ -189,24 +189,24 @@ onMounted(loadFactories)
 .summary-card {
   padding: 12px 8px;
   text-align: center;
-  background: #fff;
+  background: var(--panel);
   border-radius: 8px;
 }
 .summary-label {
   font-size: 12px;
-  color: #969799;
+  color: var(--mut);
   margin-bottom: 6px;
 }
 .summary-value {
   font-size: 16px;
   font-weight: 600;
-  color: #323233;
+  color: var(--txt);
 }
 .summary-value.paid {
-  color: #07c160;
+  color: var(--success);
 }
 .summary-value.unpaid {
-  color: #ee0a24;
+  color: var(--danger);
 }
 .cell-title {
   display: flex;
@@ -215,21 +215,21 @@ onMounted(loadFactories)
 }
 .order-no {
   font-weight: 600;
-  color: #323233;
+  color: var(--txt);
 }
 .cell-label {
-  color: #969799;
+  color: var(--mut);
   font-size: 13px;
 }
 .amount-wrap {
   text-align: right;
 }
 .amount {
-  color: #1989fa;
+  color: var(--lime-text);
   font-weight: 600;
 }
 .paid {
-  color: #969799;
+  color: var(--mut);
   font-size: 12px;
   margin-top: 2px;
 }

@@ -130,17 +130,17 @@ function goEdit(id: number) {
 }
 .order-no {
   font-weight: 600;
-  color: #323233;
+  color: var(--txt);
 }
 .seq {
-  color: #969799;
+  color: var(--mut);
 }
 .cell-label {
-  color: #969799;
+  color: var(--mut);
   font-size: 13px;
 }
 .amount {
-  color: #1989fa;
+  color: var(--lime-text);
   font-weight: 600;
 }
 </style>

@@ -7,13 +7,14 @@ import { THEME_NAME, CHART_COLORS, XBB_LIGHT_THEME } from '../analytics/chartThe
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
+const mobileLayoutSrc = readFileSync(new URL('../layouts/MobileLayout.vue', import.meta.url), 'utf8')
 
 const pcSources: Record<string, string> = {
   ...(import.meta.glob('../views/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
   ...(import.meta.glob('../components/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
   ...(import.meta.glob('../layouts/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
 }
-// 豁免：M3 登录页 lime 渐晕（渐变透明度 .10 是设计参数，不同于 --lime-tint .14）；M6 扫尾复议
+// 豁免：M3 登录页 lime 渐晕（渐变透明度 .10 是设计参数，不同于 --lime-tint .14）；M6 复议
 const HARDCODED_COLOR_ALLOW = ['/views/Login.vue']
 
 function token(name: string): string {
@@ -321,12 +322,11 @@ describe('仪表盘 M4 改造', () => {
   })
 })
 
-describe('门禁：PC 端零硬编码色（M6 全站扫描的 PC 前置卡）', () => {
-  it('views/components/layouts（排除 views/m/，移动端属 M5）源码无硬编码色', () => {
+describe('门禁：全站视图零硬编码色（PC + 移动端）', () => {
+  it('views/components/layouts 源码无硬编码色（Login 渐晕豁免）', () => {
     expect(Object.keys(pcSources).length).toBeGreaterThan(20)
     const offenders: string[] = []
     for (const [path, src] of Object.entries(pcSources)) {
-      if (path.includes('/views/m/')) continue
       if (HARDCODED_COLOR_ALLOW.some(a => path.includes(a))) continue
       const s = src
         .replace(/<!--[\s\S]*?-->/g, '')   // HTML 注释
@@ -335,5 +335,13 @@ describe('门禁：PC 端零硬编码色（M6 全站扫描的 PC 前置卡）', 
       if (/#[0-9a-fA-F]{3,8}\b/.test(s) || /\brgba?\(/.test(s)) offenders.push(path)
     }
     expect(offenders).toEqual([])
+  })
+})
+
+describe('移动端 tabbar（M5）', () => {
+  it('tabbar 标签 10.5px + 不换行（"工厂结算"4 字标签在 375px 不折行）', () => {
+    expect(mobileLayoutSrc).toContain('van-tabbar-item__text')
+    expect(mobileLayoutSrc).toMatch(/van-tabbar-item__text[\s\S]{0,200}?font-size:\s*10\.5px/)
+    expect(mobileLayoutSrc).toMatch(/van-tabbar-item__text[\s\S]{0,200}?white-space:\s*nowrap/)
   })
 })

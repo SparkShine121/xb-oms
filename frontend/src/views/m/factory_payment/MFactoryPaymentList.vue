@@ -112,7 +112,7 @@ onMounted(loadFactories)
 
 <style scoped>
 .statement-link {
-  color: #1989fa;
+  color: var(--lime-text);
   font-size: 14px;
 }
 .cell-title {
@@ -122,21 +122,21 @@ onMounted(loadFactories)
 }
 .order-no {
   font-weight: 600;
-  color: #323233;
+  color: var(--txt);
 }
 .cell-label {
-  color: #969799;
+  color: var(--mut);
   font-size: 13px;
 }
 .amount-wrap {
   text-align: right;
 }
 .amount {
-  color: #1989fa;
+  color: var(--lime-text);
   font-weight: 600;
 }
 .paid {
-  color: #969799;
+  color: var(--mut);
   font-size: 12px;
   margin-top: 2px;
 }

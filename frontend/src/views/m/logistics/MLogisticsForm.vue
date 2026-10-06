@@ -283,7 +283,7 @@ onMounted(async () => {
 <style scoped>
 .m-logistics-form {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: var(--panel2);
 }
 .loading-wrap {
   display: flex;

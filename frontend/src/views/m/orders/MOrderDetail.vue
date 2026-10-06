@@ -152,17 +152,17 @@ onMounted(load)
   line-height: 1.6;
 }
 .item-value .amount {
-  color: #1989fa;
+  color: var(--lime-text);
   font-weight: 600;
 }
 .item-value .muted {
-  color: #969799;
+  color: var(--mut);
 }
 .profit-positive {
-  color: var(--van-success-color, #07c160);
+  color: var(--success);
 }
 .profit-negative {
-  color: var(--van-danger-color, #ee0a24);
+  color: var(--danger);
 }
 .action-bar {
   display: flex;

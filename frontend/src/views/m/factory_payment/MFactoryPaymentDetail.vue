@@ -217,22 +217,22 @@ onMounted(load)
   margin-top: 12px;
 }
 .remark {
-  color: #646566;
+  color: var(--mut);
 }
 .cell-label {
-  color: #969799;
+  color: var(--mut);
   font-size: 13px;
 }
 .amount {
-  color: #1989fa;
+  color: var(--lime-text);
   font-weight: 600;
 }
 .paid {
-  color: #1989fa;
+  color: var(--lime-text);
   font-weight: 600;
 }
 .unpaid {
-  color: #ee0a24;
+  color: var(--danger);
   font-weight: 600;
 }
 .action-bar {
