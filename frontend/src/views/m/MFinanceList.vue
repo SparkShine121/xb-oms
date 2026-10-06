@@ -102,21 +102,21 @@ function onTypeChange() {
 }
 .desc {
   font-weight: 600;
-  color: #323233;
+  color: var(--txt);
 }
 .cell-label {
   display: flex;
   align-items: center;
-  color: #969799;
+  color: var(--mut);
   font-size: 13px;
 }
 .amount {
   font-weight: 600;
 }
 .amount.in {
-  color: #07c160;
+  color: var(--success);
 }
 .amount.out {
-  color: #ee0a24;
+  color: var(--danger);
 }
 </style>
