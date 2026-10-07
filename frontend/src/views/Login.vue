@@ -79,7 +79,7 @@ async function onSubmit() {
   min-height: 100dvh;
   background: var(--canvas);
   background-image: radial-gradient(720px 520px at 10% 8%, var(--lime-tint), transparent 58%),
-    radial-gradient(640px 460px at 92% 94%, rgba(163, 209, 26, 0.1), transparent 60%);
+    radial-gradient(640px 460px at 92% 94%, var(--lime-tint), transparent 60%);
 }
 .login-brand {
   flex: 1.1;

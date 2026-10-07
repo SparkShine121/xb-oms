@@ -9,13 +9,12 @@ const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
 const mobileLayoutSrc = readFileSync(new URL('../layouts/MobileLayout.vue', import.meta.url), 'utf8')
 
-const pcSources: Record<string, string> = {
+const allViewSources: Record<string, string> = {
   ...(import.meta.glob('../views/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
   ...(import.meta.glob('../components/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
   ...(import.meta.glob('../layouts/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../App.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
 }
-// 豁免：M3 登录页 lime 渐晕（渐变透明度 .10 是设计参数，不同于 --lime-tint .14）；M6 复议
-const HARDCODED_COLOR_ALLOW = ['/views/Login.vue']
 
 function token(name: string): string {
   const m = css.match(new RegExp(`--${name}\\s*:\\s*([^;]+);`))
@@ -322,17 +321,17 @@ describe('仪表盘 M4 改造', () => {
   })
 })
 
-describe('门禁：全站视图零硬编码色（PC + 移动端）', () => {
-  it('views/components/layouts 源码无硬编码色（Login 渐晕豁免）', () => {
-    expect(Object.keys(pcSources).length).toBeGreaterThan(20)
+describe('门禁：全站视图零硬编码色', () => {
+  it('views/components/layouts 源码无硬编码色（零豁免）', () => {
+    expect(Object.keys(allViewSources).length).toBeGreaterThan(20)
     const offenders: string[] = []
-    for (const [path, src] of Object.entries(pcSources)) {
-      if (HARDCODED_COLOR_ALLOW.some(a => path.includes(a))) continue
+    const NAMED_COLORS = 'black|white|red|green|blue|yellow|orange|purple|pink|gray|grey|cyan|magenta|silver|gold|teal|navy|olive|lime|aqua|fuchsia|crimson|indigo|violet|tomato|salmon|coral'
+    for (const [path, src] of Object.entries(allViewSources)) {
       const s = src
         .replace(/<!--[\s\S]*?-->/g, '')   // HTML 注释
         .replace(/\/\*[\s\S]*?\*\//g, '')  // CSS 块注释
         .replace(/\/\/[^\n]*/g, '')        // 行注释
-      if (/#[0-9a-fA-F]{3,8}\b/.test(s) || /\brgba?\(/.test(s)) offenders.push(path)
+      if (new RegExp(`#[0-9a-fA-F]{3,8}\\b|\\brgba?\\(|\\bhsla?\\(|:\\s*(?:${NAMED_COLORS})\\b`).test(s)) offenders.push(path)
     }
     expect(offenders).toEqual([])
   })
@@ -343,5 +342,13 @@ describe('移动端 tabbar（M5）', () => {
     expect(mobileLayoutSrc).toContain('van-tabbar-item__text')
     expect(mobileLayoutSrc).toMatch(/van-tabbar-item__text[\s\S]{0,200}?font-size:\s*10\.5px/)
     expect(mobileLayoutSrc).toMatch(/van-tabbar-item__text[\s\S]{0,200}?white-space:\s*nowrap/)
+  })
+})
+
+describe('可达性：prefers-reduced-motion（规范 §6 强制项）', () => {
+  it('全局降级规则存在且压平 animation/transition', () => {
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*animation-duration:\s*0\.01ms/)
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*transition-duration:\s*0\.01ms/)
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*animation-iteration-count:\s*1/)
   })
 })

@@ -204,10 +204,10 @@ function fmtMoney(v: number): string {
       <!-- 销售结算表 -->
       <el-tab-pane label="销售结算表" name="sales">
         <div class="chart-row">
-          <div class="chart-box tall">
+          <div class="chart-box">
             <div ref="salesLineEl" class="chart" />
           </div>
-          <div class="chart-box tall">
+          <div class="chart-box">
             <div ref="salesPieEl" class="chart" />
           </div>
         </div>
@@ -230,10 +230,10 @@ function fmtMoney(v: number): string {
       <!-- 跟单信息汇总 -->
       <el-tab-pane label="跟单信息汇总" name="tracking">
         <div class="chart-row">
-          <div class="chart-box tall">
+          <div class="chart-box">
             <div ref="nodePieEl" class="chart" />
           </div>
-          <div class="chart-box tall">
+          <div class="chart-box">
             <div ref="dwellBarEl" class="chart" />
           </div>
         </div>

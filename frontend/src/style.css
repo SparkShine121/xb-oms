@@ -366,3 +366,20 @@ h3 {
 .van-toast .van-icon {
   color: inherit !important;
 }
+
+/* ============================================================
+ * 可达性：prefers-reduced-motion（规范 §6 强制项）
+ * 用户系统开启"减弱动态效果"时，压平全站动画/过渡（含 EP/Vant 内置）；
+ * 保留瞬时状态切换，无无限循环动画。
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+  }
+}
