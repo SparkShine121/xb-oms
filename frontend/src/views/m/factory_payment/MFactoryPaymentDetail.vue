@@ -228,7 +228,7 @@ onMounted(load)
   font-weight: 600;
 }
 .paid {
-  color: var(--lime-text);
+  color: var(--mut);
   font-weight: 600;
 }
 .unpaid {

@@ -9,10 +9,11 @@ const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const dashboardSrc = readFileSync(new URL('../views/analytics/Dashboard.vue', import.meta.url), 'utf8')
 const mobileLayoutSrc = readFileSync(new URL('../layouts/MobileLayout.vue', import.meta.url), 'utf8')
 
-const pcSources: Record<string, string> = {
+const allViewSources: Record<string, string> = {
   ...(import.meta.glob('../views/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
   ...(import.meta.glob('../components/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
   ...(import.meta.glob('../layouts/**/*.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../App.vue', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
 }
 
 function token(name: string): string {
@@ -322,14 +323,15 @@ describe('仪表盘 M4 改造', () => {
 
 describe('门禁：全站视图零硬编码色', () => {
   it('views/components/layouts 源码无硬编码色（零豁免）', () => {
-    expect(Object.keys(pcSources).length).toBeGreaterThan(20)
+    expect(Object.keys(allViewSources).length).toBeGreaterThan(20)
     const offenders: string[] = []
-    for (const [path, src] of Object.entries(pcSources)) {
+    const NAMED_COLORS = 'black|white|red|green|blue|yellow|orange|purple|pink|gray|grey|cyan|magenta|silver|gold|teal|navy|olive|lime|aqua|fuchsia|crimson|indigo|violet|tomato|salmon|coral'
+    for (const [path, src] of Object.entries(allViewSources)) {
       const s = src
         .replace(/<!--[\s\S]*?-->/g, '')   // HTML 注释
         .replace(/\/\*[\s\S]*?\*\//g, '')  // CSS 块注释
         .replace(/\/\/[^\n]*/g, '')        // 行注释
-      if (/#[0-9a-fA-F]{3,8}\b/.test(s) || /\brgba?\(/.test(s)) offenders.push(path)
+      if (new RegExp(`#[0-9a-fA-F]{3,8}\\b|\\brgba?\\(|\\bhsla?\\(|:\\s*(?:${NAMED_COLORS})\\b`).test(s)) offenders.push(path)
     }
     expect(offenders).toEqual([])
   })
