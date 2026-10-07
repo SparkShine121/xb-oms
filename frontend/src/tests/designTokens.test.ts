@@ -347,8 +347,8 @@ describe('移动端 tabbar（M5）', () => {
 
 describe('可达性：prefers-reduced-motion（规范 §6 强制项）', () => {
   it('全局降级规则存在且压平 animation/transition', () => {
-    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*animation-duration:\s*0\.01ms/)
-    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*transition-duration:\s*0\.01ms/)
-    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*animation-iteration-count:\s*1/)
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*animation-duration:\s*0\.01ms/)
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*transition-duration:\s*0\.01ms/)
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*animation-iteration-count:\s*1/)
   })
 })
