@@ -1,0 +1,12 @@
+{
+  "task": "BUG-SIM-018/019/020 认证安全批",
+  "date": "2026-10-10",
+  "overall": "fail→followup 修复后全绿",
+  "findings": [
+    {"dimension": "功能完整性", "severity": "high", "observation": "Q2:a 配套决策只交付一半：短 access 落地但无 refresh 续命，用户 30min 被踢（体验倒退）", "suggestion": "已修：request.ts 401 静默刷新重放"},
+    {"dimension": "安全闭环", "severity": "high", "observation": "LogoutView IsAuthenticated 使 access 过期时 blacklist 必然 401（N7 修复在过期路径失效）；logout await 期间可重入", "suggestion": "已修：AllowAny + 先清后发"},
+    {"dimension": "限流可绕过", "severity": "medium", "observation": "XFF 无条件信任，直连可伪造绕过/投毒", "suggestion": "已修：REMOTE_ADDR 优先+回环启发"},
+    {"dimension": "部署适配", "severity": "medium", "observation": "LocMemCache 多 worker 隔离使生产限流失效", "suggestion": "已注明 prod.py 需 Redis"},
+    {"dimension": "数据一致性", "severity": "low", "observation": "PasswordFlag 在 admin/shell 改密路径不更新", "suggestion": "未实施，记录待办（post_save signal 或校准命令）"}
+  ]
+}
