@@ -15,7 +15,14 @@ LOGIN_LOCKOUT = 600      # 锁定 10 分钟
 
 
 def _client_ip(request):
-    return request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+    # followup：优先 REMOTE_ADDR（直连下 XFF 可伪造）；生产经反代时由反代覆盖
+    # X-Forwarded-For 且后端以 REMOTE_ADDR 见到反代——如需信任 XFF 须配可信代理白名单
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    remote = request.META.get('REMOTE_ADDR', '')
+    # 仅当直连地址是本机回环/内网反代特征时才采信 XFF 首段（简单启发，生产建议配 ipware）
+    if xff and remote in ('127.0.0.1', '::1'):
+        return xff.split(',')[0].strip()
+    return remote
 
 
 class LoginView(APIView):
@@ -69,7 +76,9 @@ class ChangePasswordView(APIView):
         return success_response(None, '密码已修改')
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    # followup：refresh token 本身就是拉黑操作的凭证，无需 access 鉴权——
+    # 否则 access 过期场景（最需要登出时）blacklist 必然 401，N7 修复在过期路径失效
+    permission_classes = [AllowAny]
     def post(self, request):
         try:
             RefreshToken(request.data.get('refresh')).blacklist()

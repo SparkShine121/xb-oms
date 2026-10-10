@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User, Group
+from rest_framework.permissions import AllowAny
 from rest_framework.test import APIClient
 
 @pytest.fixture
@@ -36,6 +37,7 @@ def test_create_groups_command(db):
 
 import pytest
 from django.contrib.auth.models import User
+from rest_framework.permissions import AllowAny
 from rest_framework.test import APIClient
 from django.core.cache import cache
 
@@ -80,3 +82,20 @@ def test_access_token_lifetime_30min():
     from django.conf import settings
     from datetime import timedelta
     assert settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'] == timedelta(minutes=30)
+
+# ---- 认证批 followup（旁观者审查发现）----
+
+def test_logout_works_with_expired_access(db):
+    """logout 改 AllowAny：access 过期场景仍可 blacklist refresh（N7 修复在过期路径成立）"""
+    from apps.accounts.views import LogoutView
+    assert AllowAny in LogoutView.permission_classes
+
+
+def test_client_ip_prefers_remote_addr_without_trusted_proxy():
+    """dev 直连：REMOTE_ADDR 优先（XFF 可伪造）"""
+    from apps.accounts.views import _client_ip
+    from rest_framework.test import APIRequestFactory
+    req = APIRequestFactory().post('/api/auth/login/', {})
+    req.META['REMOTE_ADDR'] = '10.0.0.1'
+    req.META['HTTP_X_FORWARDED_FOR'] = '1.2.3.4'
+    assert _client_ip(req) == '10.0.0.1'
