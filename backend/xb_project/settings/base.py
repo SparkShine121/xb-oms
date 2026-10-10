@@ -117,7 +117,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # JWT（djangorestframework-simplejwt）
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # BUG-SIM-019：8h→30min，refresh 7 天在线续命
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 

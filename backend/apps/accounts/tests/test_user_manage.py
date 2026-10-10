@@ -78,8 +78,11 @@ def test_update_password_weak_rejected(admin_client, db):
     assert r.status_code == 400
 
 def test_weak_password_flag_in_list(admin_client, db):
-    User.objects.create_user('flag_weak', password='aa1234')
-    User.objects.create_user('flag_strong', password='good1234')
+    # aa1234 不满足策略，经 API 建号会被 400 拦——弱密码只能经 ORM/脚本产生（过渡态），故直建后补标记
+    from apps.accounts.serializers import mark_password_flag
+    u1 = User.objects.create_user('flag_weak', password='aa1234')
+    mark_password_flag(u1, 'aa1234')  # 与重置脚本同路径
+    User.objects.create_user('flag_strong', password='good1234')  # 无标记记录 → False
     r = admin_client.get('/api/auth/users/')
     flags = {u['username']: u.get('is_weak_password') for u in r.data['data']['results']}
     assert flags['flag_weak'] is True

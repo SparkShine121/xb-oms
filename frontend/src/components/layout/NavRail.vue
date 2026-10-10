@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import request from '../../api/request'
 import { useRoute, useRouter } from 'vue-router'
 import { MENU_GROUPS, groupOfPath } from '../../layouts/menuConfig'
 import { useUserStore } from '../../stores/user'
@@ -66,6 +68,18 @@ onBeforeUnmount(() => { document.removeEventListener('click', onDocClick) })
 const userInitial = computed(() => (userStore.username || '?').slice(0, 1).toUpperCase())
 const userPop = ref(false)
 function toggleUserPop() { userPop.value = !userPop.value }
+
+// BUG-SIM-020 连带：个人改密（aa1234 → 合规密码的升级入口）
+const pwdPop = ref(false)
+const pwdForm = reactive({ old_password: '', new_password: '', confirm: '' })
+async function onChangePassword() {
+  if (!pwdForm.old_password || !pwdForm.new_password) return ElMessage.warning('请填写完整')
+  if (pwdForm.new_password !== pwdForm.confirm) return ElMessage.warning('两次新密码不一致')
+  await request.post('/auth/me/change-password/', pwdForm)
+  ElMessage.success('密码已修改')
+  pwdPop.value = false
+  Object.assign(pwdForm, { old_password: '', new_password: '', confirm: '' })
+}
 function onLogout() {
   userPop.value = false
   userStore.logout()
@@ -115,7 +129,18 @@ function onLogout() {
       <div v-if="userPop" class="user-pop" @click.stop>
         <p class="user-pop-name">{{ userStore.username }}</p>
         <p class="user-pop-roles">{{ userStore.roles.join(' / ') }}</p>
+        <button type="button" class="user-pop-logout" @click="pwdPop = true; userPop = false">修改密码</button>
         <button type="button" class="user-pop-logout" @click="onLogout">退出登录</button>
+      </div>
+      <div v-if="pwdPop" class="user-pop pwd-pop" @click.stop>
+        <p class="user-pop-name">修改密码</p>
+        <input v-model="pwdForm.old_password" type="password" placeholder="旧密码" class="pwd-input" />
+        <input v-model="pwdForm.new_password" type="password" placeholder="新密码（至少8位，含字母和数字）" class="pwd-input" />
+        <input v-model="pwdForm.confirm" type="password" placeholder="确认新密码" class="pwd-input" />
+        <div class="pwd-actions">
+          <button type="button" class="user-pop-logout pwd-btn" @click="pwdPop = false">取消</button>
+          <button type="button" class="user-pop-logout pwd-btn" @click="onChangePassword">确定</button>
+        </div>
       </div>
     </button>
   </nav>
@@ -246,4 +271,12 @@ function onLogout() {
   font-size: 13px;
   cursor: pointer;
 }
+</style>
+
+<style scoped>
+/* BUG-SIM-020 连带：个人改密弹层（令牌取色，遵守零硬编码色门禁） */
+.pwd-pop { width: 260px; gap: 8px; display: flex; flex-direction: column; }
+.pwd-input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; }
+.pwd-actions { display: flex; gap: 8px; }
+.pwd-btn { flex: 1; }
 </style>

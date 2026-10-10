@@ -20,6 +20,7 @@ async function onSubmit() {
   try {
     const res = await login(form)
     userStore.setToken(res.data.access)
+    userStore.setRefreshToken(res.data.refresh) // BUG-SIM-019：供退出时 blacklist
     try {
       const info = await me()
       userStore.setProfile(info.data)
