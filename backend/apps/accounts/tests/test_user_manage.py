@@ -60,3 +60,52 @@ def test_non_admin_cannot_bulk_delete_users(db):
     r = c.post('/api/auth/users/bulk-delete/', {'ids': [target.id]}, format='json')
     assert r.status_code == 403
     assert User.objects.filter(id=target.id).exists()
+
+# ---- BUG-SIM-020: 密码强度 + 弱密码标记 ----
+
+@pytest.mark.parametrize('weak', ['1', '12345678', 'abcdefgh'])
+def test_create_user_weak_password_rejected(admin_client, db, weak):
+    r = admin_client.post('/api/auth/users/', {'username': 'w1', 'password': weak, 'groups': ['salesman']}, format='json')
+    assert r.status_code == 400
+
+def test_create_user_strong_password_ok(admin_client, db):
+    r = admin_client.post('/api/auth/users/', {'username': 's1', 'password': 'good1234', 'groups': ['salesman']}, format='json')
+    assert r.status_code == 201
+
+def test_update_password_weak_rejected(admin_client, db):
+    target = User.objects.create_user('t_weak', password='old12345')
+    r = admin_client.patch(f'/api/auth/users/{target.id}/', {'password': '12345678'}, format='json')
+    assert r.status_code == 400
+
+def test_weak_password_flag_in_list(admin_client, db):
+    User.objects.create_user('flag_weak', password='aa1234')
+    User.objects.create_user('flag_strong', password='good1234')
+    r = admin_client.get('/api/auth/users/')
+    flags = {u['username']: u.get('is_weak_password') for u in r.data['data']['results']}
+    assert flags['flag_weak'] is True
+    assert flags['flag_strong'] is False
+
+# ---- 个人改密（连带补充） ----
+
+def test_change_password_wrong_old_rejected(db):
+    from rest_framework.test import APIClient
+    u = User.objects.create_user('me_chg', password='old12345')
+    u.groups.add(Group.objects.get(name='salesman'))
+    c = APIClient(); c.force_authenticate(u)
+    r = c.post('/api/auth/me/change-password/', {'old_password': 'wrong', 'new_password': 'good1234'}, format='json')
+    assert r.status_code == 401
+
+def test_change_password_weak_new_rejected(db):
+    from rest_framework.test import APIClient
+    u = User.objects.create_user('me_chg2', password='old12345')
+    c = APIClient(); c.force_authenticate(u)
+    r = c.post('/api/auth/me/change-password/', {'old_password': 'old12345', 'new_password': '12345678'}, format='json')
+    assert r.status_code == 400
+
+def test_change_password_ok(db):
+    from rest_framework.test import APIClient
+    u = User.objects.create_user('me_chg3', password='old12345')
+    c = APIClient(); c.force_authenticate(u)
+    r = c.post('/api/auth/me/change-password/', {'old_password': 'old12345', 'new_password': 'good1234'}, format='json')
+    assert r.status_code == 200
+    assert User.objects.get(pk=u.pk).check_password('good1234')
