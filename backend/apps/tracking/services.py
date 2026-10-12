@@ -22,6 +22,9 @@ def _move(order, user, note, photos, *, is_reject):
             raise ValidationError('订单状态已被他人更新，请刷新后操作')
         if fresh.is_cancelled:
             raise ValidationError('已取消订单不可流转')
+        # BUG-SIM-005 Q1:a：审批门禁——未批准订单不产生业务效果
+        if not fresh.is_approved:
+            raise ValidationError('该订单待审批通过后可流转')
         node = prev_node(fresh.tracking_status) if is_reject else next_node(fresh.tracking_status)
         if not node:
             raise ValidationError('当前节点不可驳回（起点）' if is_reject else '当前节点不可推进（终态）')

@@ -131,32 +131,33 @@ def test_zero_payment_record_rejected(db, finance_client):
                             {'factory_payment': p.id, 'amount': '0', 'payment_date': '2026-09-17'}, format='json')
     assert r.status_code == 400
 
-def test_overpay_record_rejected(db, finance_client):
+def test_overpay_record_rejected(db, admin_client):
     p = _make_payment()  # amount_cny=72
-    r1 = finance_client.post('/api/factory-payment/records/',
+    r1 = admin_client.post('/api/factory-payment/records/',
                              {'factory_payment': p.id, 'amount': '50', 'payment_date': '2026-09-17'}, format='json')
     assert r1.status_code == 201
-    r2 = finance_client.post('/api/factory-payment/records/',
-                             {'factory_payment': p.id, 'amount': '30', 'payment_date': '2026-09-17'}, format='json')
-    assert r2.status_code == 400  # 50+30 > 72
+    r2 = admin_client.post('/api/factory-payment/records/',
+                           {'factory_payment': p.id, 'amount': '30', 'payment_date': '2026-09-17'}, format='json')
+    assert r2.status_code == 400  # 50+30 > 72（待审记录同样占用额度）
     p.refresh_from_db()
     assert str(p.paid_amount) == '50.00' and p.status == '部分结'
 
-def test_pay_exact_amount_settles(db, finance_client):
-    """回归锁：恰好付满正常放行并置已结"""
+def test_pay_exact_amount_settles(db, admin_client):
+    """回归锁：恰好付满正常放行并置已结（BUG-SIM-005 后用 admin 建生效记录）"""
     p = _make_payment()
-    r = finance_client.post('/api/factory-payment/records/',
+    r = admin_client.post('/api/factory-payment/records/',
                             {'factory_payment': p.id, 'amount': '72', 'payment_date': '2026-09-17'}, format='json')
     assert r.status_code == 201
     p.refresh_from_db()
     assert p.status == '已结'
 
-def test_overpay_via_record_update_rejected(db, finance_client):
+def test_overpay_via_record_update_rejected(db, admin_client):
     p = _make_payment()
-    r1 = finance_client.post('/api/factory-payment/records/',
+    r1 = admin_client.post('/api/factory-payment/records/',
+
                              {'factory_payment': p.id, 'amount': '50', 'payment_date': '2026-09-17'}, format='json')
     rid = r1.data['data']['id']
-    r2 = finance_client.patch(f'/api/factory-payment/records/{rid}/', {'amount': '80'}, format='json')
+    r2 = admin_client.patch(f'/api/factory-payment/records/{rid}/', {'amount': '80'}, format='json')
     assert r2.status_code == 400  # 改大后 80 > 72
     p.refresh_from_db()
     assert str(p.paid_amount) == '50.00'

@@ -124,7 +124,7 @@ class PaymentInViewSet(BaseModelViewSet):
 
         # 支出：工厂付款记录
         if want('expense_factory'):
-            qs = FactoryPaymentRecord.objects.select_related(
+            qs = FactoryPaymentRecord.objects.filter(is_approved=True).select_related(  # BUG-SIM-005 Q3:a
                 'factory_payment', 'factory_payment__factory',
                 'factory_payment__order_item', 'factory_payment__order_item__order',
                 'factory_payment__order_item__order__customer',

@@ -92,7 +92,7 @@ class FactorySummaryView(APIView):
     def get(self, request):
         # BUG-SIM-015 Q3:a：排除取消单，与销售/跟单汇总口径一致
         # （对账单 statement 保留全部——对账凭据完整性）
-        qs = FactoryPayment.objects.filter(order_item__order__is_cancelled=False)
+        qs = FactoryPayment.objects.filter(order_item__order__is_cancelled=False, is_approved=True)  # BUG-SIM-005 Q3:a
         year = request.query_params.get('year')
         if year:
             qs = qs.filter(created_at__year=year)

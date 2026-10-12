@@ -8,6 +8,13 @@ class FactoryPaymentRecordSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('付款金额必须大于 0')
         return value
 
+    def validate(self, attrs):
+        # BUG-SIM-005 Q2:a：审批门禁——未批准结算单不可登记付款
+        fp = attrs.get('factory_payment')
+        if fp is not None and self.instance is None and not fp.is_approved:
+            raise serializers.ValidationError('该结算单待审批通过后可登记付款')
+        return attrs
+
     class Meta:
         model = FactoryPaymentRecord
         fields = ['id', 'factory_payment', 'amount', 'payment_date', 'note',
@@ -22,8 +29,11 @@ class FactoryPaymentSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        # BUG-SIM-015 Q2:a：取消订单不可新建/改挂结算（存量结算付款清偿不受限）
+        # BUG-SIM-005 Q2:a：审批门禁——未批准订单不可手动新建结算
         order_item = attrs.get('order_item')
+        if order_item is not None and self.instance is None and not order_item.order.is_approved:
+            raise serializers.ValidationError('该订单待审批通过后可生成结算')
+        # BUG-SIM-015 Q2:a：取消订单不可新建/改挂结算（存量结算付款清偿不受限）
         if order_item is not None and order_item.order.is_cancelled:
             if self.instance is None:
                 raise serializers.ValidationError('已取消订单不可新建结算')

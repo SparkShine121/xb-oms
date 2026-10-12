@@ -62,6 +62,14 @@ class OrderViewSet(BaseModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
+        # BUG-SIM-024 Q4:a：非 admin 编辑已批准订单 → 打回未批准 + 重新挂审
+        # （admin 即审批人不受影响；打回创建的 pending 使 resubmit_on_update 判重跳过）
+        if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
+            instance.is_approved = False
+            instance.save(update_fields=['is_approved'])
+            ApprovalRequest.objects.create(
+                approval_type='order_change', target_id=instance.id,
+                target_model='Order', submitted_by=self.request.user)
         resubmit_on_update(self.request.user, instance, 'order_change', 'Order')
 
     @action(detail=False, methods=['post'], url_path='import')

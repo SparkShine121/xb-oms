@@ -242,6 +242,7 @@ onMounted(() => { loadUsers(); load() })
       <el-table-column label="订单号" min-width="140">
         <template #default="{ row }">
           <router-link :to="`/orders/${row.id}`" class="order-link">{{ row.order_no }}</router-link>
+          <el-tag v-if="row.is_approved === false" size="small" type="warning" class="pend-tag">待审批</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="跟踪状态" width="100">
@@ -360,4 +361,8 @@ onMounted(() => { loadUsers(); load() })
   font-size: 13px;
   color: var(--el-color-warning);
 }
+</style>
+
+<style scoped>
+.pend-tag { margin-left: 6px; }
 </style>

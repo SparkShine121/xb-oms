@@ -58,7 +58,7 @@ class FactoryPaymentRecord(models.Model):
         super().save(*args, **kwargs)
         # 同步父单已付金额 = 全部记录之和，并触发父单 status 重算
         fp = self.factory_payment
-        total = fp.records.aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+        total = fp.records.filter(is_approved=True).aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
         fp.paid_amount = total
         fp.save()
 
@@ -66,6 +66,6 @@ class FactoryPaymentRecord(models.Model):
         fp = self.factory_payment
         super().delete(*args, **kwargs)
         # 删除记录后回退父单已付金额（求和需在删除之后，delete 仅限 admin）
-        total = fp.records.aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+        total = fp.records.filter(is_approved=True).aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
         fp.paid_amount = total
         fp.save()

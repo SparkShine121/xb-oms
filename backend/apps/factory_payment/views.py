@@ -73,6 +73,9 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         # 行锁使并发生成排队，获锁后重查明细，已被先生成结算的明细自然进 skipped
         with transaction.atomic():
             order = Order.objects.select_for_update().get(pk=order.pk)  # 获锁后重查（含 is_cancelled）
+            # BUG-SIM-005 Q2:a：审批门禁——未批准订单不可生成结算
+            if not order.is_approved:
+                return error_response(1001, '该订单待审批通过后可生成结算', status=400)
             items = list(order.items.filter(factory__isnull=False))
             for item in items:
                 if order.is_cancelled or hasattr(item, 'factory_payment') or item.qty * item.cost_price <= 0:
@@ -94,7 +97,8 @@ class FactoryPaymentViewSet(BaseModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='statement')
     def statement(self, request):
-        qs = self.get_queryset()
+        # BUG-SIM-005 Q3:a：对账单排除未批准结算单
+        qs = self.get_queryset().filter(is_approved=True)
         factory_id = request.query_params.get('factory')
         if factory_id:
             qs = qs.filter(factory_id=factory_id)

@@ -391,3 +391,149 @@ def test_salesman_cannot_cancel_via_patch(db):
                                         'customer': o.customer_id, 'items': []}, format='json')
     o2 = Order.objects.get(order_no='OCANX2')
     assert o2.is_cancelled is False  # 建单携带同样无效
+
+# ---- BUG-SIM-005/024: 审批门禁 ----
+
+def _pending_order(no='OGATE'):
+    """构造挂起态订单（等价于非 admin 建单后的审批挂起态）"""
+    from apps.basic_info.models import Customer
+    from apps.system_mgmt.models import ApprovalRequest
+    sales = _sales_user('sales_gate')
+    o = Order.objects.create(order_no=no, tracking_status='接单', is_approved=False,
+                             customer=Customer.objects.create(name='CG', salesman=sales), salesman=sales)
+    ApprovalRequest.objects.create(approval_type='order_change', target_id=o.id,
+                                   target_model='Order', submitted_by=sales)
+    return o
+
+
+def test_unapproved_order_advance_rejected(db):
+    """A-02 复现修复：未批准订单不可推进"""
+    from rest_framework.test import APIClient
+    o = _pending_order()
+    assert o.is_approved is False
+    adm = User.objects.create_user('adm_g1', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    r = APIClient(); r.force_authenticate(adm)
+    res = r.post(f'/api/tracking/orders/{o.id}/advance/', {'note': ''}, format='multipart')
+    assert res.status_code == 400
+    o.refresh_from_db()
+    assert o.tracking_status == '接单'
+
+
+@pytest.mark.django_db(transaction=True)  # approve 触发备份，须贴近生产 autocommit（同 test_approval 惯例）
+def test_approve_then_advance_ok(db):
+    """闭环：approve 后可推进"""
+    from rest_framework.test import APIClient
+    o = _pending_order('OGATE2')
+    adm = User.objects.create_user('adm_g2', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    c = APIClient(); c.force_authenticate(adm)
+    from apps.system_mgmt.models import ApprovalRequest
+    ar = ApprovalRequest.objects.get(target_id=o.id, approval_type='order_change', status='pending')
+    assert c.post(f'/api/system-mgmt/approvals/{ar.id}/approve/').status_code == 200
+    res = c.post(f'/api/tracking/orders/{o.id}/advance/', {'note': ''}, format='multipart')
+    assert res.status_code == 200
+    o.refresh_from_db()
+    assert o.tracking_status == '排产'
+
+
+def test_unapproved_generate_and_settlement_rejected(db):
+    """未批准订单：一键生成与手动建结算均 400"""
+    from rest_framework.test import APIClient
+    from apps.basic_info.models import Factory
+    from apps.orders.models import OrderItem
+    o = _pending_order('OGATE3')
+    f = Factory.objects.create(name='工厂G')
+    item = OrderItem.objects.create(order=o, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    adm = User.objects.create_user('adm_g3', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    c = APIClient(); c.force_authenticate(adm)
+    r1 = c.post(f'/api/factory-payment/payments/orders/{o.id}/generate/', format='json')
+    assert r1.status_code == 400
+    r2 = c.post('/api/factory-payment/payments/', {
+        'order_item': item.id, 'factory': f.id, 'amount_cny': '50'}, format='json')
+    assert r2.status_code == 400
+
+
+def test_unapproved_settlement_no_record_and_excluded_from_summary(db):
+    """未批准结算：不可挂付款；不进工厂汇总/对账单"""
+    from rest_framework.test import APIClient
+    from apps.basic_info.models import Factory, Customer
+    from apps.factory_payment.models import FactoryPayment
+    adm = User.objects.create_user('adm_g4', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    c = APIClient(); c.force_authenticate(adm)
+    f = Factory.objects.create(name='工厂G2')
+    # 已批准订单：正常结算，进汇总/对账单
+    o_ok = Order.objects.create(order_no='OGATE5', customer=Customer.objects.create(name='COK'),
+                                amount_usd='100', is_approved=True)
+    i_ok = OrderItem.objects.create(order=o_ok, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    r = c.post('/api/factory-payment/payments/', {
+        'order_item': i_ok.id, 'factory': f.id, 'amount_cny': '500'}, format='json')
+    assert r.status_code == 201
+    # 未批准结算（ORM 直建，等价于非 admin 挂审批态）：挂付款 400 + 汇总/对账排除
+    o_un = _pending_order('OGATE4')
+    i_un = OrderItem.objects.create(order=o_un, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    fp_unapproved = FactoryPayment.objects.create(order_item=i_un, factory=f, amount_cny='60', is_approved=False)
+    r2 = c.post('/api/factory-payment/records/', {
+        'factory_payment': fp_unapproved.id, 'amount': '10', 'payment_date': '2026-10-12'}, format='json')
+    assert r2.status_code == 400
+    rs = c.get('/api/analytics/factory-summary/')
+    row = next(x for x in rs.data['data'] if x['factory__name'] == '工厂G2')
+    assert row['total_amount'] == 500.0
+    rst = c.get('/api/factory-payment/payments/statement/', {'factory': f.id})
+    assert float(rst.data['data']['total_amount']) == 500.0
+
+
+@pytest.mark.django_db(transaction=True)  # 同上：approve 触发备份
+def test_unapproved_record_not_counted_until_approved(db):
+    """未批准付款记录不计入已付；approve 时重算"""
+    from rest_framework.test import APIClient
+    from apps.basic_info.models import Factory, Customer
+    f = Factory.objects.create(name='工厂G3')
+    o = Order.objects.create(order_no='OGATE6', customer=Customer.objects.create(name='CG3'), amount_usd='100')
+    i = OrderItem.objects.create(order=o, seq=1, factory=f, qty=1, subtotal='100', cost_price='50')
+    fp = FactoryPayment.objects.create(order_item=i, factory=f, amount_cny='100', paid_amount='0')
+    fin = User.objects.create_user('fin_g3', password='pw123456'); fin.groups.add(Group.objects.get(name='finance'))
+    c = APIClient(); c.force_authenticate(fin)
+    r = c.post('/api/factory-payment/records/', {
+        'factory_payment': fp.id, 'amount': '40', 'payment_date': '2026-10-12'}, format='json')
+    assert r.status_code == 201  # finance 可登记（挂审批）
+    rec_id = r.data['data']['id']
+    fp.refresh_from_db()
+    assert str(fp.paid_amount) == '0.00'  # 未批准记录不计入
+    from apps.system_mgmt.models import ApprovalRequest
+    ar = ApprovalRequest.objects.get(target_id=rec_id, approval_type='payment', status='pending')
+    adm = User.objects.create_user('adm_g6', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    admc = APIClient(); admc.force_authenticate(adm)
+    assert admc.post(f'/api/system-mgmt/approvals/{ar.id}/approve/').status_code == 200
+    fp.refresh_from_db()
+    assert str(fp.paid_amount) == '40.00'  # approve 触发重算
+    assert fp.status == '部分结'
+
+
+def test_edit_approved_order_requeues_approval(db):
+    """024：非 admin 编辑已批准订单 → 打回未批准 + 重新挂审 + 推进冻结"""
+    from rest_framework.test import APIClient
+    from apps.basic_info.models import Customer
+    from apps.system_mgmt.models import ApprovalRequest
+    from apps.tracking.services import advance_order
+    from rest_framework.exceptions import ValidationError as DrfVE
+    sales = _sales_user('sales_re')
+    o = Order.objects.create(order_no='ORE', tracking_status='排产', is_approved=True,
+                             customer=Customer.objects.create(name='CRE', salesman=sales), salesman=sales)
+    c = APIClient(); c.force_authenticate(sales)
+    before = ApprovalRequest.objects.count()
+    r = c.patch(f'/api/orders/orders/{o.id}/', {'remark': '改价重审'}, format='json')
+    assert r.status_code == 200
+    o.refresh_from_db()
+    assert o.is_approved is False
+    assert ApprovalRequest.objects.count() == before + 1
+    # 打回后冻结：tracker 直调 service（权限层对 tracker 放行，验证门禁 400）
+    tr = User.objects.create_user('tr_re', password='pw123456'); tr.groups.add(Group.objects.get(name='tracker'))
+    o.tracker = tr; o.save(update_fields=['tracker'])
+    with pytest.raises(DrfVE):
+        advance_order(o, tr, '', [])
+    # admin 编辑不打回
+    adm_u = User.objects.create_user('adm_re', password='pw123456'); adm_u.groups.add(Group.objects.get(name='admin'))
+    adm = APIClient(); adm.force_authenticate(adm_u)
+    r2 = adm.patch(f'/api/orders/orders/{o.id}/', {'remark': 'admin 改'}, format='json')
+    assert r2.status_code == 200, getattr(r2, 'data', r2.status_code)
+    o.refresh_from_db()
+    assert o.is_approved is False  # 保持未批准（等 approve），不额外打回

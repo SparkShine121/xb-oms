@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from django.apps import apps as django_apps
+from django.db import transaction
+from django.db.models import Sum as models_Sum
 from django.http import FileResponse
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -41,18 +43,27 @@ class ApprovalRequestViewSet(BaseModelViewSet):
         ar = self.get_object()
         if ar.status != 'pending':
             return error_response(1009, '该申请已处理，不可重复操作', status=400)
-        app_model = TARGET_APP_MODEL.get(ar.target_model)
-        if app_model:
-            model_cls = django_apps.get_model(*app_model)
-            try:
-                target = model_cls.objects.get(pk=ar.target_id)
-            except model_cls.DoesNotExist:
-                return error_response(1004, f'目标对象已不存在（{ar.target_model}#{ar.target_id}）', status=404)
-            target.is_approved = True
-            target.save(update_fields=['is_approved'])
-        ar.status = 'approved'
-        ar.reviewed_by = request.user
-        ar.save(update_fields=['status', 'reviewed_by', 'updated_at'])
+        # ⑯ 顺带：审批三步原子化（目标保存 + AR 状态 + 重算）
+        with transaction.atomic():
+            app_model = TARGET_APP_MODEL.get(ar.target_model)
+            if app_model:
+                model_cls = django_apps.get_model(*app_model)
+                try:
+                    target = model_cls.objects.get(pk=ar.target_id)
+                except model_cls.DoesNotExist:
+                    return error_response(1004, f'目标对象已不存在（{ar.target_model}#{ar.target_id}）', status=404)
+                target.is_approved = True
+                target.save(update_fields=['is_approved'])
+                # BUG-SIM-005 Q3:a：付款记录批准后重算父结算单已付
+                if ar.target_model == 'FactoryPaymentRecord':
+                    fp = target.factory_payment
+                    total = fp.records.filter(is_approved=True).aggregate(
+                        t=models_Sum('amount'))['t'] or 0
+                    fp.paid_amount = total
+                    fp.save()
+            ar.status = 'approved'
+            ar.reviewed_by = request.user
+            ar.save(update_fields=['status', 'reviewed_by', 'updated_at'])
         # 审批通过自动备份（失败不影响审批结果）
         try:
             perform_backup('approval')
