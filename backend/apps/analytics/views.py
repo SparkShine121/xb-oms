@@ -31,7 +31,8 @@ class SalesSummaryView(APIView):
     permission_classes = [AnalyticsPermission]
 
     def get(self, request):
-        qs = Order.objects.filter(is_cancelled=False)
+        # BUG-SIM-005 Q3:a：口径一致——排除取消单与未批准订单
+        qs = Order.objects.filter(is_cancelled=False, is_approved=True)
         year = request.query_params.get('year')
         if year:
             qs = qs.filter(order_date__year=year)
@@ -175,7 +176,8 @@ class OverviewView(APIView):
     permission_classes = [AnalyticsPermission]
 
     def get(self, request):
-        orders = Order.objects.filter(is_cancelled=False)
+        # BUG-SIM-005 Q3:a：口径一致——排除取消单与未批准订单
+        orders = Order.objects.filter(is_cancelled=False, is_approved=True)
         year = request.query_params.get('year')
         if year:
             orders = orders.filter(order_date__year=year)

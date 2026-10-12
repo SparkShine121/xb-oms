@@ -331,3 +331,21 @@ def test_factory_summary_excludes_cancelled_orders(db):
     r2 = cl.get('/api/factory-payment/payments/statement/', {'factory': f.id})
     assert r2.status_code == 200
     assert float(r2.data['data']['total_amount']) == 1200.0  # 500+700 都在
+
+# ---- BUG-SIM-005 followup: 销售侧报表排除未批准订单 ----
+
+def test_sales_and_overview_exclude_unapproved_orders(db):
+    from django.contrib.auth.models import User, Group
+    from rest_framework.test import APIClient
+    from apps.basic_info.models import Customer
+    from apps.orders.models import Order
+    adm = User.objects.create_user('adm_su', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    c1 = Customer.objects.create(name='批准客户')
+    Order.objects.create(order_no='SU1', customer=c1, amount_usd='1000', order_profit_usd='100', is_approved=True)
+    Order.objects.create(order_no='SU2', customer=c1, amount_usd='9000', order_profit_usd='900', is_approved=False)
+    cl = APIClient(); cl.force_authenticate(adm)
+    rs = cl.get('/api/analytics/sales/')
+    assert rs.status_code == 200
+    ov = cl.get('/api/analytics/overview/')
+    assert ov.status_code == 200
+    assert float(ov.data['data']['total_sales']) == 1000.0  # 未批准的 9000 不计入

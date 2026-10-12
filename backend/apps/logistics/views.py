@@ -51,6 +51,9 @@ class LogisticsViewSet(BaseModelViewSet):
         groups = set(self.request.user.groups.values_list('name', flat=True))
         if 'admin' not in groups and 'tracker' in groups and order.tracker_id != self.request.user.id:
             raise PermissionDenied('跟单员只能为派给自己的订单登记物流')
+        # BUG-SIM-005 Q3:a：审批门禁——未批准订单不可登记物流
+        if not order.is_approved:
+            raise PermissionDenied('该订单待审批通过后可登记物流')
         # 审批流：非 admin 新建 → 挂起待审批；admin 新建 → 直接生效
         instance = serializer.save(is_approved=False)
         if 'admin' in groups:

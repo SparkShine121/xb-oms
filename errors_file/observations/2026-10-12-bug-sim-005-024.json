@@ -1,0 +1,12 @@
+{
+  "task": "BUG-SIM-005/024 审批门禁批",
+  "date": "2026-10-12",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "口径一致性", "severity": "medium", "observation": "expense_logistics 未过滤未批准物流，与 expense_factory 同视图不同口径；销售/总览报表未排除未批准订单", "suggestion": "已修：两处过滤+物流登记门禁"},
+    {"dimension": "绕过面", "severity": "low", "observation": "结算 update 改挂未批准订单明细绕过门禁", "suggestion": "已修：create/update 同规则"},
+    {"dimension": "并发安全", "severity": "low", "observation": "approve 重算未持父单行锁", "suggestion": "已修：select_for_update"},
+    {"dimension": "范围收缩", "severity": "low", "observation": "FP/FPRecord 的 024 打回未泛化（Q4 字面仅订单）", "suggestion": "记录例外，下批显式决策"},
+    {"dimension": "留档", "severity": "low", "observation": "存量核查未落档", "suggestion": "已落档：1002 个未批准订单待处置"}
+  ]
+}

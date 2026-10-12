@@ -56,7 +56,9 @@ class ApprovalRequestViewSet(BaseModelViewSet):
                 target.save(update_fields=['is_approved'])
                 # BUG-SIM-005 Q3:a：付款记录批准后重算父结算单已付
                 if ar.target_model == 'FactoryPaymentRecord':
-                    fp = target.factory_payment
+                    # followup：重算持父单行锁，防与并发登记交错覆盖 paid_amount
+                    fp = type(target).factory_payment.get_queryset().select_for_update().get(
+                        pk=target.factory_payment_id)
                     total = fp.records.filter(is_approved=True).aggregate(
                         t=models_Sum('amount'))['t'] or 0
                     fp.paid_amount = total

@@ -146,7 +146,8 @@ class PaymentInViewSet(BaseModelViewSet):
 
         # 支出：物流费用（以创建日计）
         if want('expense_logistics'):
-            qs = Logistics.objects.select_related('order', 'order__customer')
+            # BUG-SIM-005 Q3:a：未批准物流不计入流水
+            qs = Logistics.objects.filter(is_approved=True).select_related('order', 'order__customer')
             if scoped:
                 qs = self._scope_queryset(qs, u, groups, 'order__')
             for l in qs:
