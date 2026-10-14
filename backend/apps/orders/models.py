@@ -78,22 +78,65 @@ class OrderItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-def calc_order_profit(order):
-    order.refresh_from_db()
-    # BUG-SIM-011 Q1:a：订单日期无适用汇率（早于最早汇率）→ 回退全库最近一条
-    # 近似折算，不再按 1:1 错账；库中完全无汇率时维持 1（无可参照值）
-    rate_obj = ExchangeRate.get_effective_rate(order.order_date) if order.order_date else None
+def _rate_for_order(order_date):
+    """取订单适用汇率（BUG-SIM-011）：日期无适用 → 回退全库最近一条；无任何汇率 → None。"""
+    rate_obj = ExchangeRate.get_effective_rate(order_date) if order_date else None
     if rate_obj is None:
         rate_obj = ExchangeRate.objects.filter(currency_pair='USD/CNY').order_by('-effective_date', '-id').first()
-    rate = Decimal(str(rate_obj.rate)) if rate_obj else Decimal('1')
+    return rate_obj
+
+
+def _apply_item_profits(items, rate):
+    """按汇率就地计算各明细毛利，返回合计（供单订单/批量两条路径共用，防口径漂移）。"""
     total = Decimal('0')
-    for item in order.items.all():
+    for item in items:
         if rate > 0 and item.subtotal:
             item.profit_usd = item.subtotal - (item.cost_price * item.qty / rate)
             item.profit_rate = item.profit_usd / item.subtotal if item.subtotal else Decimal('0')
         else:
             item.profit_usd = Decimal('0'); item.profit_rate = Decimal('0')
-        item.save()
         total += item.profit_usd
+    return total
+
+
+def calc_order_profit(order):
+    """单订单重算（建单/编辑/导入等单条路径调用）。"""
+    order.refresh_from_db()
+    rate_obj = _rate_for_order(order.order_date)
+    rate = Decimal(str(rate_obj.rate)) if rate_obj else Decimal('1')
+    total = _apply_item_profits(order.items.all(), rate)
     order.order_profit_usd = total - order.freight - order.insurance - order.surcharge - order.service_fee_usd
     order.save()
+
+
+def recalc_all_orders():
+    """全量批量重算（BUG-SIM-022 Q2:a：汇率增删改触发）。
+
+    bulk_update 批量化——全库约 5 条查询（汇率 1 + 明细预取 2 + 明细/订单 bulk 各 1），
+    生产 MySQL 下避免逐单 round-trip 超时。调用方需自行包 transaction.atomic。
+    """
+    import bisect
+    orders = list(Order.objects.prefetch_related('items'))
+    rates = list(ExchangeRate.objects.filter(currency_pair='USD/CNY').order_by('effective_date', 'id'))
+    rate_dates = [r.effective_date for r in rates]
+
+    def rate_for(d):
+        # 与 _rate_for_order 同语义：生效日期 <= 订单日期的最新一条；无 → 全库最新一条
+        if d is not None:
+            i = bisect.bisect_right(rate_dates, d)
+            if i > 0:
+                return rates[i - 1]
+        return rates[-1] if rates else None
+
+    items_to_update, orders_to_update = [], []
+    for o in orders:
+        rate_obj = rate_for(o.order_date)
+        rate = Decimal(str(rate_obj.rate)) if rate_obj else Decimal('1')
+        total = _apply_item_profits(o.items.all(), rate)
+        o.order_profit_usd = total - o.freight - o.insurance - o.surcharge - o.service_fee_usd
+        items_to_update.extend(o.items.all())
+        orders_to_update.append(o)
+    if items_to_update:
+        OrderItem.objects.bulk_update(items_to_update, ['profit_usd', 'profit_rate'])
+    if orders_to_update:
+        Order.objects.bulk_update(orders_to_update, ['order_profit_usd'])

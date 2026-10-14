@@ -1,8 +1,11 @@
 {
   "task": "BUG-SIM-022 汇率功能批",
   "date": "2026-10-14",
-  "overall": "pass（待旁观者审查）",
+  "overall": "pass-with-notes",
   "findings": [
-    {"dimension": "正确性", "severity": "medium", "observation": "重算范围最初限日期之后订单，漏算 011 回退路径影响的旧订单（测试抓到）", "suggestion": "已修：全量重算（千单秒级）"}
+    {"dimension": "事务一致性", "severity": "medium", "observation": "重算未包事务：失败留半一致状态且重试撞唯一键", "suggestion": "已修：三 perform_* 包 atomic"},
+    {"dimension": "性能", "severity": "medium", "observation": "全量重算逐单 save 生产 MySQL 9000 次往返超时（审查实测基准）", "suggestion": "已修：recalc_all_orders 批量版 ~5 条查询（bulk_update），与单条 calc_order_profit 共用计算件防口径漂移"},
+    {"dimension": "UX", "severity": "low", "observation": "币对自由文本可录入无折算效果币对", "suggestion": "已修：el-select 单选项"},
+    {"dimension": "卫生", "severity": "low", "observation": "死参数/文档口径不一致", "suggestion": "已清理并对齐"}
   ]
 }

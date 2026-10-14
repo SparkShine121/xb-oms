@@ -2,6 +2,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
+from django.db import transaction
 from django.db.models import Q
 from common.views import BaseModelViewSet
 from common.response import success_response, error_response
@@ -119,15 +120,10 @@ class OrderViewSet(BaseModelViewSet):
         return success_response(OrderSerializer(order).data)
 
 
-def _recalc_affected_orders(effective_date=None, previous=None):
-    """BUG-SIM-022 Q2:a：汇率变更后自动重算订单毛利。
-
-    影响范围本想限 order_date >= effective_date，但"无适用汇率回退全库最近一条"
-    （BUG-SIM-011）使任意旧订单都可能受影响——故全量重算（千单秒级）。
-    """
-    from apps.orders.models import calc_order_profit
-    for o in Order.objects.all():
-        calc_order_profit(o)
+def _recalc_affected_orders():
+    """BUG-SIM-022 Q2:a：汇率变更后全量批量重算订单毛利（bulk_update，约 5 条查询）。"""
+    from apps.orders.models import recalc_all_orders
+    recalc_all_orders()
 
 
 class ExchangeRateViewSet(BaseModelViewSet):
@@ -137,15 +133,17 @@ class ExchangeRateViewSet(BaseModelViewSet):
     permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
 
     def perform_create(self, serializer):
-        instance = serializer.save()
-        _recalc_affected_orders(instance.effective_date)
+        # 事务包裹：汇率保存与全量重算原子化（重算失败整体回滚，无半一致状态）
+        with transaction.atomic():
+            instance = serializer.save()
+            _recalc_affected_orders()
 
     def perform_update(self, serializer):
-        previous = self.get_object().effective_date
-        instance = serializer.save()
-        _recalc_affected_orders(instance.effective_date, previous=previous)
+        with transaction.atomic():
+            instance = serializer.save()
+            _recalc_affected_orders()
 
     def perform_destroy(self, instance):
-        effective_date = instance.effective_date
-        instance.delete()
-        _recalc_affected_orders(effective_date)
+        with transaction.atomic():
+            instance.delete()
+            _recalc_affected_orders()

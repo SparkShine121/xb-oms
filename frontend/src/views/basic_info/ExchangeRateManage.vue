@@ -112,7 +112,9 @@ onMounted(load)
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑汇率' : '新增汇率'" width="420px">
       <el-form label-width="90px">
         <el-form-item label="币种对">
-          <el-input v-model="form.currency_pair" placeholder="USD/CNY" />
+          <el-select v-model="form.currency_pair" style="width: 100%">
+            <el-option label="USD/CNY" value="USD/CNY" />
+          </el-select>
         </el-form-item>
         <el-form-item label="汇率" required>
           <el-input-number v-model="form.rate" :precision="4" :step="0.01" :min="0" :controls="false" style="width: 100%" />
