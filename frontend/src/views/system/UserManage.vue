@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listUsers, createUser, updateUser, deleteUser, bulkDeleteUsers } from '../../api/auth'
-import { useBulkDelete } from '../../composables/useBulkDelete'
+import { listUsers, createUser, updateUser, deleteUser } from '../../api/auth'
 import PageHeader from '../../components/PageHeader.vue'
-import SearchToolbar from '../../components/SearchToolbar.vue'
 import DataTable from '../../components/DataTable.vue'
 import AppPagination from '../../components/AppPagination.vue'
 import { PhUsersThree } from '@phosphor-icons/vue'
@@ -25,8 +23,6 @@ const ROLE_OPTIONS = [
 ]
 
 const users = ref<UserItem[]>([])
-
-const { selection, handleSelectionChange, handleBatchDelete } = useBulkDelete(bulkDeleteUsers, load)
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
@@ -146,17 +142,7 @@ onMounted(load)
       stripe
       empty-title="还没有用户"
       :empty-icon="PhUsersThree"
-      @selection-change="handleSelectionChange"
     >
-      <template #toolbar>
-        <SearchToolbar>
-          <template #actions>
-            <el-button type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-          </template>
-        </SearchToolbar>
-      </template>
-
-      <el-table-column type="selection" width="48" />
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="username" label="用户名" min-width="140" />
       <el-table-column prop="email" label="邮箱" min-width="180" />

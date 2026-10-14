@@ -1,0 +1,11 @@
+{
+  "task": "BUG-SIM-021/023/028 用户管理批",
+  "date": "2026-10-14",
+  "overall": "fail→followup 修复后全绿",
+  "findings": [
+    {"dimension": "保护绕过", "severity": "high", "observation": "021 三守卫在 bulk-delete 端点整体失效（UI 批量删除按钮即入口，探针三条全复现含孤儿化）", "suggestion": "已修：用户 bulk_delete 400 + UI 移除批量按钮"},
+    {"dimension": "死代码", "severity": "medium", "observation": "serializer 两个 update 定义后者覆盖前者，blacklist 死代码，测试假绿", "suggestion": "已修：合并 update + BlacklistedToken 直查断言"},
+    {"dimension": "守卫缺口", "severity": "medium", "observation": "is_active 停用无自停用/末位 admin 守卫；destroy 的 ValidationError list 噪声文案", "suggestion": "已修：两守卫 + error_response 风格"},
+    {"dimension": "健壮性", "severity": "low", "observation": "transfer_to 非数字 500；Customer.tracker 未按规则转移；承接人可为停用用户", "suggestion": "已修：int 校验/同规则转移/在用校验"}
+  ]
+}

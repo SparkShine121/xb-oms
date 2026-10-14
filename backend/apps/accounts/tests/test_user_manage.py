@@ -235,3 +235,62 @@ def test_deactivate_blacklists_refresh(db):
     assert ac.patch(f'/api/auth/users/{u.id}/', {'is_active': False}, format='json').status_code == 200
     r = c.post('/api/auth/refresh/', {'refresh': refresh}, format='json')
     assert r.status_code == 401  # refresh 已被 blacklist
+
+# ---- BUG-SIM-021/028 followup（旁观者审查 fail 项）----
+
+def test_user_bulk_delete_blocked(db):
+    """用户不支持批量删除（transfer_to 无法按 id 表达；防自删/末位admin/承接人守卫不可绕过）"""
+    adm = _admin()
+    target = _mk('salesman', 'sales_bd')
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.post('/api/auth/users/bulk-delete/', {'ids': [target.id, adm.id]}, format='json')
+    assert r.status_code == 400
+    assert User.objects.filter(pk__in=[target.id, adm.id]).count() == 2
+
+
+def test_deactivate_last_admin_rejected(db, admin_client):
+    u = _admin()
+    User.objects.filter(username='admin1').update(is_active=False)  # 夹具自带 admin 置非活跃（force_authenticate 仍可用）
+    r = admin_client.patch(f'/api/auth/users/{u.id}/', {'is_active': False}, format='json')
+    assert r.status_code == 400  # u 是最后一个活跃 admin
+    assert User.objects.get(pk=u.id).is_active is True
+
+
+def test_self_deactivate_rejected(db):
+    u = _admin()
+    c = APIClient(); c.force_authenticate(u)
+    r = c.patch(f'/api/auth/users/{u.id}/', {'is_active': False}, format='json')
+    assert r.status_code == 400
+
+
+def test_deactivate_actually_blacklists_tokens(db, admin_client):
+    u = _mk('salesman', 'sales_bl')
+    c = APIClient()
+    login = c.post('/api/auth/login/', {'username': u.username, 'password': 'pw123456'}, format='json')
+    refresh = login.data['data']['refresh']
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+    assert admin_client.patch(f'/api/auth/users/{u.id}/', {'is_active': False}, format='json').status_code == 200
+    assert BlacklistedToken.objects.filter(token__user=u).exists()  # 真·拉黑（非 is_active 规则兜底的假绿）
+
+
+def test_transfer_to_non_int_rejected(db):
+    adm = _admin()
+    target = _mk('salesman', 'sales_nint')
+    Customer.objects.create(name='CN', salesman=target)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.delete(f'/api/auth/users/{target.id}/', {'transfer_to': 'abc'}, format='json')
+    assert r.status_code == 400
+
+
+def test_delete_transfers_customer_tracker_by_role(db):
+    """Customer.tracker 同 Order.tracker 规则：被删者是 tracker 时按承接人角色转移或置空"""
+    adm = _admin()
+    target = _mk('tracker', 'sales_ct')  # 被删者本身是 tracker（名下客户 tracker 指向他）
+    to = _mk('salesman', 'sales_ct2')    # 承接人非 tracker → tracker 置空
+    cust = Customer.objects.create(name='CT', salesman=target, tracker=target)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.delete(f'/api/auth/users/{target.id}/', {'transfer_to': to.id}, format='json')
+    assert r.status_code == 200
+    cust.refresh_from_db()
+    assert cust.salesman_id == to.id
+    assert cust.tracker_id is None  # 承接人非 tracker → 置空

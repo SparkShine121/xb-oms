@@ -1,5 +1,6 @@
 from django.core.cache import cache
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -92,19 +93,24 @@ class LogoutView(APIView):
 class UserViewSet(BaseModelViewSet):
     queryset = User.objects.all()
 
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request, *args, **kwargs):
+        # BUG-SIM-021 followup：用户不支持批量删除——承接人/防自删/末位 admin
+        # 守卫无法在批量 payload 中表达，防绕过
+        return error_response(1001, '用户不支持批量删除，请逐个删除（可指定承接人）', status=400)
+
     def destroy(self, request, *args, **kwargs):
         """BUG-SIM-021 Q1:b：删用户强制指定承接人 + 防自删 + 末位 admin 保护。
 
         校验失败抛 DRF ValidationError（→ 统一 400），成功走统一已删除响应。
         """
-        from rest_framework.exceptions import ValidationError as DrfVE
         instance = self.get_object()
         user = request.user
         if instance.pk == user.pk:
-            raise DrfVE('不能删除当前登录账号')
+            return error_response(1001, '不能删除当前登录账号', status=400)
         is_admin = instance.groups.filter(name='admin').exists()
         if is_admin and User.objects.filter(groups__name='admin', is_active=True).exclude(pk=instance.pk).count() == 0:
-            raise DrfVE('不能删除最后一个管理员')
+            return error_response(1001, '不能删除最后一个管理员', status=400)
         customers = Customer.objects.filter(salesman=instance).count()
         sales_orders = Order.objects.filter(salesman=instance).count()
         tracked_orders = Order.objects.filter(tracker=instance).count()
@@ -113,20 +119,31 @@ class UserViewSet(BaseModelViewSet):
         transfer_to = None
         if has_data:
             if not transfer_to_id:
-                raise DrfVE(
+                return error_response(
+                    1001,
                     f'该用户名下有 {customers} 个客户、{sales_orders + tracked_orders} 个订单，'
-                    f'请指定承接人后删除（transfer_to）')
+                    f'请指定承接人后删除（transfer_to）', status=400)
             try:
-                transfer_to = User.objects.get(pk=transfer_to_id)
+                transfer_to_id_int = int(transfer_to_id)
+            except (TypeError, ValueError):
+                return error_response(1001, '承接人 ID 不合法', status=400)
+            try:
+                transfer_to = User.objects.get(pk=transfer_to_id_int)
             except User.DoesNotExist:
                 return error_response(1004, '承接人不存在', status=404)
             if transfer_to.pk == instance.pk:
-                raise DrfVE('承接人不能是被删除用户本人')
+                return error_response(1001, '承接人不能是被删除用户本人', status=400)
+            if not transfer_to.is_active:
+                return error_response(1001, '承接人已停用，请选择在用用户', status=400)
         with transaction.atomic():
             if transfer_to is not None:
                 # 转移规则（方案确认）：客户与订单 salesman → 承接人；
                 # 订单 tracker → 承接人含 tracker 角色则转，否则置空待重新派单（014 语义）
                 Customer.objects.filter(salesman=instance).update(salesman=transfer_to)
+                if transfer_to.groups.filter(name='tracker').exists():
+                    Customer.objects.filter(tracker=instance).update(tracker=transfer_to)
+                else:
+                    Customer.objects.filter(tracker=instance).update(tracker=None)
                 Order.objects.filter(salesman=instance).update(salesman=transfer_to)
                 if transfer_to.groups.filter(name='tracker').exists():
                     Order.objects.filter(tracker=instance).update(tracker=transfer_to)

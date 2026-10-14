@@ -62,15 +62,6 @@ class UserManageSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'password', 'groups', 'is_weak_password', 'is_active']
 
-    def update(self, instance, validated):
-        # BUG-SIM-028 Q2:a：停用即时生效——blacklist 该用户全部 refresh token
-        deactivating = validated.get('is_active') is False and instance.is_active
-        instance = super().update(instance, validated)
-        if deactivating:
-            from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-            for ot in OutstandingToken.objects.filter(user=instance):
-                BlacklistedToken.objects.get_or_create(token=ot)
-        return instance
     def create(self, validated):
         groups = validated.pop('groups', [])
         pwd = validated.get('password')
@@ -79,6 +70,15 @@ class UserManageSerializer(serializers.ModelSerializer):
         mark_password_flag(user, pwd)
         return user
     def update(self, instance, validated):
+        # BUG-SIM-028 Q2:a followup：停用守卫（末位活跃 admin / 自停用）+ 真 blacklist
+        deactivating = validated.get('is_active') is False and instance.is_active
+        request = self.context.get('request')
+        if deactivating:
+            if request is not None and instance.pk == request.user.pk:
+                raise serializers.ValidationError('不能停用当前登录账号')
+            if instance.groups.filter(name='admin').exists() and \
+                    User.objects.filter(groups__name='admin', is_active=True).exclude(pk=instance.pk).count() == 0:
+                raise serializers.ValidationError('不能停用最后一个管理员')
         groups = validated.pop('groups', None)
         password = validated.pop('password', None)
         for k, v in validated.items():
@@ -89,4 +89,8 @@ class UserManageSerializer(serializers.ModelSerializer):
         if groups is not None:
             instance.groups.set(groups)
         instance.save()
+        if deactivating:
+            from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+            for ot in OutstandingToken.objects.filter(user=instance):
+                BlacklistedToken.objects.get_or_create(token=ot)
         return instance
