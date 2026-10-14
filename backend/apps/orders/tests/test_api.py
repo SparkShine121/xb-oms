@@ -537,3 +537,55 @@ def test_edit_approved_order_requeues_approval(db):
     assert r2.status_code == 200, getattr(r2, 'data', r2.status_code)
     o.refresh_from_db()
     assert o.is_approved is False  # 保持未批准（等 approve），不额外打回
+
+# ---- BUG-SIM-022: 汇率读取权限 + 自动重算 ----
+
+def test_finance_can_read_rates_but_not_write(db):
+    from rest_framework.test import APIClient
+    from apps.orders.models import ExchangeRate
+    from datetime import date as d
+    fin = User.objects.create_user('fin_rt', password='pw123456'); fin.groups.add(Group.objects.get(name='finance'))
+    ExchangeRate.objects.create(currency_pair='USD/CNY', rate='7.2', effective_date=d(2026, 1, 1))
+    c = APIClient(); c.force_authenticate(fin)
+    assert c.get('/api/orders/exchange-rates/').status_code == 200  # 022：finance 可读
+    r = c.post('/api/orders/exchange-rates/', {'currency_pair': 'USD/CNY', 'rate': '7.0', 'effective_date': '2026-02-01'}, format='json')
+    assert r.status_code == 403  # 写仍仅 admin
+
+
+def test_rate_create_auto_recalc(db):
+    """011 待办：补录汇率后既有订单毛利自动重算（不再需要整单重存）"""
+    from rest_framework.test import APIClient
+    from apps.orders.models import ExchangeRate, OrderItem, calc_order_profit
+    from datetime import date as d
+    adm = User.objects.create_user('adm_rc', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    o = Order.objects.create(order_no='ORC', order_date=d(2025, 6, 1))  # 无汇率 → 1:1 错账
+    OrderItem.objects.create(order=o, qty=100, unit_price='10', subtotal='1000', cost_price='7.2')
+    calc_order_profit(o)
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '280.00'  # 错账基线
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.post('/api/orders/exchange-rates/', {'currency_pair': 'USD/CNY', 'rate': '7.2', 'effective_date': '2026-01-01'}, format='json')
+    assert r.status_code == 201
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '900.00'  # 自动重算（订单未重存）
+
+
+def test_rate_update_and_delete_auto_recalc(db):
+    """改汇率值/删汇率 → 受影响订单重算"""
+    from rest_framework.test import APIClient
+    from apps.orders.models import ExchangeRate, OrderItem, calc_order_profit
+    from datetime import date as d
+    adm = User.objects.create_user('adm_rc2', password='pw123456'); adm.groups.add(Group.objects.get(name='admin'))
+    rate = ExchangeRate.objects.create(currency_pair='USD/CNY', rate='7.0', effective_date=d(2025, 1, 1))
+    o = Order.objects.create(order_no='ORC2', order_date=d(2025, 6, 1))
+    OrderItem.objects.create(order=o, qty=100, unit_price='10', subtotal='1000', cost_price='7.2')
+    calc_order_profit(o)
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '897.14'  # 1000 - 720/7.0
+    c = APIClient(); c.force_authenticate(adm)
+    c.patch(f'/api/orders/exchange-rates/{rate.id}/', {'rate': '7.2'}, format='json')
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '900.00'  # 7.2 生效
+    c.delete(f'/api/orders/exchange-rates/{rate.id}/')
+    o.refresh_from_db()
+    assert str(o.order_profit_usd) == '280.00'  # 删除后回退 1:1

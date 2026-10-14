@@ -22,6 +22,7 @@ const routes = [
           { path: 'factory', name: 'FactoryManage', component: () => import('../views/basic_info/FactoryManage.vue') },
           { path: 'logistics', name: 'LogisticsManage', component: () => import('../views/basic_info/LogisticsManage.vue') },
           { path: 'customer', name: 'CustomerManage', component: () => import('../views/basic_info/CustomerManage.vue') },
+          { path: 'rates', name: 'ExchangeRateManage', component: () => import('../views/basic_info/ExchangeRateManage.vue') },
         ],
       },
       // Task 14: 系统管理 - 用户管理

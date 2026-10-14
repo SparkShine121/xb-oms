@@ -28,6 +28,7 @@ export const MENU_GROUPS: MenuGroup[] = [
       { path: '/basic-info/factory', label: '工厂库' },
       { path: '/basic-info/logistics', label: '物流服务商' },
       { path: '/basic-info/customer', label: '客户' },
+      { path: '/basic-info/rates', label: '汇率' },
     ],
   },
   {

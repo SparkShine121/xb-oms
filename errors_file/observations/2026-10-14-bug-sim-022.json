@@ -1,0 +1,8 @@
+{
+  "task": "BUG-SIM-022 汇率功能批",
+  "date": "2026-10-14",
+  "overall": "pass（待旁观者审查）",
+  "findings": [
+    {"dimension": "正确性", "severity": "medium", "observation": "重算范围最初限日期之后订单，漏算 011 回退路径影响的旧订单（测试抓到）", "suggestion": "已修：全量重算（千单秒级）"}
+  ]
+}

@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.db.models import Q
 from common.views import BaseModelViewSet
 from common.response import success_response, error_response
-from common.permissions import RolePermission
+from common.permissions import RolePermission, AdminWriteOthersReadOnly
 from apps.system_mgmt.models import ApprovalRequest
 from apps.system_mgmt.approval import resubmit_on_update
 from .models import Order, ExchangeRate
@@ -119,7 +119,33 @@ class OrderViewSet(BaseModelViewSet):
         return success_response(OrderSerializer(order).data)
 
 
+def _recalc_affected_orders(effective_date=None, previous=None):
+    """BUG-SIM-022 Q2:a：汇率变更后自动重算订单毛利。
+
+    影响范围本想限 order_date >= effective_date，但"无适用汇率回退全库最近一条"
+    （BUG-SIM-011）使任意旧订单都可能受影响——故全量重算（千单秒级）。
+    """
+    from apps.orders.models import calc_order_profit
+    for o in Order.objects.all():
+        calc_order_profit(o)
+
+
 class ExchangeRateViewSet(BaseModelViewSet):
     queryset = ExchangeRate.objects.all()
     serializer_class = ExchangeRateSerializer
-    permission_classes = [IsAuthenticated, RolePermission]
+    # BUG-SIM-022 Q1:a：全员可读、仅 admin 可写（原 RolePermission 空 roles 致 finance 读也 403）
+    permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        _recalc_affected_orders(instance.effective_date)
+
+    def perform_update(self, serializer):
+        previous = self.get_object().effective_date
+        instance = serializer.save()
+        _recalc_affected_orders(instance.effective_date, previous=previous)
+
+    def perform_destroy(self, instance):
+        effective_date = instance.effective_date
+        instance.delete()
+        _recalc_affected_orders(effective_date)
