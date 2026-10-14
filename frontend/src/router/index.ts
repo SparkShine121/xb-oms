@@ -25,11 +25,11 @@ const routes = [
         ],
       },
       // Task 14: 系统管理 - 用户管理
-      { path: 'system/users', name: 'UserManage', component: () => import('../views/system/UserManage.vue') },
+      { path: 'system/users', meta: { roles: ['admin'] }, name: 'UserManage', component: () => import('../views/system/UserManage.vue') },
       // 系统管理：审批 / 操作日志 / 备份（仅 PC，admin）
-      { path: 'system/approvals', name: 'ApprovalList', component: () => import('../views/system/ApprovalList.vue') },
-      { path: 'system/logs', name: 'OperationLogList', component: () => import('../views/system/OperationLogList.vue') },
-      { path: 'system/backups', name: 'BackupManage', component: () => import('../views/system/BackupManage.vue') },
+      { path: 'system/approvals', meta: { roles: ['admin'] }, name: 'ApprovalList', component: () => import('../views/system/ApprovalList.vue') },
+      { path: 'system/logs', meta: { roles: ['admin'] }, name: 'OperationLogList', component: () => import('../views/system/OperationLogList.vue') },
+      { path: 'system/backups', meta: { roles: ['admin'] }, name: 'BackupManage', component: () => import('../views/system/BackupManage.vue') },
       // 订单管理：OT8 PC 列表 + 详情；OT9 PC 表单（new/edit）
       { path: 'orders', redirect: '/orders/list' },
       { path: 'orders/list', name: 'OrderList', component: () => import('../views/orders/OrderList.vue') },
@@ -94,6 +94,12 @@ router.beforeEach(to => {
   const u = useUserStore()
   if (!u.token && to.path !== '/login') return '/login'
   if (u.token && to.path === '/login') return '/'
+  // BUG-SIM-023 Q3:a：路由级角色白名单（后端 AdminOnlyPermission 是防线，这里是体验层）
+  const roles = to.meta?.roles as string[] | undefined
+  if (roles && roles.length && !roles.some(r => u.roles.includes(r))) {
+    import('element-plus').then(({ ElMessage }) => ElMessage.error('无权访问该页面'))
+    return '/'
+  }
 })
 
 export default router

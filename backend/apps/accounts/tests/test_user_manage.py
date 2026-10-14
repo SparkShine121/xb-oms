@@ -112,3 +112,126 @@ def test_change_password_ok(db):
     r = c.post('/api/auth/me/change-password/', {'old_password': 'old12345', 'new_password': 'good1234'}, format='json')
     assert r.status_code == 200
     assert User.objects.get(pk=u.pk).check_password('good1234')
+
+# ---- BUG-SIM-021/028: 删用户保护 + 停用 ----
+from rest_framework.test import APIClient
+from apps.basic_info.models import Customer
+
+
+def _mk(role='salesman', name=None):
+    u = User.objects.create_user(name or f'u_{role}_{User.objects.count()}', password='pw123456')
+    u.groups.add(Group.objects.get(name=role))
+    return u
+
+
+def _admin():
+    return _mk('admin', f'adm_{User.objects.count()}')
+
+
+def test_delete_self_rejected(db):
+    u = _admin()
+    c = APIClient(); c.force_authenticate(u)
+    r = c.delete(f'/api/auth/users/{u.id}/')
+    assert r.status_code == 400
+
+
+def test_delete_last_admin_rejected(db):
+    u = _admin()
+    c = APIClient(); c.force_authenticate(u)
+    r = c.delete(f'/api/auth/users/{u.id}/')
+    assert r.status_code == 400  # 防自删已覆盖唯一 admin；两 admin 时可删其一
+    u2 = _admin()
+    r2 = c.delete(f'/api/auth/users/{u2.id}/')
+    assert r2.status_code == 200  # 两个 admin 删一个 OK
+
+
+def test_delete_user_with_data_requires_transfer(db):
+    adm = _admin()
+    target = _mk('salesman', 'sales_del')
+    Customer.objects.create(name='C1', salesman=target)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.delete(f'/api/auth/users/{target.id}/')
+    assert r.status_code == 400  # 未指定承接人
+    # 指定承接人 → 成功且转移
+    to = _mk('salesman', 'sales_recv')
+    r2 = c.delete(f'/api/auth/users/{target.id}/', {'transfer_to': to.id}, format='json')
+    assert r2.status_code == 200
+    assert not User.objects.filter(pk=target.id).exists()
+    cust = Customer.objects.get(name='C1')
+    assert cust.salesman_id == to.id
+
+
+def test_delete_transfers_order_tracker_role_aware(db):
+    adm = _admin()
+    target = _mk('salesman', 'sales_del2')
+    to = _mk('salesman', 'sales_recv2')  # 非 tracker 角色
+    tr = _mk('tracker', 'tr_recv')
+    from apps.orders.models import Order
+    o1 = Order.objects.create(order_no='OD1', salesman=target, tracker=target)
+    o2 = Order.objects.create(order_no='OD2', salesman=target)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.delete(f'/api/auth/users/{target.id}/', {'transfer_to': to.id}, format='json')
+    assert r.status_code == 200
+    o1.refresh_from_db(); o2.refresh_from_db()
+    assert o1.salesman_id == to.id
+    assert o1.tracker_id is None  # 承接人非 tracker → 置空待重新派单（014 语义）
+    assert o2.salesman_id == to.id and o2.tracker_id is None
+    assert tr.groups.filter(name="tracker").exists()  # sanity
+
+def test_delete_user_without_data_no_transfer_needed(db):
+    adm = _admin()
+    target = _mk('salesman', 'sales_nodata')
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.delete(f'/api/auth/users/{target.id}/')
+    assert r.status_code == 200
+
+def test_transfer_to_self_rejected(db):
+    adm = _admin()
+    target = _mk('salesman', 'sales_tself')
+    Customer.objects.create(name='CX', salesman=target)
+    c = APIClient(); c.force_authenticate(adm)
+    r = c.delete(f'/api/auth/users/{target.id}/', {'transfer_to': target.id}, format='json')
+    assert r.status_code == 400
+
+# ---- BUG-SIM-028: 停用 ----
+
+def test_deactivate_via_serializer(db, admin_client):
+    target = _mk('salesman', 'sales_deact')
+    r = admin_client.patch(f'/api/auth/users/{target.id}/', {'is_active': False}, format='json')
+    assert r.status_code == 200
+    assert User.objects.get(pk=target.id).is_active is False
+    r2 = admin_client.patch(f'/api/auth/users/{target.id}/', {'is_active': True}, format='json')
+    assert User.objects.get(pk=target.id).is_active is True
+
+
+def test_deactivated_login_rejected(db):
+    u = _mk('salesman', 'sales_off')
+    u.is_active = False; u.save()
+    c = APIClient()
+    r = c.post('/api/auth/login/', {'username': u.username, 'password': 'pw123456'}, format='json')
+    assert r.status_code == 401
+
+
+def test_deactivated_access_token_immediate_401(db):
+    """simplejwt get_user 对 is_active=False 即刻拒绝（快于 access 自然过期）"""
+    u = _mk('salesman', 'sales_off2')
+    c = APIClient()
+    login = c.post('/api/auth/login/', {'username': u.username, 'password': 'pw123456'}, format='json')
+    assert login.status_code == 200
+    access = login.data['data']['access']
+    u.is_active = False; u.save()
+    auth = APIClient(); auth.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+    r = auth.get('/api/auth/me/')
+    assert r.status_code == 401
+
+
+def test_deactivate_blacklists_refresh(db):
+    u = _mk('salesman', 'sales_off3')
+    c = APIClient()
+    login = c.post('/api/auth/login/', {'username': u.username, 'password': 'pw123456'}, format='json')
+    refresh = login.data['data']['refresh']
+    adm = _admin()
+    ac = APIClient(); ac.force_authenticate(adm)
+    assert ac.patch(f'/api/auth/users/{u.id}/', {'is_active': False}, format='json').status_code == 200
+    r = c.post('/api/auth/refresh/', {'refresh': refresh}, format='json')
+    assert r.status_code == 401  # refresh 已被 blacklist

@@ -14,6 +14,7 @@ interface UserItem {
   username: string
   email: string
   groups: string[]
+  is_active?: boolean
 }
 
 const ROLE_OPTIONS = [
@@ -86,10 +87,42 @@ async function save() {
   }
 }
 
+// BUG-SIM-021 Q1:b：名下有数据时必须选承接人（后端 400 提示数据量）
 async function remove(u: UserItem) {
-  await ElMessageBox.confirm(`确定删除用户「${u.username}」？`, '删除确认', { type: 'warning' })
-  await deleteUser(u.id)
+  let transferTo: number | undefined
+  try {
+    await ElMessageBox.confirm(`确定删除用户「${u.username}」？`, '删除确认', { type: 'warning' })
+    await deleteUser(u.id)
+  } catch (e: any) {
+    if (e?.response?.status !== 400) throw e
+    ElMessageBox.close?.()
+    // 后端 400：需要承接人——弹承接人选择框
+    const others = users.value.filter(x => x.id !== u.id)
+    const { value } = await ElMessageBox.prompt(
+      String(e.response.data?.message || '该用户名下有业务数据，请选择承接人'),
+      '选择承接人', {
+        inputType: 'number',
+        inputPlaceholder: '输入承接人用户 ID',
+        inputValidator: (v: string) => {
+          const id = Number(v)
+          return others.some(x => x.id === id) ? true : `请输入其他用户的 ID（如 ${others[0]?.id ?? '无'}）`
+        },
+      })
+    transferTo = Number(value)
+    await deleteUser(u.id, transferTo)
+  }
   ElMessage.success('已删除')
+  load()
+}
+
+// BUG-SIM-028 Q2:a：停用/启用开关（停用即时生效：access 下一请求 401 + refresh 拉黑）
+async function toggleActive(u: UserItem) {
+  const next = !u.is_active
+  await ElMessageBox.confirm(
+    `确定${next ? '启用' : '停用'}用户「${u.username}」？${next ? '' : '停用后该账号立即无法访问系统'}`,
+    next ? '启用确认' : '停用确认', { type: next ? 'info' : 'warning' })
+  await updateUser(u.id, { is_active: next })
+  ElMessage.success(next ? '已启用' : '已停用')
   load()
 }
 
@@ -133,9 +166,18 @@ onMounted(load)
           <span v-if="!row.groups.length" class="no-role">无角色</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column label="状态" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.is_active === false ? 'danger' : 'success'" size="small">
+            {{ row.is_active === false ? '已停用' : '正常' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="row.is_active === false" link type="success" size="small" @click="toggleActive(row)">启用</el-button>
+          <el-button v-else link type="warning" size="small" @click="toggleActive(row)">停用</el-button>
           <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>

@@ -60,7 +60,17 @@ class UserManageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'groups', 'is_weak_password']
+        fields = ['id', 'username', 'email', 'password', 'groups', 'is_weak_password', 'is_active']
+
+    def update(self, instance, validated):
+        # BUG-SIM-028 Q2:a：停用即时生效——blacklist 该用户全部 refresh token
+        deactivating = validated.get('is_active') is False and instance.is_active
+        instance = super().update(instance, validated)
+        if deactivating:
+            from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+            for ot in OutstandingToken.objects.filter(user=instance):
+                BlacklistedToken.objects.get_or_create(token=ot)
+        return instance
     def create(self, validated):
         groups = validated.pop('groups', [])
         pwd = validated.get('password')
