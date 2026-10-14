@@ -15,6 +15,7 @@ class ApprovalRequest(models.Model):
         ('pending', '待审批'),
         ('approved', '已通过'),
         ('rejected', '已驳回'),
+        ('cancelled', '已关闭'),  # BUG-SIM-032：目标对象删除后自动/批量关闭
     ]
 
     approval_type = models.CharField(max_length=32, choices=APPROVAL_TYPE_CHOICES)

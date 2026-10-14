@@ -51,7 +51,12 @@ class ApprovalRequestViewSet(BaseModelViewSet):
                 try:
                     target = model_cls.objects.get(pk=ar.target_id)
                 except model_cls.DoesNotExist:
-                    return error_response(1004, f'目标对象已不存在（{ar.target_model}#{ar.target_id}）', status=404)
+                    # BUG-SIM-032 Q2:a：目标已删除 → 自动关闭审批（原 404 语义废弃）
+                    ar.status = 'cancelled'
+                    ar.reviewed_by = request.user
+                    ar.note = (ar.note + '；' if ar.note else '') + '目标对象已删除，系统自动关闭'
+                    ar.save(update_fields=['status', 'reviewed_by', 'note', 'updated_at'])
+                    return success_response(self.get_serializer(ar).data)
                 target.is_approved = True
                 target.save(update_fields=['is_approved'])
                 # BUG-SIM-005 Q3:a：付款记录批准后重算父结算单已付
@@ -72,6 +77,24 @@ class ApprovalRequestViewSet(BaseModelViewSet):
         except Exception:
             pass
         return success_response(self.get_serializer(ar).data)
+
+    @action(detail=False, methods=['post'], url_path='cleanup-orphans')
+    def cleanup_orphans(self, request):
+        """BUG-SIM-032 Q2:a：批量关闭目标已删除的 pending 审批（admin 清理存量孤儿）。"""
+        closed = 0
+        for ar in self.get_queryset().filter(status='pending'):
+            app_model = TARGET_APP_MODEL.get(ar.target_model)
+            exists = False
+            if app_model:
+                model_cls = django_apps.get_model(*app_model)
+                exists = model_cls.objects.filter(pk=ar.target_id).exists()
+            if app_model and not exists:
+                ar.status = 'cancelled'
+                ar.reviewed_by = request.user
+                ar.note = (ar.note + '；' if ar.note else '') + '目标对象已删除，批量清理自动关闭'
+                ar.save(update_fields=['status', 'reviewed_by', 'note', 'updated_at'])
+                closed += 1
+        return success_response({'closed': closed})
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):

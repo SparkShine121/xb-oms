@@ -12,6 +12,9 @@ class OperationLogMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+    # BUG-SIM-026 Q1:a：请求体中的敏感键统一脱敏
+    SENSITIVE_KEYS = {'password', 'old_password', 'new_password', 'refresh', 'access', 'token'}
+
     def __call__(self, request):
         response = self.get_response(request)
         if request.method in self.WRITE_METHODS:
@@ -19,14 +22,71 @@ class OperationLogMiddleware:
                 user = self._resolve_user(request)
                 if user is not None and user.is_authenticated:
                     from .models import OperationLog
+                    model_name, object_id, detail = self._describe(request, response)
                     OperationLog.objects.create(
                         user=user, action=request.method,
-                        model_name='', object_id=None,
-                        path=request.path[:256], detail=None,
+                        model_name=model_name, object_id=object_id,
+                        path=request.path[:256], detail=detail,
                     )
             except Exception:
                 pass
         return response
+
+    @staticmethod
+    def _describe(request, response):
+        """BUG-SIM-026 Q1:a：从路由解析 model/object_id，构造脱敏请求体摘要。
+
+        model_name：resolve 命中的 ViewSet queryset 的模型名（无 queryset 视图留空）
+        object_id：detail 路由 kwargs 中的 pk（纯数字）
+        detail：{status, body}——body 为 JSON 请求体摘要（敏感键 ***、非 JSON 记
+        content_type、超 2000 字符截断）
+        """
+        import json
+        from django.urls import resolve as url_resolve
+        model_name, object_id = '', None
+        try:
+            match = url_resolve(request.path)
+            # DRF ViewSetMixin.as_view 挂 cls；Django View.as_view 挂 view_class
+            view_cls = getattr(match.func, 'cls', None) or getattr(match.func, 'view_class', None)
+            qs = getattr(view_cls, 'queryset', None)
+            if qs is not None:
+                model_name = qs.model._meta.object_name
+            pk = match.kwargs.get('pk')
+            if pk is not None and str(pk).isdigit():
+                object_id = int(pk)
+        except Exception:
+            pass
+
+        body = None
+        try:
+            raw = request.body
+            if raw:
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, dict):
+                        masked = {
+                            k: ('***' if k.lower() in OperationLogMiddleware.SENSITIVE_KEYS else v)
+                            for k, v in parsed.items()
+                        }
+                        body = json.dumps(masked, ensure_ascii=False, default=str)[:2000]
+                except json.JSONDecodeError:
+                    body = f'<{request.content_type or "unknown"}>'
+        except Exception:
+            pass
+
+        detail = {'status': response.status_code}
+        if body:
+            detail['body'] = body
+        # POST 列路由：URL 无 pk，新建对象 ID 从统一响应 envelope 的 data.id 取
+        if request.method == 'POST' and object_id is None:
+            try:
+                data = getattr(response, 'data', None)
+                inner = data.get('data') if isinstance(data, dict) else None
+                if isinstance(inner, dict) and str(inner.get('id', '')).isdigit():
+                    object_id = int(inner['id'])
+            except Exception:
+                pass
+        return model_name, object_id, detail
 
     @staticmethod
     def _resolve_user(request):

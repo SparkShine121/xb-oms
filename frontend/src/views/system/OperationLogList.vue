@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { listLogs } from '../../api/systemMgmt'
 import PageHeader from '../../components/PageHeader.vue'
+import { modelLabel } from '../../utils/modelNames'
 import SearchToolbar from '../../components/SearchToolbar.vue'
 import DataTable from '../../components/DataTable.vue'
 import AppPagination from '../../components/AppPagination.vue'
@@ -102,7 +103,21 @@ onMounted(load)
           <el-tag :type="actionTagType(row.action)" size="small">{{ actionLabel(row.action) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="path" label="请求路径" min-width="280" show-overflow-tooltip />
+      <el-table-column label="对象" width="150">
+        <template #default="{ row }">
+          {{ modelLabel(row.model_name) }}{{ row.object_id ? ` #${row.object_id}` : '' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="详情" min-width="200">
+        <template #default="{ row }">
+          <template v-if="row.detail">
+            <el-tag :type="row.detail.status < 400 ? 'success' : 'danger'" size="small">{{ row.detail.status }}</el-tag>
+            <span v-if="row.detail.body" class="log-detail" :title="row.detail.body">{{ row.detail.body }}</span>
+          </template>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="path" label="请求路径" min-width="240" show-overflow-tooltip />
 
       <template #footer>
         <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
@@ -110,3 +125,7 @@ onMounted(load)
     </DataTable>
   </div>
 </template>
+
+<style scoped>
+.log-detail { margin-left: 8px; font-size: 12px; opacity: 0.75; }
+</style>

@@ -1,0 +1,9 @@
+{
+  "task": "BUG-SIM-026/032 审计域批",
+  "date": "2026-10-14",
+  "overall": "pass（待复核）",
+  "findings": [
+    {"dimension": "DRF 细节", "severity": "medium", "observation": "三处 DRF 机制差异各浪费一轮：as_view 挂 cls 非 view_class；@action 默认 url_path 保留下滑线；perform_destroy 返回值被丢弃（前批已知）", "suggestion": "已修；经验记入错题集候选（待用户确认）"},
+    {"dimension": "响应取值", "severity": "low", "observation": "POST 列路由对象 ID 需从 envelope data.id 取", "suggestion": "已修"}
+  ]
+}

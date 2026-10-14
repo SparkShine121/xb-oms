@@ -365,3 +365,80 @@ def test_operation_log_list_admin_only(db, setup):
 
     non_admin = _client(setup['sales'])
     assert non_admin.get('/api/system-mgmt/logs/').status_code == 403
+
+# ---- BUG-SIM-026/032: 审计域 ----
+from django.core.cache import cache
+from django.core.cache.backends.base import InvalidCacheBackendError
+from apps.system_mgmt.models import OperationLog
+
+@pytest.mark.django_db(transaction=True)
+def test_middleware_populates_model_object_detail(db):
+    """026：写请求日志记录 model_name/object_id/detail（敏感键脱敏）"""
+    try:
+        cache.clear()
+    except InvalidCacheBackendError:
+        pass
+    adm = _client(_make_user('adm_log', 'admin'))
+    r = adm.post('/api/auth/users/', {'username': 'log_u1', 'password': 'secret123', 'groups': ['salesman']}, format='json')
+    assert r.status_code == 201
+    log = OperationLog.objects.filter(path='/api/auth/users/').order_by('-id').first()
+    assert log is not None
+    assert log.model_name == 'User'
+    assert log.object_id == r.data['data']['id']
+    import json as _json
+    assert log.detail['status'] == 201
+    body = _json.loads(log.detail['body'])  # body 为脱敏后的 JSON 字符串（2000 字符截断摘要）
+    assert body['password'] == '***'
+    assert body['username'] == 'log_u1'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_middleware_detail_route_object_id(db):
+    """026：detail 路由的 DELETE 记录 object_id"""
+    try:
+        cache.clear()
+    except InvalidCacheBackendError:
+        pass
+    adm = _client(_make_user('adm_log2', 'admin'))
+    f = adm.post('/api/basic-info/factories/', {'name': '日志工厂'}, format='json')
+    fid = f.data['data']['id']
+    OperationLog.objects.all().delete()
+    adm.delete(f'/api/basic-info/factories/{fid}/')
+    log = OperationLog.objects.order_by('-id').first()
+    assert log.model_name == 'Factory'
+    assert log.object_id == fid
+    assert log.detail['status'] == 200
+
+
+@pytest.mark.django_db(transaction=True)
+def test_approve_missing_target_auto_cancels(db):
+    """032：approve 遇目标删除 → 自动关闭（cancelled）而非 404"""
+    ar = ApprovalRequest.objects.create(
+        approval_type='order_change', target_id=999999, target_model='Order',
+        submitted_by=_make_user('u_orphan', 'salesman'))
+    adm = _client(_make_user('adm_or', 'admin'))
+    r = adm.post(f'/api/system-mgmt/approvals/{ar.id}/approve/')
+    assert r.status_code == 200
+    ar.refresh_from_db()
+    assert ar.status == 'cancelled'
+    assert '目标对象已删除' in ar.note
+
+
+@pytest.mark.django_db(transaction=True)
+def test_cleanup_orphans_action(db):
+    """032：批量清理孤儿 pending（跳过有效目标）"""
+    from apps.basic_info.models import Customer
+    from apps.orders.models import Order
+    o = Order.objects.create(order_no='OCLN', customer=Customer.objects.create(name='C'))
+    ApprovalRequest.objects.create(approval_type='order_change', target_id=888888, target_model='Order',
+                                   submitted_by=_make_user('u_o1', 'salesman'))
+    ApprovalRequest.objects.create(approval_type='order_change', target_id=777777, target_model='Order',
+                                   submitted_by=_make_user('u_o2', 'salesman'))
+    valid = ApprovalRequest.objects.create(approval_type='order_change', target_id=o.id, target_model='Order',
+                                           submitted_by=_make_user('u_o3', 'salesman'))
+    adm = _client(_make_user('adm_cln', 'admin'))
+    r = adm.post('/api/system-mgmt/approvals/cleanup-orphans/')
+    assert r.status_code == 200
+    assert r.data['data']['closed'] == 2
+    valid.refresh_from_db()
+    assert valid.status == 'pending'  # 有效 pending 不受影响

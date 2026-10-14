@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listApprovals, approveRequest, rejectRequest } from '../../api/systemMgmt'
+import { listApprovals, approveRequest, rejectRequest , cleanupOrphans as cleanupOrphansApi } from '../../api/systemMgmt'
 import { useUserStore } from '../../stores/user'
 import PageHeader from '../../components/PageHeader.vue'
+import { modelLabel } from '../../utils/modelNames'
 import SearchToolbar from '../../components/SearchToolbar.vue'
 import DataTable from '../../components/DataTable.vue'
 import AppPagination from '../../components/AppPagination.vue'
@@ -22,6 +23,7 @@ const STATUS_OPTIONS = [
   { value: 'pending', label: '待审批' },
   { value: 'approved', label: '已通过' },
   { value: 'rejected', label: '已驳回' },
+  { value: 'cancelled', label: '已关闭' }, // BUG-SIM-032：目标对象删除后自动/批量关闭
 ]
 
 function typeLabel(v: string) {
@@ -34,7 +36,15 @@ function statusTagType(v: string): 'warning' | 'success' | 'danger' | 'info' {
   if (v === 'pending') return 'warning'
   if (v === 'approved') return 'success'
   if (v === 'rejected') return 'danger'
-  return 'info'
+  return 'info'  // cancelled
+}
+
+// BUG-SIM-032：批量关闭目标已删除的 pending 审批
+async function cleanupOrphans() {
+  await ElMessageBox.confirm('确定批量关闭所有目标对象已删除的待审批申请？', '清理孤儿审批', { type: 'warning' })
+  const r: any = await cleanupOrphansApi()
+  ElMessage.success(`已关闭 ${r.data?.closed ?? 0} 条孤儿审批`)
+  load()
 }
 
 const rows = ref<any[]>([])
@@ -109,7 +119,8 @@ onMounted(load)
             <el-select v-model="typeFilter" clearable placeholder="类型" style="width: 150px" @change="query">
               <el-option v-for="o in TYPE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
             </el-select>
-            <el-select v-model="statusFilter" clearable placeholder="状态" style="width: 130px" @change="query">
+            <el-button v-if="isAdmin" @click="cleanupOrphans">清理孤儿审批</el-button>
+          <el-select v-model="statusFilter" clearable placeholder="状态" style="width: 130px" @change="query">
               <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
             </el-select>
             <el-button type="primary" @click="query">查询</el-button>
@@ -122,7 +133,7 @@ onMounted(load)
         <template #default="{ row }">{{ typeLabel(row.approval_type) }}</template>
       </el-table-column>
       <el-table-column label="目标对象" min-width="150">
-        <template #default="{ row }">{{ row.target_model }} #{{ row.target_id }}</template>
+        <template #default="{ row }">{{ modelLabel(row.target_model) }} #{{ row.target_id }}</template>
       </el-table-column>
       <el-table-column label="状态" width="100">
         <template #default="{ row }">

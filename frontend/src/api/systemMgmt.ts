@@ -16,3 +16,6 @@ export const manualBackup = () => request.post(`${base}/backups/manual-backup/`)
 // 下载走 blob（axios 层不做 envelope 解包，直接拿文件流）
 export const downloadBackup = (id: number) =>
   request.get(`${base}/backups/${id}/download/`, { responseType: 'blob' })
+
+// BUG-SIM-032：批量关闭目标已删除的孤儿审批（admin）
+export const cleanupOrphans = () => request.post(`${base}/approvals/cleanup-orphans/`)
