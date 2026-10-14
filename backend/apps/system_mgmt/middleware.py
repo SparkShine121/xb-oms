@@ -9,6 +9,18 @@ class OperationLogMiddleware:
 
     WRITE_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
 
+    @staticmethod
+    def _mask(data):
+        """递归脱敏：顶层与嵌套 dict/list 中的敏感键统一 ***（BUG-SIM-026 followup）。"""
+        if isinstance(data, dict):
+            return {
+                k: ('***' if k.lower() in OperationLogMiddleware.SENSITIVE_KEYS else OperationLogMiddleware._mask(v))
+                for k, v in data.items()
+            }
+        if isinstance(data, list):
+            return [OperationLogMiddleware._mask(v) for v in data]
+        return data
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -64,15 +76,12 @@ class OperationLogMiddleware:
                 try:
                     parsed = json.loads(raw)
                     if isinstance(parsed, dict):
-                        masked = {
-                            k: ('***' if k.lower() in OperationLogMiddleware.SENSITIVE_KEYS else v)
-                            for k, v in parsed.items()
-                        }
+                        masked = OperationLogMiddleware._mask(parsed)
                         body = json.dumps(masked, ensure_ascii=False, default=str)[:2000]
                 except json.JSONDecodeError:
                     body = f'<{request.content_type or "unknown"}>'
         except Exception:
-            pass
+            body = f'<unreadable:{request.content_type or "unknown"}>'  # 流已被视图消费（如 multipart 上传）
 
         detail = {'status': response.status_code}
         if body:

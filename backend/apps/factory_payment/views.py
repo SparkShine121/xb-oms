@@ -16,6 +16,7 @@ from .serializers import FactoryPaymentSerializer, FactoryPaymentRecordSerialize
 from .permissions import FactoryPaymentPermission
 
 class FactoryPaymentViewSet(BaseModelViewSet):
+    queryset = FactoryPayment.objects.all()  # BUG-SIM-026
     serializer_class = FactoryPaymentSerializer
     permission_classes = [IsAuthenticated, FactoryPaymentPermission]
     filterset_fields = ['factory', 'status']
@@ -112,6 +113,7 @@ class FactoryPaymentViewSet(BaseModelViewSet):
         })
 
 class FactoryPaymentRecordViewSet(BaseModelViewSet):
+    queryset = FactoryPaymentRecord.objects.all()  # BUG-SIM-026
     serializer_class = FactoryPaymentRecordSerializer
     permission_classes = [IsAuthenticated, FactoryPaymentPermission]
     filterset_fields = ['factory_payment']

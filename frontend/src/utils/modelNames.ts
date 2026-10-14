@@ -4,6 +4,8 @@ export const MODEL_NAME_LABELS: Record<string, string> = {
   OrderItem: '订单明细',
   FactoryPayment: '工厂结算',
   FactoryPaymentRecord: '工厂付款',
+  PaymentIn: '回款',
+  TrackingLog: '跟单日志',
   Logistics: '物流发货',
   User: '用户',
   Customer: '客户',

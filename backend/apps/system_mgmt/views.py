@@ -88,7 +88,8 @@ class ApprovalRequestViewSet(BaseModelViewSet):
             if app_model:
                 model_cls = django_apps.get_model(*app_model)
                 exists = model_cls.objects.filter(pk=ar.target_id).exists()
-            if app_model and not exists:
+            # followup：app_model 未知（target_model 不在映射内）的 pending 同样按无法定位目标关闭
+            if not app_model or not exists:
                 ar.status = 'cancelled'
                 ar.reviewed_by = request.user
                 ar.note = (ar.note + '；' if ar.note else '') + '目标对象已删除，批量清理自动关闭'

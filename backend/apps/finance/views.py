@@ -26,6 +26,7 @@ XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml
 
 
 class PaymentInViewSet(BaseModelViewSet):
+    queryset = PaymentIn.objects.all()  # BUG-SIM-026
     """回款登记 CRUD + 收支流水聚合。
 
     数据范围：admin/finance 全量；salesman 看自己客户的订单数据；

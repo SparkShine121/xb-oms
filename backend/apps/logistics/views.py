@@ -14,6 +14,7 @@ from .permissions import LogisticsPermission
 
 
 class LogisticsViewSet(BaseModelViewSet):
+    queryset = Logistics.objects.all()  # BUG-SIM-026
     """物流发货记录 CRUD。
 
     数据范围：admin/finance 全量；salesman 看自己客户的订单发货；

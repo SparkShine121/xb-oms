@@ -589,3 +589,17 @@ def test_rate_update_and_delete_auto_recalc(db):
     c.delete(f'/api/orders/exchange-rates/{rate.id}/')
     o.refresh_from_db()
     assert str(o.order_profit_usd) == '280.00'  # 删除后回退 1:1
+
+# ---- BUG-SIM-026 followup：核心业务 ViewSet 的日志 model 补全 ----
+
+def test_order_write_log_model_name_filled(db, admin_client):
+    """订单写请求日志必须记 model_name='Order'（核心业务盲区回归锁）"""
+    from apps.system_mgmt.models import OperationLog
+    from apps.basic_info.models import Customer
+    o = Order.objects.create(order_no='OLOG', customer=Customer.objects.create(name='C'))
+    OperationLog.objects.all().delete()
+    r = admin_client.patch(f'/api/orders/orders/{o.id}/', {'remark': '审计测试'}, format='json')
+    assert r.status_code == 200
+    log = OperationLog.objects.order_by('-id').first()
+    assert log.model_name == 'Order'
+    assert log.object_id == o.id

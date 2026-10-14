@@ -17,6 +17,7 @@ from .importers import import_orders, build_order_template
 
 
 class OrderViewSet(BaseModelViewSet):
+    queryset = Order.objects.all()  # BUG-SIM-026：审计日志取 model 用（get_queryset 优先不受影响）
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated, OrderPermission]
     filterset_fields = ['tracking_status', 'salesman', 'tracker', 'is_cancelled']

@@ -48,6 +48,7 @@ class ProductViewSet(BaseModelViewSet):
         return resp
 
 class FactoryViewSet(BaseModelViewSet):
+    queryset = Factory.objects.all()  # BUG-SIM-026
     queryset = Factory.objects.all()
     serializer_class = FactorySerializer
     permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
@@ -74,6 +75,7 @@ class FactoryViewSet(BaseModelViewSet):
         return resp
 
 class LogisticsProviderViewSet(BaseModelViewSet):
+    queryset = LogisticsProvider.objects.all()  # BUG-SIM-026
     queryset = LogisticsProvider.objects.all()
     serializer_class = LogisticsProviderSerializer
     permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]
@@ -83,6 +85,7 @@ class LogisticsProviderViewSet(BaseModelViewSet):
     ordering = ['id']
 
 class CustomerViewSet(BaseModelViewSet):
+    queryset = Customer.objects.all()  # BUG-SIM-026
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated, AdminWriteOthersReadOnly]

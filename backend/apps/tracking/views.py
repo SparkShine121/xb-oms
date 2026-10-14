@@ -18,6 +18,7 @@ ALLOWED_TYPES = {'image/jpeg', 'image/png', 'image/jpg'}
 MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5MB
 
 class TrackingViewSet(ViewSet):
+    queryset = Order.objects.all()  # BUG-SIM-026：跟单写操作对象为订单（供审计取 model）
     permission_classes = [IsAuthenticated, TrackingPermission]
 
     def _get_order_qs(self, request):

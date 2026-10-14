@@ -1,0 +1,9 @@
+{
+  "task": "BUG-SIM-026/032 审计域批 followup",
+  "date": "2026-10-14",
+  "overall": "fail→修复后全绿",
+  "findings": [
+    {"dimension": "审计核心", "severity": "high", "observation": "6 个核心 ViewSet 无类属性 queryset，model_name 全空（测试恰好打在有类属性的对象上，结构性盲区）", "suggestion": "已修：9 个 ViewSet 补 queryset 类属性+Order 回归锁"},
+    {"dimension": "脱敏/标记", "severity": "low", "observation": "脱敏仅顶层、multipart 被消费后 body 无标记", "suggestion": "已修：递归脱敏+unreadable 标记"}
+  ]
+}
