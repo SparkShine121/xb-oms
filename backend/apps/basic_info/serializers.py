@@ -33,6 +33,13 @@ class LogisticsProviderSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(serializers.ModelSerializer):
     salesman_name = serializers.CharField(source='salesman.username', read_only=True, default='')
+    tracker_name = serializers.CharField(source='tracker.username', read_only=True, default='')
+
+    def validate_tracker(self, value):
+        # BUG-SIM-029 Q1:a：默认跟单员必须为 tracker 角色（与 014 set-tracker 同规则）
+        if value is not None and not value.groups.filter(name='tracker').exists():
+            raise serializers.ValidationError('默认跟单员必须为跟单员（tracker）角色')
+        return value
 
     class Meta:
         extra_kwargs = {
@@ -60,4 +67,4 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = ['id', 'name', 'contact_person', 'phone', 'email', 'salesman', 'salesman_name', 'remark', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'contact_person', 'phone', 'email', 'salesman', 'salesman_name', 'tracker', 'tracker_name', 'remark', 'created_at', 'updated_at']

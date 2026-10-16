@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createPaymentIn } from '../../api/finance'
-import { listOrders } from '../../api/orders'
+import { listOrders, getOrder } from '../../api/orders'
 
 const props = defineProps<{ modelValue: boolean; presetOrderId?: number | null }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'saved'): void }>()
@@ -22,11 +22,32 @@ const form = reactive({
 
 const orders = ref<any[]>([])
 const saving = ref(false)
+const searching = ref(false)
 
-async function loadOrders() {
-  if (orders.value.length) return
-  const resp: any = await listOrders({ page: 1, page_size: 200 })
-  orders.value = resp.data.results ?? []
+// BUG-SIM-031 Q3:a：远程搜索下拉——首屏 20 条，输入实时 ?search=（千单库可直达）
+async function loadOrders(query?: string) {
+  searching.value = true
+  try {
+    const resp: any = await listOrders({ page: 1, page_size: 20, search: query || undefined })
+    orders.value = resp.data.results ?? []
+  } finally {
+    searching.value = false
+  }
+}
+
+async function searchOrders(query: string) {
+  await loadOrders(query.trim() || undefined)
+}
+
+// 预置订单（从订单详情跳入）：按 ID 精确拉取塞进选项，保证回显
+async function ensurePresetOrder() {
+  const pid = props.presetOrderId
+  if (!pid) return
+  if (orders.value.some(o => o.id === pid)) return
+  try {
+    const resp: any = await getOrder(pid)
+    orders.value.unshift(resp.data)
+  } catch { /* 订单不可见时静默（回显为空由用户重选） */ }
 }
 
 function reset() {
@@ -59,6 +80,7 @@ watch(() => props.modelValue, async v => {
   if (!v) return
   reset()
   await loadOrders()
+  await ensurePresetOrder()
 })
 
 onMounted(loadOrders)
@@ -68,7 +90,7 @@ onMounted(loadOrders)
   <el-dialog v-model="visible" title="登记回款" width="480px">
     <el-form :model="form" label-width="100px">
       <el-form-item label="订单" required>
-        <el-select v-model="form.order" placeholder="选择订单" filterable style="width: 100%">
+        <el-select v-model="form.order" placeholder="输入订单号搜索" filterable remote :remote-method="searchOrders" :loading="searching" style="width: 100%">
           <el-option v-for="o in orders" :key="o.id" :label="o.order_no" :value="o.id" />
         </el-select>
       </el-form-item>

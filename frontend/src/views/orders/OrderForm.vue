@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createOrder, updateOrder, getOrder } from '../../api/orders'
-import { listCustomers, listFactories } from '../../api/basicInfo'
+import { listCustomers, listFactories, getCustomer } from '../../api/basicInfo'
 import { listUsers } from '../../api/auth'
 import { useUserStore } from '../../stores/user'
 
@@ -46,12 +46,27 @@ const trackers = ref<any[]>([])
 
 const saving = ref(false)
 const loading = ref(false)
+const custLoading = ref(false)
+
+async function loadCustomers(query?: string) {
+  // BUG-SIM-031 Q3:a：客户下拉远程搜索（千客户库可直达），后端 ?search= 已启用
+  const resp: any = await listCustomers({ page: 1, page_size: 20, search: query || undefined })
+  customers.value = resp.data.results ?? []
+}
+
+async function ensureCustomerEchoed(cid: number | null) {
+  if (!cid || customers.value.some(c => c.id === cid)) return
+  try {
+    const resp: any = await getCustomer(cid)
+    customers.value.unshift(resp.data)
+  } catch { /* 客户不可见时静默 */ }
+}
 
 async function loadOptions() {
   // allSettled + 条件请求：/auth/users/ 为 admin 专属，非 admin 不请求（避免 403 报错提示）。
   // 非 admin（业务员）创建订单时，业务员下拉降级为当前登录用户自己。
   const [custResp, facResp, userResp] = await Promise.allSettled([
-    listCustomers({ page: 1, page_size: 500 }),
+    listCustomers({ page: 1, page_size: 20 }),
     listFactories({ page: 1, page_size: 500 }),
     isAdmin.value ? listUsers({ page: 1, page_size: 200 }) : Promise.resolve(null),
   ])
@@ -128,6 +143,13 @@ function removeItem(index: number) {
   syncAmountFromItems() // BUG-SIM-017：删行联动
 }
 
+// BUG-SIM-029 Q2:a：admin 建单选客户后自动回填该客户的默认跟单员（已手选则不覆盖；编辑模式不触发）
+watch(() => form.customer, (cid: number | null) => {
+  if (!isAdmin.value || isEdit.value || !cid) return
+  const cust = customers.value.find(c => c.id === cid)
+  if (cust?.tracker && !form.tracker) form.tracker = cust.tracker
+})
+
 function calcSubtotal(row: any) {
   row.subtotal = Number(row.qty) * Number(row.unit_price) || 0
   syncAmountFromItems() // BUG-SIM-017：数量/单价变化联动
@@ -177,7 +199,10 @@ function cancel() {
 
 onMounted(async () => {
   await loadOptions()
-  if (isEdit.value) await loadOrder()
+  if (isEdit.value) {
+    await loadOrder()
+    await ensureCustomerEchoed(form.customer)  // 编辑回显：按 ID 拉取已选客户
+  }
 })
 </script>
 
@@ -225,7 +250,7 @@ onMounted(async () => {
           </el-col>
           <el-col :span="8">
             <el-form-item label="客户">
-              <el-select v-model="form.customer" clearable filterable placeholder="选择客户" style="width: 100%">
+              <el-select v-model="form.customer" clearable filterable remote :remote-method="loadCustomers" :loading="custLoading" placeholder="输入客户名搜索" style="width: 100%">
                 <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
               </el-select>
             </el-form-item>

@@ -26,6 +26,7 @@ const loading = ref(false)
 
 // 业务员列表：/auth/users/ 为 admin 专属接口，仅 admin 请求；非 admin 显示用 salesman_name，不受影响
 const salesmen = ref<{ id: number; username: string }[]>([])
+const trackers = ref<{ id: number; username: string }[]>([])
 async function loadSalesmen() {
   if (!isAdmin.value) return
   try {
@@ -34,11 +35,14 @@ async function loadSalesmen() {
     salesmen.value = (resp.data.results ?? []).filter(
       (u: any) => u.groups?.includes('salesman') && !u.groups?.includes('admin'),
     )
+    // BUG-SIM-029 Q1:a：默认跟单员下拉（仅 tracker 角色）
+    trackers.value = (resp.data.results ?? []).filter((u: any) => u.groups?.includes('tracker'))
   } catch {
     salesmen.value = []
   }
 }
 const salesmanName = (id: number | null) => (id ? salesmen.value.find(s => s.id === id)?.username ?? `#${id}` : '—')
+const trackerName = (id: number | null) => (id ? trackers.value.find(t => t.id === id)?.username ?? `#${id}` : '—')
 
 async function load() {
   loading.value = true
@@ -55,17 +59,17 @@ async function load() {
 const drawerVisible = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
-const form = reactive({ name: '', contact_person: '', phone: '', email: '', salesman: null as number | null, remark: '' })
+const form = reactive({ name: '', contact_person: '', phone: '', email: '', salesman: null as number | null, tracker: null as number | null, remark: '' })
 
 function openCreate() {
   editingId.value = null
-  Object.assign(form, { name: '', contact_person: '', phone: '', email: '', salesman: null, remark: '' })
+  Object.assign(form, { name: '', contact_person: '', phone: '', email: '', salesman: null, tracker: null, remark: '' })
   drawerVisible.value = true
 }
 
 function openEdit(row: any) {
   editingId.value = row.id
-  Object.assign(form, { name: row.name, contact_person: row.contact_person, phone: row.phone, email: row.email, salesman: row.salesman, remark: row.remark })
+  Object.assign(form, { name: row.name, contact_person: row.contact_person, phone: row.phone, email: row.email, salesman: row.salesman, tracker: row.tracker, remark: row.remark })
   drawerVisible.value = true
 }
 
@@ -134,6 +138,9 @@ onMounted(() => { loadSalesmen(); load() })
       <el-table-column label="业务员" width="110">
         <template #default="{ row }">{{ row.salesman_name || salesmanName(row.salesman) }}</template>
       </el-table-column>
+      <el-table-column label="默认跟单员" width="120">
+        <template #default="{ row }">{{ row.tracker_name || trackerName(row.tracker) }}</template>
+      </el-table-column>
       <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
       <el-table-column label="操作" width="130" fixed="right">
         <template #default="{ row }">
@@ -164,6 +171,11 @@ onMounted(() => { loadSalesmen(); load() })
         <el-form-item label="归属业务员">
           <el-select v-model="form.salesman" clearable filterable placeholder="选择业务员" style="width: 100%">
             <el-option v-for="s in salesmen" :key="s.id" :label="s.username" :value="s.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="默认跟单员">
+          <el-select v-model="form.tracker" clearable filterable placeholder="选择跟单员（新单自动派单）" style="width: 100%">
+            <el-option v-for="t in trackers" :key="t.id" :label="t.username" :value="t.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">

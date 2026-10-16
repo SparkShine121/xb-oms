@@ -64,3 +64,24 @@ def test_integrity_error_maps_to_400():
     from common.exceptions import custom_exception_handler
     resp = custom_exception_handler(IntegrityError('UNIQUE constraint failed'), None)
     assert resp.status_code == 400 and resp.data['code'] == 1001
+
+# ---- BUG-SIM-029: 客户默认跟单员映射 ----
+
+def test_customer_tracker_assignment(admin_client, db):
+    """admin 可为客户绑定默认跟单员（必须 tracker 角色）"""
+    from django.contrib.auth.models import User
+    tr = User.objects.create_user('tr_map', password='pw123456'); tr.groups.add(Group.objects.get(name='tracker'))
+    sales = User.objects.create_user('sales_map', password='pw123456'); sales.groups.add(Group.objects.get(name='salesman'))
+    r = admin_client.post('/api/basic-info/customers/', {'name': '映射客户', 'tracker': tr.id}, format='json')
+    assert r.status_code == 201
+    assert r.data['data']['tracker'] == tr.id
+    # 非 tracker 角色 → 400
+    r2 = admin_client.post('/api/basic-info/customers/', {'name': '映射客户2', 'tracker': sales.id}, format='json')
+    assert r2.status_code == 400
+    # 清空（null）→ 200
+    cid = r.data['data']['id']
+    r3 = admin_client.patch(f'/api/basic-info/customers/{cid}/', {'tracker': None}, format='json')
+    assert r3.status_code == 200
+    from apps.basic_info.models import Customer
+    assert Customer.objects.get(pk=cid).tracker_id is None
+

@@ -26,6 +26,7 @@ export const listCustomers = (p?: any) => request.get(`${base}/customers/`, { pa
 export const createCustomer = (d: any) => request.post(`${base}/customers/`, d)
 export const updateCustomer = (id: number, d: any) => request.patch(`${base}/customers/${id}/`, d)
 export const deleteCustomer = (id: number) => request.delete(`${base}/customers/${id}/`)
+export const getCustomer = (id: number) => request.get(`${base}/customers/${id}/`)
 
 // 批量删除
 export const bulkDeleteCategories = (ids: number[]) => request.post(`${base}/categories/bulk-delete/`, { ids })
