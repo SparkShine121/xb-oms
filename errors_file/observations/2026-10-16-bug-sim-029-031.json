@@ -1,0 +1,9 @@
+{
+  "task": "BUG-SIM-029/031 功能补全批",
+  "date": "2026-10-16",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "交互语义", "severity": "medium", "observation": "admin 建单切换客户时旧映射 tracker 残留（stale-tracker 错派）", "suggestion": "已修：客户变更先清再回填"},
+    {"dimension": "UX", "severity": "low", "observation": "客户下拉 loading 未置位；PaymentInForm 重复首屏请求", "suggestion": "已修"}
+  ]
+}
