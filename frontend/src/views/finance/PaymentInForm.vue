@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createPaymentIn } from '../../api/finance'
 import { listOrders, getOrder } from '../../api/orders'
@@ -75,15 +75,13 @@ async function save() {
 
 defineExpose({ loadOrders })
 
-// 每次打开弹窗：重置表单（含预选订单）并确保订单下拉已加载
+// 每次打开弹窗：重置表单（含预选订单）并加载订单首屏 + 预置回显
 watch(() => props.modelValue, async v => {
   if (!v) return
   reset()
   await loadOrders()
   await ensurePresetOrder()
 })
-
-onMounted(loadOrders)
 </script>
 
 <template>

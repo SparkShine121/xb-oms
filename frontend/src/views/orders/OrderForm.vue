@@ -50,8 +50,13 @@ const custLoading = ref(false)
 
 async function loadCustomers(query?: string) {
   // BUG-SIM-031 Q3:a：客户下拉远程搜索（千客户库可直达），后端 ?search= 已启用
-  const resp: any = await listCustomers({ page: 1, page_size: 20, search: query || undefined })
-  customers.value = resp.data.results ?? []
+  custLoading.value = true
+  try {
+    const resp: any = await listCustomers({ page: 1, page_size: 20, search: query || undefined })
+    customers.value = resp.data.results ?? []
+  } finally {
+    custLoading.value = false
+  }
 }
 
 async function ensureCustomerEchoed(cid: number | null) {
@@ -145,9 +150,12 @@ function removeItem(index: number) {
 
 // BUG-SIM-029 Q2:a：admin 建单选客户后自动回填该客户的默认跟单员（已手选则不覆盖；编辑模式不触发）
 watch(() => form.customer, (cid: number | null) => {
-  if (!isAdmin.value || isEdit.value || !cid) return
+  if (!isAdmin.value || isEdit.value) return
+  // BUG-SIM-029 followup：客户切换/清空时先清旧映射，再回填新客户的映射（防 stale-tracker 错派）
+  form.tracker = null
+  if (!cid) return
   const cust = customers.value.find(c => c.id === cid)
-  if (cust?.tracker && !form.tracker) form.tracker = cust.tracker
+  if (cust?.tracker) form.tracker = cust.tracker
 })
 
 function calcSubtotal(row: any) {
