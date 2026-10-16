@@ -31,13 +31,16 @@ const loading = ref(false)
 const finished = ref(false)
 const typeFilter = ref('')
 
-// ledger 为聚合接口，一次返回全量（非分页），van-list 仅做加载态
+// BUG-SIM-026 UX#1 后 ledger 已分页：移动端一次取最近 200 条（后端单页上限 200），
+// van-list 仅做加载态；更早的历史走 PC 端或导出 Excel
 async function onLoad() {
   try {
     const resp: any = await listLedger({
       type: typeFilter.value || undefined,
+      page: 1,
+      page_size: 200,
     })
-    rows.value = resp.data ?? []
+    rows.value = resp.data?.results ?? []
     finished.value = true
   } catch {
     // 加载失败停止自动重试（错误提示由全局拦截器处理）
