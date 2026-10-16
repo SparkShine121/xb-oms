@@ -8,6 +8,7 @@ import { useUserStore } from '../../stores/user'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchToolbar from '../../components/SearchToolbar.vue'
 import DataTable from '../../components/DataTable.vue'
+import AppPagination from '../../components/AppPagination.vue'
 import { PhReceipt } from '@phosphor-icons/vue'
 
 const route = useRoute()
@@ -46,6 +47,11 @@ function fmtMoney(v: any) {
 
 const rows = ref<any[]>([])
 const loading = ref(false)
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+// BUG-SIM-026 UX#1：过滤全集合计（后端 ledger 计算）
+const totals = ref<{ income: number; expense: number; net: number } | null>(null)
 
 const dateRange = ref<[string, string] | null>(null)
 const typeFilter = ref<string | null>(null)
@@ -57,15 +63,20 @@ async function load() {
       start_date: dateRange.value?.[0],
       end_date: dateRange.value?.[1],
       type: typeFilter.value || undefined,
+      page: page.value,
+      page_size: pageSize.value,
     })
-    // ledger 为聚合接口，返回完整数组（非分页结构）
-    rows.value = resp.data ?? []
+    // BUG-SIM-026 UX#1：ledger 已分页（results/total/totals）
+    rows.value = resp.data?.results ?? []
+    total.value = resp.data?.total ?? 0
+    totals.value = resp.data?.totals ?? null
   } finally {
     loading.value = false
   }
 }
 
 function query() {
+  page.value = 1
   load()
 }
 
@@ -154,6 +165,16 @@ onMounted(() => {
       </el-table-column>
       <el-table-column prop="currency" label="币种" width="80" align="center" />
       <el-table-column prop="description" label="说明" min-width="220" show-overflow-tooltip />
+
+      <template #footer>
+        <div class="ledger-totals" v-if="totals">
+          <span>合计（当前筛选全集）：</span>
+          <span class="amount-in">收入 {{ fmtMoney(totals.income) }}</span>
+          <span class="amount-out">支出 {{ fmtMoney(totals.expense) }}</span>
+          <span>净额 {{ fmtMoney(totals.net) }}</span>
+        </div>
+        <AppPagination v-model:page="page" v-model:page-size="pageSize" :total="total" @change="load" />
+      </template>
     </DataTable>
 
     <PaymentInForm v-model="showForm" :preset-order-id="presetOrderId" @saved="load" />
@@ -167,4 +188,8 @@ onMounted(() => {
 .amount-out {
   color: var(--el-color-danger);
 }
+</style>
+
+<style scoped>
+.ledger-totals { display: flex; gap: 16px; padding: 8px 0; font-size: 13px; }
 </style>

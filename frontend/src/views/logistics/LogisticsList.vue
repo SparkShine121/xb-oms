@@ -91,7 +91,9 @@ onMounted(load)
 
 <template>
   <div class="logistics-list">
-    <PageHeader title="发货单" :sub="`共 ${total} 条`" />
+    <PageHeader title="发货单" :sub="`共 ${total} 条`">
+      <el-button v-if="canEdit" type="primary" @click="router.push('/logistics/new')">新增发货单</el-button>
+    </PageHeader>
 
     <DataTable
       :loading="loading"

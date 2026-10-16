@@ -53,7 +53,7 @@ def _admin_client():
 def test_ledger_contains_four_types(db, setup):
     r = _admin_client().get('/api/finance/payments-in/ledger/')
     assert r.status_code == 200
-    rows = r.data['data']
+    rows = r.data['data']['results']
     types = {row['type'] for row in rows}
     assert types == {'income_receipt', 'expense_factory', 'expense_logistics', 'expense_service_fee'}
     # 统一结构字段齐全
@@ -64,9 +64,9 @@ def test_ledger_contains_four_types(db, setup):
 def test_ledger_amount_sign_and_value(db, setup):
     """收入为正、支出为负。"""
     r = _admin_client().get('/api/finance/payments-in/ledger/')
-    rows = {row['type']: row for row in r.data['data']}
+    rows = {row['type']: row for row in r.data['data']['results']}
     assert float(rows['income_receipt']['amount']) == 700.0 or True  # 多笔取和校验见下
-    amounts = [float(row['amount']) for row in r.data['data']]
+    amounts = [float(row['amount']) for row in r.data['data']['results']]
     income = sum(a for a in amounts if a > 0)
     expense = sum(a for a in amounts if a < 0)
     assert income == pytest.approx(700.0)  # 300 + 400 回款
@@ -75,14 +75,14 @@ def test_ledger_amount_sign_and_value(db, setup):
 
 def test_ledger_filter_type(db, setup):
     r = _admin_client().get('/api/finance/payments-in/ledger/', {'type': 'income_receipt'})
-    rows = r.data['data']
+    rows = r.data['data']['results']
     assert rows and all(row['type'] == 'income_receipt' for row in rows)
 
 
 def test_ledger_filter_date_range(db, setup):
     r = _admin_client().get('/api/finance/payments-in/ledger/',
                             {'start_date': '2026-08-01', 'end_date': '2026-08-15'})
-    dates = [row['date'] for row in r.data['data']]
+    dates = [row['date'] for row in r.data['data']['results']]
     assert dates and all('2026-08-01' <= d <= '2026-08-15' for d in dates)
 
 
@@ -91,7 +91,7 @@ def test_ledger_salesman_scoped(db, setup):
     c = APIClient()
     c.force_authenticate(setup['s1'])
     r = c.get('/api/finance/payments-in/ledger/')
-    descs = [row['description'] for row in r.data['data']]
+    descs = [row['description'] for row in r.data['data']['results']]
     assert any('OA' in d for d in descs)
     assert not any('OB' in d for d in descs)
 
@@ -103,7 +103,7 @@ def test_no_role_user_sees_empty_ledger(db, setup):
     c.force_authenticate(nobody)
     r = c.get('/api/finance/payments-in/ledger/')
     assert r.status_code == 200
-    assert r.data['data'] == []  # 不返回任何流水
+    assert r.data['data']['results'] == []  # 不返回任何流水
     # 导出同样为空（仍应成功返回 xlsx 文件流）
     r2 = c.get('/api/finance/payments-in/export/')
     assert r2.status_code == 200
@@ -115,3 +115,23 @@ def test_export_returns_xlsx(db, setup):
     assert r.status_code == 200
     assert r['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     assert len(r.content) > 0
+
+# ---- UX#1: 流水分页 + 合计 ----
+
+def test_ledger_pagination_and_totals(db, setup):
+    """UX#1：ledger 分页返回 {results,total,totals}，合计为过滤全集口径"""
+    adm = _admin_client()  # 复用同一 client（_admin_client 每次调用会建同名用户）
+    r = adm.get('/api/finance/payments-in/ledger/?page=1&page_size=2')
+    assert r.status_code == 200
+    data = r.data['data']
+    assert set(['results', 'total', 'page', 'page_size', 'totals']) <= set(data)
+    assert len(data['results']) == 2
+    assert data['page'] == 1 and data['page_size'] == 2
+    # 第二页
+    r2 = adm.get('/api/finance/payments-in/ledger/?page=2&page_size=2')
+    assert len(r2.data['data']['results']) == 2  # 第 2 页：第 3-4 行
+    # 合计为全集口径（收入为正、支出为负）：回款 300+400
+    assert float(data['totals']['income']) == 700.0
+    assert float(data['totals']['expense']) < 0
+    # 合计净额 = income + expense
+    assert abs(float(data['totals']['net']) - (float(data['totals']['income']) + float(data['totals']['expense']))) < 0.01

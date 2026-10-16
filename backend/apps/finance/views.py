@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db.models import Q
 from django.http import HttpResponse
 from openpyxl import Workbook
@@ -57,8 +58,31 @@ class PaymentInViewSet(BaseModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='ledger')
     def ledger(self, request):
+        # UX#1 Q2:a：分页 + 全集合计（导出仍走全量）
         rows = self._build_ledger_rows(request)
-        return success_response(rows)
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = min(max(int(request.query_params.get('page_size', 20)), 1), 200)
+        except (TypeError, ValueError):
+            page_size = 20
+        total = len(rows)
+        income = sum(Decimal(str(r['amount'])) for r in rows if Decimal(str(r['amount'])) > 0)
+        expense = sum(Decimal(str(r['amount'])) for r in rows if Decimal(str(r['amount'])) < 0)
+        start = (page - 1) * page_size
+        return success_response({
+            'results': rows[start:start + page_size],
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'totals': {
+                'income': float(income),
+                'expense': float(expense),
+                'net': float(income + expense),
+            },
+        })
 
     @action(detail=False, methods=['get'], url_path='export')
     def export(self, request):
