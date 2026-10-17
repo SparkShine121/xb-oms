@@ -83,7 +83,8 @@ def test_finance_edit_approved_payment_recoils(db, finance_client):
     fp.refresh_from_db()
     assert fp.is_approved is False
     assert ApprovalRequest.objects.filter(
-        target_model='FactoryPayment', target_id=fp.id, status='pending').exists()
+        approval_type='settlement', target_model='FactoryPayment',
+        target_id=fp.id, status='pending').exists()
 
 def test_admin_edit_approved_payment_no_recoil(db, admin_client):
     """admin 编辑已批准结算单不打回（admin 即审批人）"""
@@ -109,7 +110,8 @@ def test_finance_edit_approved_record_recoils(db, finance_client):
     rec.refresh_from_db(); fp.refresh_from_db()
     assert rec.is_approved is False
     assert ApprovalRequest.objects.filter(
-        target_model='FactoryPaymentRecord', target_id=rec.id, status='pending').exists()
+        approval_type='payment', target_model='FactoryPaymentRecord',
+        target_id=rec.id, status='pending').exists()
     assert str(fp.paid_amount) == '0.00'  # 打回后父单重聚合，不含编辑中的付款
     assert fp.status == '未结'
 
