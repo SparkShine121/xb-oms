@@ -57,8 +57,16 @@ class FactoryPaymentViewSet(BaseModelViewSet):
                 target_model='FactoryPayment', submitted_by=self.request.user)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
-        resubmit_on_update(self.request.user, instance, 'settlement', 'FactoryPayment')
+        with transaction.atomic():
+            instance = serializer.save()
+            # 收尾批：非 admin 编辑已批准结算单 → 打回未批准 + 重新挂审（BUG-SIM-024 同规则）
+            if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
+                instance.is_approved = False
+                instance.save(update_fields=['is_approved'])
+                ApprovalRequest.objects.create(
+                    approval_type='settlement', target_id=instance.id,
+                    target_model='FactoryPayment', submitted_by=self.request.user)
+            resubmit_on_update(self.request.user, instance, 'settlement', 'FactoryPayment')
 
     @action(detail=False, methods=['post'], url_path=r'orders/(?P<order_id>\d+)/generate')
     def generate_by_order(self, request, order_id=None):
@@ -169,4 +177,13 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
             new_amount = serializer.validated_data.get('amount', instance.amount)
             self._check_overpay(fp, new_amount, exclude_id=instance.id)  # 改大金额同样不得超付
             instance = serializer.save()
+            # 收尾批：非 admin 编辑已批准付款记录 → 打回未批准 + 重新挂审（BUG-SIM-024 同规则）。
+            # 打回置 False 的 save 触发 Record.save 重聚合（filter is_approved=True），
+            # 父单已付自动减去编辑中的付款；批准侧已有持父单行锁重算，口径闭环
+            if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
+                instance.is_approved = False
+                instance.save(update_fields=['is_approved'])
+                ApprovalRequest.objects.create(
+                    approval_type='payment', target_id=instance.id,
+                    target_model='FactoryPaymentRecord', submitted_by=self.request.user)
             resubmit_on_update(self.request.user, instance, 'payment', 'FactoryPaymentRecord')

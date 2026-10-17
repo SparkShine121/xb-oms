@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getOrder } from '../../../api/orders'
+import { getOrder, updateOrder } from '../../../api/orders'
+import { showConfirmDialog, showSuccessToast } from 'vant'
 import { useUserStore } from '../../../stores/user'
 
 const route = useRoute()
@@ -9,6 +10,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const roles = computed(() => userStore.roles)
 const canEdit = computed(() => roles.value.includes('admin') || roles.value.includes('salesman') || roles.value.includes('tracker'))
+const isAdmin = computed(() => roles.value.includes('admin'))
 
 const order = ref<any>(null)
 const loading = ref(false)
@@ -52,6 +54,28 @@ async function load() {
 }
 
 onMounted(load)
+
+// 收尾批：移动端取消订单入口（027 同规则——仅 admin、未取消、二次确认）
+async function handleCancelOrder() {
+  if (!order.value) return
+  try {
+    await showConfirmDialog({
+      title: '取消订单',
+      message: `确定取消订单 ${order.value.order_no}？取消后将冻结其新增结算/付款动作（已产生的结算与对账保留）`,
+      confirmButtonText: '确定取消',
+      cancelButtonText: '再想想',
+    })
+  } catch {
+    return
+  }
+  try {
+    await updateOrder(order.value.id, { is_cancelled: true })
+    showSuccessToast('订单已取消')
+    await load()
+  } catch {
+    // 错误提示由全局拦截器处理
+  }
+}
 </script>
 
 <template>
@@ -122,6 +146,9 @@ onMounted(load)
 
       <div class="action-bar">
         <van-button block @click="router.back()">返回</van-button>
+        <van-button v-if="isAdmin && !order.is_cancelled" block type="warning" @click="handleCancelOrder">
+          取消订单
+        </van-button>
         <van-button v-if="canEdit" block type="primary" @click="router.push(`/m/orders/${route.params.id}/edit`)">
           编辑
         </van-button>
