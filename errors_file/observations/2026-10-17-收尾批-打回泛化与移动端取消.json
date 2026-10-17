@@ -1,0 +1,10 @@
+{
+  "task": "收尾批：FP/FPRecord 打回泛化 + 移动端取消入口",
+  "date": "2026-10-17",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "并发/竞态", "severity": "low", "observation": "打回与 approve 并发有竞态窗口（perform_update 未锁目标行，极端时序残留一个 pending AR；重复批准无害）——与 Order 024 同源历史缺口，非本批回归", "suggestion": "记录在案为待办：后续统一给 024/本批打回补 select_for_update 目标行锁（一并回归 Order 路径）"},
+    {"dimension": "测试质量", "severity": "low", "observation": "AR 断言仅按 target_model 过滤，未锁 approval_type", "suggestion": "已修：补 approval_type 过滤断言，重跑 8 passed"}
+  ],
+  "verification": "后端 312 passed（含 4 新增打回回归）；前端 77 passed + vue-tsc 构建通过；dev/test/origin 同步 2c1d354"
+}
