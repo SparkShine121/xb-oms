@@ -66,5 +66,17 @@ class LogisticsViewSet(BaseModelViewSet):
                 target_model='Logistics', submitted_by=self.request.user)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
-        resubmit_on_update(self.request.user, instance, 'logistics', 'Logistics')
+        with transaction.atomic():
+            # 打回-approve 竞态防御：行锁重读 + save 作用于锁内最新实例（其余三模型同口径）
+            locked = Logistics.objects.select_for_update().get(pk=serializer.instance.pk)
+            serializer.instance = locked
+            instance = serializer.save()
+            # 非 admin（tracker）编辑已批准发货单 → 打回未批准 + 重新挂审（BUG-SIM-024 同规则，
+            # 审批域四模型口径闭环）；打回后流水物流费用源自动排除（finance 已滤 is_approved=True）
+            if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
+                instance.is_approved = False
+                instance.save(update_fields=['is_approved'])
+                ApprovalRequest.objects.create(
+                    approval_type='logistics', target_id=instance.id,
+                    target_model='Logistics', submitted_by=self.request.user)
+            resubmit_on_update(self.request.user, instance, 'logistics', 'Logistics')
