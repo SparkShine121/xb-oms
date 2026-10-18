@@ -1,0 +1,11 @@
+{
+  "task": "Logistics 打回泛化与锁加固批（审批域四模型口径闭环）",
+  "date": "2026-10-18",
+  "overall": "pass",
+  "findings": [
+    {"dimension": "测试基建/错题集应用", "severity": "high", "observation": "审查收口测试首版用普通 db 夹具调 approve 端点挂死 120s——approve 触发 SQLite 在线备份，未提交事务下 backup 无限等待。错题集既有条目（transaction=True）已读但场景匹配失败：没意识到'调 approve 端点 = 触发备份'；test_approval.py:124 的注释与惯例就在同仓", "suggestion": "已修：改 transaction=True；教训升级——凡是链路可达 approve/备份的测试一律 transaction=True，不限于直接测试备份的用例"},
+    {"dimension": "测试基建/撞键", "severity": "medium", "observation": "transaction=True 测试数据真实提交进共享内存库——若用通用实体名（logistics 夹具的 O1/admin1），会与后跑文件（orders/test_importer 也建 O1）撞唯一键，这是悬置错题集候选'进程内持久化撞键'的实证", "suggestion": "已防：reco_ 前缀唯一名实体；候选应入库"},
+    {"dimension": "测试覆盖", "severity": "low", "observation": "tracker 编辑未批准单的重提路径无专门回归（resubmit 既有路径，同构覆盖已存在于 Order/FP）", "suggestion": "记录在案，低优"}
+  ],
+  "verification": "审查六维全 PASS（四模型闭环经全仓 grep 确认：is_approved 仅四模型、TARGET_APP_MODEL 恰四项、流水物流源唯一消费方已过滤）；后端 319 passed；dev/test/origin 同步"
+}

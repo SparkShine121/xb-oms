@@ -172,3 +172,41 @@ def test_admin_edit_approved_shipment_no_recoil(db, setup, admin_client):
     logi = Logistics.objects.get(pk=setup['logistics'].id)
     assert logi.is_approved is True
     assert not ApprovalRequest.objects.filter(target_model='Logistics', target_id=logi.id).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_recoiled_shipment_excluded_from_ledger(db):
+    """审查收口：打回后收支流水物流费用源不含该发货单，approve 后恢复（跨模块联动锁）。
+
+    调 approve 端点触发 SQLite 在线备份 → 必须 transaction=True（备份在未提交
+    事务下无限等待，错题集既有条目）；实体用 reco_ 前缀唯一名——transaction=True
+    的数据真实提交进共享内存库，通用名会与后跑文件的实体撞唯一键。
+    """
+    from apps.system_mgmt.models import ApprovalRequest
+    from rest_framework.test import APIClient
+
+    adm = User.objects.create_user('reco_admin', password='pw123456')
+    adm.groups.add(Group.objects.get(name='admin'))
+    tr = User.objects.create_user('reco_tracker', password='pw123456')
+    tr.groups.add(Group.objects.get(name='tracker'))
+    admin_c = APIClient(); admin_c.force_authenticate(adm)
+    tracker_c = APIClient(); tracker_c.force_authenticate(tr)
+
+    carrier = LogisticsProvider.objects.create(name='回款联动承运', type='domestic')
+    o = Order.objects.create(
+        order_no='ORECL', customer=Customer.objects.create(name='回款联动客户'), amount_usd='100')
+    logi = Logistics.objects.create(order=o, domestic_carrier=carrier, tracking_no='RECO1', cost='50.00')
+    o.tracker = tr; o.save()
+
+    def _logi_rows():
+        r = admin_c.get('/api/finance/payments-in/ledger/')
+        return [row for row in r.data['data']['results'] if row['type'] == 'expense_logistics']
+
+    assert len(_logi_rows()) == 1  # 前置：已批准发货单费用在流水
+    r = tracker_c.patch(f'/api/logistics/shipments/{logi.id}/', {'tracking_no': 'RECO2'}, format='json')
+    assert r.status_code == 200
+    assert _logi_rows() == []  # 打回后流水排除
+    ar = ApprovalRequest.objects.get(target_model='Logistics', target_id=logi.id, status='pending')
+    r = admin_c.post(f'/api/system-mgmt/approvals/{ar.id}/approve/', format='json')
+    assert r.status_code == 200
+    assert len(_logi_rows()) == 1  # 批准后恢复
