@@ -230,10 +230,10 @@ onMounted(() => { loadUsers(); load() })
               >
                 <el-button>选择 Excel</el-button>
               </el-upload>
-              <el-button type="primary" plain :disabled="!importFile" :loading="importing" @click="doImport">批量导入</el-button>
+              <el-button type="primary" plain :disabled="!importFile" title="请先选择 Excel 文件" :loading="importing" @click="doImport">批量导入</el-button>
             </template>
             <el-button @click="downloadTemplate">下载模板</el-button>
-            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
+            <el-button v-if="isAdmin" type="danger" plain :disabled="!selection.length" title="请先勾选要删除的行" @click="handleBatchDelete">批量删除</el-button>
           </template>
         </SearchToolbar>
       </template>

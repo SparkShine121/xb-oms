@@ -227,7 +227,7 @@ onMounted(async () => {
         <el-row :gutter="16">
           <el-col :span="8">
             <el-form-item label="订单号" required>
-              <el-input v-model="form.order_no" :disabled="isEdit" placeholder="请输入订单号" />
+              <el-input v-model="form.order_no" :disabled="isEdit" title="订单号创建后不可修改" placeholder="请输入订单号" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -279,6 +279,7 @@ onMounted(async () => {
                 v-model="form.tracker"
                 clearable
                 filterable
+                title="跟单员分配仅管理员可修改"
                 placeholder="选择跟单员"
                 style="width: 100%"
                 :disabled="!isAdmin"

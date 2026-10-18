@@ -27,10 +27,13 @@ async function onSubmit() {
     } catch {
       // 获取用户信息失败不阻塞登录
     }
+    // UX-低优#5：成功后清掉残留的失败提示（3s 窗口内旧错误对已登录用户无意义）
+    ElMessage.closeAll()
     router.push('/')
   } catch (e: any) {
     const msg = typeof e.response?.data?.message === 'string' ? e.response?.data?.message : '登录失败'
-    ElMessage({ message: msg, type: 'error', customClass: 'login-toast' })
+    // grouping：连续失败相同内容合并为单条带计数，防堆叠
+    ElMessage({ message: msg, type: 'error', customClass: 'login-toast', grouping: true })
   } finally {
     loading.value = false
   }
