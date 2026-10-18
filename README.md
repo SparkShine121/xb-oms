@@ -79,9 +79,7 @@
 │       ├── stores/               # Pinia（user：token/角色）
 │       ├── router/               # 路由（MainLayout + MobileLayout）
 │       └── tests/                # Vitest 测试（@vitest-environment node）
-├── docs/superpowers/
-│   ├── specs/                    # 设计文档
-│   └── plans/                    # 实现计划
+├── docs/superpowers/specs/       # 各模块设计文档（实现计划已于洁癖清场时移除）
 ├── bug修复/                      # 各 bug 的修复方案与操作日志（按编号/批次分目录）
 ├── errors_file/                  # 错题集与审查观察（errors.md + observations/）
 └── xbb印刷品定制数字化管理系统-规划文档.md   # 系统级规划（9 模块/技术栈/部署/报价复核）
