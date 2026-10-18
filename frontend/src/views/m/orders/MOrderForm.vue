@@ -248,7 +248,6 @@ onMounted(async () => {
           required
           :rules="[{ required: true, message: '请输入订单号' }]"
           :disabled="isEdit"
-          title="订单号创建后不可修改"
           placeholder="请输入订单号"
         />
         <van-field
@@ -285,7 +284,6 @@ onMounted(async () => {
           :is-link="!(isEdit && !isAdmin)"
           readonly
           :disabled="isEdit && !isAdmin"
-          title="业务员分配仅管理员可修改"
           label="业务员"
           placeholder="选择业务员"
           @click="showSalesmanPicker = true"
