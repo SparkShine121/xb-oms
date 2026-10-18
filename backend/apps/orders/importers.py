@@ -155,10 +155,33 @@ def _update_items(order, d, unmatched):
             cur.delete()
 
 
+def _expand_merged_cells(ws, columns):
+    """BUG-SIM-030（规划 7.1）：主表列合并区展开——左上角值下放到范围内每个数据行。
+
+    仅处理与 columns 有交集且 min_row>=2 的合并区（表头合并属异常文件，跳过）；
+    不在任何合并区的空值不填充（真漏填仍由分组阶段拒绝"订单号为空"）。
+    openpyxl 的 MergedCell 只读，须先 unmerge 再赋值。
+    """
+    headers = {h: i + 1 for i, h in enumerate([c.value for c in ws[1]]) if h}
+    target_cols = {headers[name] for name in columns if name in headers}
+    for rng in list(ws.merged_cells.ranges):
+        if rng.min_row < 2 or not (set(range(rng.min_col, rng.max_col + 1)) & target_cols):
+            continue
+        top_left = ws.cell(rng.min_row, rng.min_col).value
+        ws.unmerge_cells(str(rng))
+        if top_left is None:
+            continue
+        for r in range(rng.min_row, rng.max_row + 1):
+            for c in range(rng.min_col, rng.max_col + 1):
+                if c in target_cols:
+                    ws.cell(r, c).value = top_left
+
+
 def import_orders(file, user=None):
     """导入订单 Excel。user 为操作者（视图层传入），用于更新路径的归属校验。"""
     wb = openpyxl.load_workbook(file, data_only=True)
     ws = wb.active
+    _expand_merged_cells(ws, ORDER_COLUMNS)  # BUG-SIM-030：合并模板下放后再走统一分组
     headers = [c.value for c in ws[1]]
     col = {h: i for i, h in enumerate(headers) if h}
     success, failures = 0, []
@@ -266,11 +289,17 @@ def build_order_template():
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.append(ORDER_COLUMNS + ITEM_COLUMNS)
-    ws.append([
-        '待确认', '', '2026-05-12', '吴芳', '示例订单', 100, 10, 5, 1000, 30, 50,
-        '圆通', 'EMS', 'T1', '', '1', '华鑫', 10, 'M1', '尺寸:54*35',
-        '100', '1000', '720', '', '', 'P001',
+    main = ['待确认', '', '2026-05-12', '吴芳', '示例订单', 100, 10, 5, 1000, 30, 50,
+            '圆通', 'EMS', 'T1', '']
+    ws.append(main + [
+        '1', '华鑫', 10, 'M1', '尺寸:54*35', '100', '1000', '720', '', '', 'P001',
     ])
+    ws.append([''] * len(ORDER_COLUMNS) + [
+        '2', '华鑫', 5, 'M2', '尺寸:40*30', '50', '500', '360', '', '', 'P002',
+    ])
+    # BUG-SIM-030 Q3:a：主表字段纵向合并——模板直观展示合并单元格形态（导入已支持）
+    for c in range(1, len(ORDER_COLUMNS) + 1):
+        ws.merge_cells(start_row=2, start_column=c, end_row=3, end_column=c)
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
