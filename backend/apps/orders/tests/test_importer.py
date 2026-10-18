@@ -414,3 +414,20 @@ def test_import_template_roundtrip_merged(db, rate):
     r = import_orders(build_order_template())
     assert r['success_count'] == 1 and r['fail_count'] == 0
     assert Order.objects.get(order_no='示例订单').items.count() == 2
+
+
+def test_expand_merged_cells_direct():
+    """030 审查收口：直接锁 _expand_merged_cells 的下放行为（全主表列、明细列不动）。"""
+    from apps.orders.importers import _expand_merged_cells, ORDER_COLUMNS
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(XLSX_HEADERS)
+    ws.append(_merged_row('M1', 1, 'P1'))
+    ws.append(_blank_main_row(2, 'P2'))
+    for c in range(1, MAIN_COLS + 1):
+        ws.merge_cells(start_row=2, start_column=c, end_row=3, end_column=c)
+    _expand_merged_cells(ws, ORDER_COLUMNS)
+    assert ws.cell(3, 1).value == '待确认'   # 续行主表列获得左上角值：订单状态
+    assert ws.cell(3, 5).value == 'M1'       # 订单名称
+    assert ws.cell(3, 9).value == 1000       # 订单金额
+    assert ws.cell(3, 16).value == 2         # 明细列不在下放范围，续行原值保持

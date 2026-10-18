@@ -1,0 +1,11 @@
+{
+  "task": "BUG-SIM-030 合并单元格模板导入",
+  "date": "2026-10-18",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "数据正确性", "severity": "low", "observation": "合并区异常跨越订单边界时下放会把后组行静默归入首组订单——数据层无法区分合法跨行合并与跨订单错误合并（合并语义固有歧义），真实文件按模板约定不会出现", "suggestion": "记录为已知限制；后续可加订单名称列合并区启发式边界检测或导入报告提示大范围合并区"},
+    {"dimension": "测试质量", "severity": "low", "observation": "分组逻辑下除订单名称列外的主表列下放对导入结果零功能影响——现有断言无法区分全列下放与仅订单名称列下放", "suggestion": "已修：补 _expand_merged_cells 直接单测锁下放行为（含明细列不动断言）"},
+    {"dimension": "边缘处理", "severity": "low", "observation": "横向合并把同一值塞进多个语义主表列（与 Excel 视觉一致）", "suggestion": "可接受，不改"}
+  ],
+  "verification": "unmerge→赋值链路经审查实验验证；后端 316 passed（含 4 条 030 测试）；既有 19 条导入测试零改动通过 = 扁平兼容证明；dev/test/origin 同步"
+}
