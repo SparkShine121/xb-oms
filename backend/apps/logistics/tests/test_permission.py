@@ -147,3 +147,28 @@ def test_admin_can_bulk_delete_shipments(db, setup, admin_client):
     r = admin_client.post('/api/logistics/shipments/bulk-delete/', {'ids': [setup['logistics'].id]}, format='json')
     assert r.status_code == 200 and r.data['data']['deleted'] == 1
     assert not Logistics.objects.filter(id=setup['logistics'].id).exists()
+
+
+# ---- Logistics 打回泛化（BUG-SIM-024 同规则，锁加固同口径）----
+
+def test_tracker_edit_approved_shipment_recoils(db, setup, tracker_client):
+    """tracker 编辑已批准发货单 → 打回未批准 + 重挂 logistics 审批"""
+    from apps.system_mgmt.models import ApprovalRequest
+    tc, tr = tracker_client
+    setup['order'].tracker = tr; setup['order'].save()
+    r = tc.patch(f'/api/logistics/shipments/{setup["logistics"].id}/', {'tracking_no': 'NEW2'}, format='json')
+    assert r.status_code == 200
+    logi = Logistics.objects.get(pk=setup['logistics'].id)
+    assert logi.is_approved is False
+    assert ApprovalRequest.objects.filter(
+        approval_type='logistics', target_model='Logistics',
+        target_id=logi.id, status='pending').exists()
+
+def test_admin_edit_approved_shipment_no_recoil(db, setup, admin_client):
+    """admin 编辑已批准发货单不打回（admin 即审批人）"""
+    from apps.system_mgmt.models import ApprovalRequest
+    r = admin_client.patch(f'/api/logistics/shipments/{setup["logistics"].id}/', {'tracking_no': 'NEW3'}, format='json')
+    assert r.status_code == 200
+    logi = Logistics.objects.get(pk=setup['logistics'].id)
+    assert logi.is_approved is True
+    assert not ApprovalRequest.objects.filter(target_model='Logistics', target_id=logi.id).exists()
