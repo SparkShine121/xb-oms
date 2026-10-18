@@ -41,15 +41,18 @@ class ApprovalRequestViewSet(BaseModelViewSet):
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         ar = self.get_object()
-        if ar.status != 'pending':
-            return error_response(1009, '该申请已处理，不可重复操作', status=400)
-        # ⑯ 顺带：审批三步原子化（目标保存 + AR 状态 + 重算）
         with transaction.atomic():
+            # 打回-approve 竞态防御：AR 行锁重读（双 approve TOCTOU 串行化）
+            ar = ApprovalRequest.objects.select_for_update().get(pk=ar.pk)
+            if ar.status != 'pending':
+                return error_response(1009, '该申请已处理，不可重复操作', status=400)
+            # ⑯ 顺带：审批三步原子化（目标保存 + AR 状态 + 重算）
             app_model = TARGET_APP_MODEL.get(ar.target_model)
             if app_model:
                 model_cls = django_apps.get_model(*app_model)
                 try:
-                    target = model_cls.objects.get(pk=ar.target_id)
+                    # target 行锁重读：与三处打回写窗口互斥（approve = AR→target→fp，编辑 = target→fp，无死锁）
+                    target = model_cls.objects.select_for_update().get(pk=ar.target_id)
                 except model_cls.DoesNotExist:
                     # BUG-SIM-032 Q2:a：目标已删除 → 自动关闭审批（原 404 语义废弃）
                     ar.status = 'cancelled'

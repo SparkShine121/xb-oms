@@ -63,16 +63,21 @@ class OrderViewSet(BaseModelViewSet):
                 target_model='Order', submitted_by=self.request.user)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
-        # BUG-SIM-024 Q4:a：非 admin 编辑已批准订单 → 打回未批准 + 重新挂审
-        # （admin 即审批人不受影响；打回创建的 pending 使 resubmit_on_update 判重跳过）
-        if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
-            instance.is_approved = False
-            instance.save(update_fields=['is_approved'])
-            ApprovalRequest.objects.create(
-                approval_type='order_change', target_id=instance.id,
-                target_model='Order', submitted_by=self.request.user)
-        resubmit_on_update(self.request.user, instance, 'order_change', 'Order')
+        with transaction.atomic():
+            # 打回-approve 竞态防御：行锁重读，save 作用于锁内最新实例
+            # （serializer.save() 全字段 UPDATE，否则 get_object 快照会覆盖并发 approve 写入的 is_approved）
+            locked = Order.objects.select_for_update().get(pk=serializer.instance.pk)
+            serializer.instance = locked
+            instance = serializer.save()
+            # BUG-SIM-024 Q4:a：非 admin 编辑已批准订单 → 打回未批准 + 重新挂审
+            # （admin 即审批人不受影响；打回创建的 pending 使 resubmit_on_update 判重跳过）
+            if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
+                instance.is_approved = False
+                instance.save(update_fields=['is_approved'])
+                ApprovalRequest.objects.create(
+                    approval_type='order_change', target_id=instance.id,
+                    target_model='Order', submitted_by=self.request.user)
+            resubmit_on_update(self.request.user, instance, 'order_change', 'Order')
 
     @action(detail=False, methods=['post'], url_path='import')
     def import_data(self, request):

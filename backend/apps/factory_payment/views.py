@@ -58,6 +58,9 @@ class FactoryPaymentViewSet(BaseModelViewSet):
 
     def perform_update(self, serializer):
         with transaction.atomic():
+            # 打回-approve 竞态防御：行锁重读 + save 作用于锁内最新实例（防快照覆盖）
+            locked = FactoryPayment.objects.select_for_update().get(pk=serializer.instance.pk)
+            serializer.instance = locked
             instance = serializer.save()
             # 收尾批：非 admin 编辑已批准结算单 → 打回未批准 + 重新挂审（BUG-SIM-024 同规则）
             if not self.request.user.groups.filter(name='admin').exists() and instance.is_approved:
@@ -168,14 +171,17 @@ class FactoryPaymentRecordViewSet(BaseModelViewSet):
 
     def perform_update(self, serializer):
         with transaction.atomic():
-            instance = self.get_object()
+            # 打回-approve 竞态防御：Record 行锁重读（与 approve 的 target 锁互斥，锁序 Record→fp）
+            # + save 作用于锁内最新实例（防 get_object 快照覆盖并发 approve 写入的 is_approved）
+            locked = FactoryPaymentRecord.objects.select_for_update().get(pk=serializer.instance.pk)
+            serializer.instance = locked
             if 'factory_payment' in serializer.validated_data and \
-                    serializer.validated_data['factory_payment'].pk != instance.factory_payment_id:
+                    serializer.validated_data['factory_payment'].pk != locked.factory_payment_id:
                 # BUG-SIM-006 followup：换父会绕过超付校验并使旧父 paid_amount 失真
                 raise DRFValidationError('付款记录不支持更换所属结算单')
-            fp = FactoryPayment.objects.select_for_update().get(pk=instance.factory_payment_id)
-            new_amount = serializer.validated_data.get('amount', instance.amount)
-            self._check_overpay(fp, new_amount, exclude_id=instance.id)  # 改大金额同样不得超付
+            fp = FactoryPayment.objects.select_for_update().get(pk=locked.factory_payment_id)
+            new_amount = serializer.validated_data.get('amount', locked.amount)
+            self._check_overpay(fp, new_amount, exclude_id=locked.id)  # 改大金额同样不得超付
             instance = serializer.save()
             # 收尾批：非 admin 编辑已批准付款记录 → 打回未批准 + 重新挂审（BUG-SIM-024 同规则）。
             # 打回置 False 的 save 触发 Record.save 重聚合（filter is_approved=True），
