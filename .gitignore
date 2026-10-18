@@ -57,3 +57,5 @@ coverage/
 
 # project-map 项目星图（纯本地可视化工具，project-map skill 生成与维护）
 project-map/
+# unplugin 自动生成（每次 dev/build 重建，不入库）
+frontend/components.d.ts
