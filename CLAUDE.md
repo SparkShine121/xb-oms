@@ -67,8 +67,8 @@ Django monorepo，按业务域分 app：
 Vue3 + Vite，按端分流：
 
 - **PC/平板**（`/`）：Element Plus，`views/basic_info/`、`views/orders/`、`views/tracking/`、`views/factory_payment/`、`views/system/`
-- **移动端**（`/m/`）：Vant，`views/m/`（基础信息只读 + 订单完整 + 跟单完整 + 工厂结算完整）
-- **API 封装**：`src/api/{request,auth,basicInfo,orders,tracking,factoryPayment}.ts`——`request.ts` 是 axios 实例（baseURL=/api、Bearer 注入、401 跳转、非 401 全局 ElMessage.error、返回 res.data）
+- **移动端**（`/m/`）：Vant，`views/m/`（基础信息只读 + 订单完整（admin 含取消入口）+ 跟单完整 + 工厂结算完整 + 物流/财务列表）
+- **API 封装**：`src/api/{request,auth,basicInfo,orders,tracking,factoryPayment}.ts`——`request.ts` 是 axios 实例（baseURL=/api、Bearer 注入、401 先静默 refresh 重放失败才登出跳登录、非 401 全局 ElMessage.error（grouping 合并相同文案）、返回 res.data）
 - **状态**：Pinia `stores/user.ts`（token/roles/username，**sessionStorage** 持久化——关标签页/新标签页需重新登录）
 - **路由**：`router/index.ts`，MainLayout（三面板悬浮壳：`NavRail` 图标栏 + 分组级面包屑 + 圆角内容区，菜单数据源 `layouts/menuConfig.ts`）+ MobileLayout（tabbar），路由守卫登录校验
 - **测试**：`src/tests/*.test.ts`（逻辑测试首行 `// @vitest-environment node` + `vi.mock('element-plus')` 避免 ARM jsdom 慢；组件测试 `components.test.ts` 用默认 jsdom 环境，需 mock EP 的 `*/style/css` 样式入口）
@@ -79,5 +79,6 @@ Vue3 + Vite，按端分流：
 
 - **统一响应**：所有 API 返回 `{code:0, message, data}`，前端 `request.ts` 拦截器返回 `res.data`（即 envelope），页面取 `resp.data.results`（列表）或 `resp.data`（详情）
 - **权限双层**：`has_permission`（操作级）+ `has_object_permission`（对象级数据范围）；后端是安全防线，前端按角色显隐按钮是体验层
+- **审批门禁（四模型）**：Order/FactoryPayment/FactoryPaymentRecord/Logistics 的 `is_approved`——**未批准 = 不产生业务效果**（流转/生成/登记门禁 + 流水/对账单/报表全链路排除）；非 admin 编辑已批准 → 打回未批准 + 重挂审；三处打回与 approve 两侧 `select_for_update` 行锁互斥（仅 MySQL 生效，SQLite 靠事务+约束兜底）。改动审批相关代码前先读 `bug修复/打回竞态-行锁加固/` 与 `bug修复/Logistics-打回泛化与锁/`
 - **模块开发流程**：grilling 需求 → brainstorming 设计 → writing-plans 计划 → subagent-driven-development 逐任务 TDD（implementer/reviewer）→ neat-freak 收尾
 - **TDD**：先写失败测试 → 验证失败 → 实现 → 验证通过 → 提交（每任务独立 commit）

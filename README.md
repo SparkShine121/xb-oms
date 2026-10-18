@@ -15,7 +15,7 @@
 | openpyxl | ≥3.1 | Excel 批量导入（基础信息、订单模板）与财务导出 |
 | Pillow | ≥10.0 | 跟单照片上传校验（image verify） |
 | SQLite / MySQL 8 | — | 开发用 SQLite（ARM64 无原生 MySQL），生产用 MySQL 8 |
-| pytest + pytest-django + factory_boy | ≥8.0 | 后端测试（163 个测试全绿） |
+| pytest + pytest-django + factory_boy | ≥8.0 | 后端测试（319 个测试全绿） |
 
 ### 前端（Node.js 22，端口 5173）
 
@@ -29,7 +29,7 @@
 | Pinia | 4.0 | 状态管理（token/角色，sessionStorage 持久化，新标签页需重新登录） |
 | vue-router | 5.2 | 路由（PC `/` 与移动端 `/m/` 双端分流） |
 | ECharts | 6.1 | 数据分析图表（折线/饼图/柱状图） |
-| axios | 1.19 | HTTP 封装（Bearer 注入、401 跳转、全局错误提示） |
+| axios | 1.19 | HTTP 封装（Bearer 注入、401 静默刷新续命、失败跳登录、全局错误提示） |
 | Vitest | 4.1 | 前端测试 |
 
 ### 认证与权限
@@ -48,7 +48,7 @@
 | 5 | 物流管理 | `logistics` | Logistics 多行物流记录（FK→Order，seq 自动递增）+ 两段物流关联物流服务商 + 角色权限控制 |
 | 6 | 轻财务 | `finance` | PaymentIn 回款登记 + 收支流水四源聚合（回款/工厂付款/物流费/服务费）+ Excel 导出 |
 | 7 | 数据分析 | `analytics` | 4 个聚合 API（销售结算表/工厂账单汇总/跟单信息汇总/管理人员报表）+ ECharts Dashboard（admin/finance 专属） |
-| 8 | 系统管理 | `system_mgmt` | ApprovalRequest 审批流（工厂结算/付款登记/订单变更/物流发货，批量导入与一键生成挂审、驳回重提）+ OperationLog 操作日志 + BackupRecord 备份恢复（滚动保留 1000 份） |
+| 8 | 系统管理 | `system_mgmt` | ApprovalRequest 审批流（四模型工厂结算/付款登记/订单变更/物流发货统一打回语义：非 admin 编辑已批准 → 打回重挂审）+ OperationLog 操作日志 + BackupRecord 备份恢复（滚动保留 1000 份） |
 | 9 | 账号与认证 | `accounts` | JWT 登录/登出/用户信息 + 用户管理 + `create_groups` 角色初始化命令 |
 
 ### 双端界面
@@ -58,7 +58,8 @@
 
 ### 关键架构模式
 
-- **统一响应**：所有 API 返回 `{code: 0, message, data}`，前端 axios 拦截器统一解包；401 时非登录页跳登录、登录页弹居中错误提示；token 存 sessionStorage
+- **统一响应**：所有 API 返回 `{code: 0, message, data}`，前端 axios 拦截器统一解包；401 先静默刷新 token 重放，失败才登出跳登录；token 存 sessionStorage
+- **审批门禁**：四模型（Order/FactoryPayment/FactoryPaymentRecord/Logistics）`is_approved` 门禁——**未批准 = 不产生业务效果**（流转/生成/登记门禁 + 流水/对账单/报表排除）；非 admin 编辑已批准 → 打回未批准 + 重挂审；打回与 approve 两侧行锁互斥
 - **`common/` 通用库**：`BaseModelViewSet`（统一 CRUD 包装）、`response`、`permissions`（RolePermission/AdminWriteOthersReadOnly）、统一异常处理、分页
 - **TDD 开发流程**：每任务先写失败测试 → 实现 → 验证 → 独立 commit
 
@@ -81,6 +82,8 @@
 ├── docs/superpowers/
 │   ├── specs/                    # 设计文档
 │   └── plans/                    # 实现计划
+├── bug修复/                      # 各 bug 的修复方案与操作日志（按编号/批次分目录）
+├── errors_file/                  # 错题集与审查观察（errors.md + observations/）
 └── xbb印刷品定制数字化管理系统-规划文档.md   # 系统级规划（9 模块/技术栈/部署/报价复核）
 ```
 
@@ -90,18 +93,15 @@
 
 ```bash
 cd backend
-python -m pip install -r requirements/dev.txt
-python manage.py migrate
-python manage.py create_groups          # 创建 4 个角色 Group
-python manage.py runserver              # http://127.0.0.1:8000
+.venv/bin/python -m pip install -r requirements/dev.txt
+.venv/bin/python manage.py migrate
+.venv/bin/python manage.py create_groups          # 创建 4 个角色 Group
+.venv/bin/python manage.py runserver              # http://127.0.0.1:8000
 ```
 
 ### 前端（端口 5173，需 Node.js）
 
-开发机为 Windows ARM64，Node.js 装在 `D:\Pad Windows Data\nodejs\node-v22.23.2-win-arm64\`，用前挂 PATH：
-
 ```bash
-export PATH="/d/Pad Windows Data/nodejs/node-v22.23.2-win-arm64:$PATH"
 cd frontend
 npm install --registry=https://registry.npmmirror.com
 npm run dev                             # http://localhost:5173（Vite 代理 /api → 8000）
@@ -110,14 +110,16 @@ npm run dev                             # http://localhost:5173（Vite 代理 /a
 ### 测试
 
 ```bash
-cd backend && python -m pytest -v        # 163 passed
+cd backend && .venv/bin/python -m pytest -v      # 319 passed
 cd frontend && npx vitest run --test-timeout=30000   # 77 个测试全绿（ARM64 需加长超时）
 npm run build                            # 构建（vue-tsc 类型检查 + vite build）
 ```
 
 ## 当前状态
 
-全部 9 个模块开发完成：后端 163 个测试全绿、前端 77 个测试全绿、`npm run build` 通过。开发用 SQLite（ARM64 无原生 MySQL），生产部署计划用 MySQL 8 + Windows 绿色安装包（待部署阶段）。
+全部 9 个模块开发完成，**业务流程模拟测试战役收官**：32 项 BUG-SIM 编号（P0×3/P1×14/P2×7/P3×8，含 10 项新发现并入）与 8 项 UX 走查问题全部关闭。后端 319 个测试全绿、前端 77 个测试全绿、`npm run build` 通过。开发用 SQLite，生产部署计划用 MySQL 8 + Windows 绿色安装包（待部署阶段；上线前须全员改密、logistics 0003 迁移前查重、prod 配置 Redis CACHES）。
+
+审批域四模型（订单/结算单/付款记录/物流）已统一：新建挂审、非 admin 编辑已批准打回重挂、打回与 approve 行锁互斥、**未批准 = 不产生业务效果**（流转/财务/流水/对账/报表全链路一致）。每项修复的方案与操作日志留档于 `bug修复/<编号>/`，踩坑教训维护于 `errors_file/errors.md`。
 
 近期 UI/UX 增强：
 
