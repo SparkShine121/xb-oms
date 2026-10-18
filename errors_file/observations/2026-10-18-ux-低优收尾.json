@@ -1,0 +1,12 @@
+{
+  "task": "UX 低优收尾批（#5 toast 堆叠/残留 + #8 禁用提示/tag 错乱）",
+  "date": "2026-10-18",
+  "overall": "pass-with-notes",
+  "findings": [
+    {"dimension": "组件契约（跨端）", "severity": "medium", "observation": "Vant van-field 的 title 是已声明 prop（Cell 共享），传入被静默吞掉不进 DOM——移动端两处 title 是死代码", "suggestion": "已修：删除 MOrderForm 两处；跨端组件加原生属性前先查该组件 prop 表"},
+    {"dimension": "实测/复验", "severity": "low", "observation": "#8b 删除用户 tag 瞬态在 76 帧采样（40ms 间隔）中未复现，仅两稳定状态——与删除后 load() 全量刷新的代码分析一致", "suggestion": "按口径记录关闭；如用户仍感知再带截图定位"},
+    {"dimension": "顺带实证", "severity": "info", "observation": "登录限流 429 与密码策略（6 位密码拒绝）均真实链路生效；018-020 过渡态 aa1234 已不满足新策略——生产改密提醒又获一个证据点", "suggestion": "运维清单强化：上线前强制改密"},
+    {"dimension": "既有缺口", "severity": "low", "observation": "request.ts 非 response 错误（网络断）不弹 toast——既有行为，非本批引入", "suggestion": "低优待办，可后续补统一网络错误提示"}
+  ],
+  "verification": "前端 77 passed + build；预览实测 grouping（2 合并单条）/closeAll（登录成功清零）/title（DOM 存在）实证；#8b 未复现；dev/test/origin 同步"
+}
