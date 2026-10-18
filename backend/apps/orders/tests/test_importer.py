@@ -350,3 +350,67 @@ def test_import_silently_skips_non_tracker_customer_tracker(db, rate):
     r = import_orders(buf)
     assert r['success_count'] == 1 and r['fail_count'] == 0
     assert Order.objects.get(order_no='O1').tracker_id is None
+
+
+# ---- BUG-SIM-030: 合并单元格模板（规划 7.1 下放）----
+
+XLSX_HEADERS = [
+    '订单状态', '产品清单', '订单日期', '联系人', '订单名称', '运费', '物流保险费', '附加费用',
+    '订单金额（USD）', '交易服务费(USD)', '运输成本', '承运商', '物流', '单号', '备注',
+    '序号', '供应商', '数量', '型号', '产品规格', '单价', '金额小计', '含税成本价',
+    '产品毛利', '毛利润率', '产品编号',
+]
+MAIN_COLS = 15  # 主表列数（明细列从第 16 列起）
+
+
+def _merged_row(order_no, seq, product_no):
+    return ['待确认', '', '2026-05-12', '吴芳', order_no, 100, 10, 5, 1000, 30, 50,
+            '圆通', 'EMS', 'T1', '', seq, '华鑫', 10, 'M1', 'S', 100, 1000, 720,
+            '', '', product_no]
+
+
+def _blank_main_row(seq, product_no):
+    return [''] * MAIN_COLS + [seq, '华鑫', 5, 'M2', 'S', 50, 500, 360, '', '', product_no]
+
+
+def _make_merged_xlsx(merge=True):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(XLSX_HEADERS)
+    ws.append(_merged_row('M1', 1, 'P1'))
+    ws.append(_blank_main_row(2, 'P2'))
+    ws.append(_merged_row('M2', 1, 'P3'))
+    ws.append(_blank_main_row(2, 'P4'))
+    if merge:
+        for r in (2, 4):  # 每组主表 15 列纵向合并 2 行（左上角承载订单级值）
+            for c in range(1, MAIN_COLS + 1):
+                ws.merge_cells(start_row=r, start_column=c, end_row=r + 1, end_column=c)
+    buf = BytesIO(); wb.save(buf); buf.seek(0)
+    return buf
+
+
+def test_import_merged_cells(db, rate):
+    """030：合并区续行订单号为空 → 正确归属组首订单；字段取合并区左上角。"""
+    Customer.objects.create(name='吴芳')
+    r = import_orders(_make_merged_xlsx())
+    assert r['success_count'] == 2 and r['fail_count'] == 0
+    o1 = Order.objects.get(order_no='M1')
+    assert o1.items.count() == 2
+    assert o1.amount_usd == 1000  # 合并区左上角值（非空续行不产生"订单号为空"）
+    assert o1.items.filter(product_no='P2').exists()
+    assert Order.objects.get(order_no='M2').items.count() == 2
+
+def test_import_blank_order_no_outside_merge_rejected(db, rate):
+    """030：订单号空且不在合并区（真漏填）仍拒绝，不被静默并入上一订单。"""
+    Customer.objects.create(name='吴芳')
+    r = import_orders(_make_merged_xlsx(merge=False))
+    assert r['success_count'] == 2
+    assert any('订单号为空' in f['reason'] for f in r['failures'])
+    assert Order.objects.get(order_no='M1').items.count() == 1  # 漏填行未并入
+
+def test_import_template_roundtrip_merged(db, rate):
+    """030：升级后的合并示例模板可直接回导——1 订单 2 明细。"""
+    Customer.objects.create(name='吴芳')
+    r = import_orders(build_order_template())
+    assert r['success_count'] == 1 and r['fail_count'] == 0
+    assert Order.objects.get(order_no='示例订单').items.count() == 2
